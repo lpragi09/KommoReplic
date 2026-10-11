@@ -97,9 +97,9 @@ function Stat({ label, value, sub, href, tone }: { label: string; value: number;
       {sub && <p className="text-sm text-muted">{sub}</p>}
     </>
   );
-  const cls = "block rounded-md border border-border bg-bg p-4";
+  const cls = "fx-rise block rounded-md border border-border bg-bg p-4";
   return href ? (
-    <Link href={href} className={cn(cls, "hover:border-border-input")}>
+    <Link href={href} className={cn(cls, "fx-lift hover:border-border-input")}>
       {body}
     </Link>
   ) : (

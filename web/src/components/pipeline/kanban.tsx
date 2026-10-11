@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useOptimistic, useState, useTransition, type FormEvent } from "react";
+import { useId, useOptimistic, useState, useTransition, type CSSProperties, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -230,8 +230,8 @@ function ColumnView({
           isOver && "bg-accent-soft outline-2 outline-dashed outline-accent",
         )}
       >
-        {leads.map((l) => (
-          <DraggableCard key={l.id} lead={l} slug={slug} owner={owner(l.responsibleUserId)} />
+        {leads.map((l, i) => (
+          <DraggableCard key={l.id} lead={l} slug={slug} owner={owner(l.responsibleUserId)} index={i} />
         ))}
         {leads.length === 0 && !adding && (
           <li className="rounded-md border border-dashed border-border-input px-3 py-6 text-center text-sm text-muted">
@@ -279,10 +279,11 @@ function QuickAdd({ slug, pipelineId, stageId, onDone, onError }: { slug: string
   );
 }
 
-function DraggableCard({ lead, slug, owner }: { lead: LeadCardT; slug: string; owner: string }) {
+function DraggableCard({ lead, slug, owner, index }: { lead: LeadCardT; slug: string; owner: string; index: number }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id: lead.id });
   return (
-    <li ref={setNodeRef} className={cn(isDragging && "opacity-40")}>
+    // entra em sequência só na 1ª pintura; o refresh de dados não reanima (o React mantém o nó)
+    <li ref={setNodeRef} className={cn("fx-rise", isDragging && "opacity-40")} style={{ "--d": Math.min(index, 8) } as CSSProperties}>
       <LeadCard lead={lead} slug={slug} owner={owner} handle={{ ...attributes, ...listeners }} />
     </li>
   );
@@ -295,7 +296,7 @@ export function LeadCard({ lead, slug, owner, overlay, handle }: { lead: LeadCar
   return (
     <article
       className={cn(
-        "group relative rounded-md border border-border bg-bg p-3 shadow-card transition-colors duration-fast hover:border-border-input",
+        "fx-lift group relative rounded-md border border-border bg-bg p-3 shadow-card hover:border-border-input",
         overlay && "rotate-[1.5deg] shadow-drag",
       )}
     >

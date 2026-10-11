@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const variants = {
-  primary: "bg-accent text-on-accent hover:bg-accent-hover",
+  primary: "fx-shine bg-accent text-on-accent hover:bg-accent-hover",
   secondary: "bg-bg text-fg border border-border hover:border-border-input",
   ghost: "bg-transparent text-fg hover:bg-surface",
   danger: "bg-danger text-on-accent hover:brightness-90",
