@@ -71,7 +71,7 @@ test.describe("F03/F04/F05 do chat do site até o ganho", () => {
     await page.getByRole("button", { name: "Aceitar Duplo como lead" }).click();
     await expect(page).toHaveURL(/\/leads\/[0-9a-f-]{36}/);
     await tab2.getByRole("button", { name: "Aceitar Duplo como lead" }).click();
-    await expect(tab2.getByRole("alert").filter({ hasText: "Outra pessoa já tratou" })).toBeVisible();
+    await expect(tab2.getByRole("alert").filter({ hasText: "Alguém da equipe já cuidou" })).toBeVisible();
   });
 
   test("F03-E3 visitante com mensagem vazia ou longa demais", async ({ page, browser }) => {

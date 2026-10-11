@@ -18,7 +18,7 @@ async function run<T>(fn: () => Promise<T>): Promise<Result<T>> {
     refresh();
     return { ok: true, data: out };
   } catch (e) {
-    if (e instanceof DomainError) return fail(e.code === "invalid" || e.code === "already_resolved" || e.code === "window_closed" ? e.message : "Não foi possível concluir. Tente de novo.");
+    if (e instanceof DomainError) return fail(e.code === "invalid" || e.code === "already_resolved" || e.code === "window_closed" ? e.message : "Não deu certo desta vez e nada foi perdido. Tente de novo.");
     if (e instanceof z.ZodError) return fail(e.issues[0]?.message ?? "Dados inválidos.");
     throw e;
   }
