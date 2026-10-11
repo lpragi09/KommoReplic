@@ -1,0 +1,11 @@
+@import "./tokens.css";
+
+/* next/font gera um nome de família próprio; ligamos a variável dele aos tokens */
+:root {
+  --font-body: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
