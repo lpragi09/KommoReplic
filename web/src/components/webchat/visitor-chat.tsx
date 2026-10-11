@@ -64,13 +64,13 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
 
   return (
     <div className="mx-auto flex h-dvh max-w-md flex-col border-x border-border bg-bg">
-      <header className="flex items-center gap-3 bg-nav-bg px-4 py-3 text-on-inverse">
-        <span className="grid size-9 place-items-center rounded-pill bg-accent text-sm font-bold" aria-hidden>
+      <header className="fx-aurora flex items-center gap-3 px-4 py-4">
+        <span className="fx-glow grid size-9 place-items-center rounded-pill bg-accent text-sm font-bold text-on-accent" aria-hidden>
           {workspaceName[0]}
         </span>
         <div>
           <h1 className="text-md">{workspaceName}</h1>
-          <p className="text-xs text-nav-muted">Respondemos por aqui mesmo</p>
+          <p className="text-xs text-on-night-muted">Respondemos por aqui mesmo</p>
         </div>
       </header>
       <ol className="flex flex-1 flex-col gap-2 overflow-y-auto bg-surface p-4" aria-live="polite">

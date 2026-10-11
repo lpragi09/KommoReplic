@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { createWorkspaceAction, signInAction, signUpAction, type FormState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -8,19 +8,32 @@ import { Field } from "@/components/ui/input";
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1fr_480px]">
-      <div className="hidden flex-col justify-between bg-nav-bg p-10 text-nav-text lg:flex">
-        <span className="grid size-10 place-items-center rounded-md bg-accent text-lg font-bold text-on-accent" aria-hidden>
+    <div className="fx-aurora grid min-h-dvh lg:grid-cols-[1fr_480px]">
+      {/* palavra gigante ao fundo, quase da cor do fundo */}
+      <span aria-hidden className="fx-backword -bottom-4 -left-6 hidden sm:block">
+        vendas
+      </span>
+      <div className="relative z-10 flex flex-col justify-between gap-10 px-6 pt-8 sm:px-10 lg:py-10">
+        <span className="fx-rise fx-glow grid size-10 place-items-center rounded-md bg-accent text-lg font-bold text-on-accent" aria-hidden>
           C
         </span>
-        <div className="max-w-md">
-          <p className="text-display text-on-inverse">Toda conversa vira venda organizada.</p>
-          <p className="mt-3 text-md text-nav-muted">Chat do site, WhatsApp e Instagram caindo direto no seu funil — com histórico, tarefas e equipe no mesmo lugar.</p>
+        <div className="hidden max-w-xl lg:block">
+          <p className="fx-rise text-caps uppercase text-on-night-muted" style={{ "--d": 1 } as CSSProperties}>
+            CRM para quem vende pelo WhatsApp
+          </p>
+          <p className="fx-rise fx-gradient-text mt-3 text-hero" style={{ "--d": 2 } as CSSProperties}>
+            Toda conversa vira venda organizada.
+          </p>
+          <p className="fx-rise mt-4 text-md text-on-night-muted" style={{ "--d": 3 } as CSSProperties}>
+            Chat do site, WhatsApp e Instagram caindo direto no seu funil — com histórico, tarefas e equipe no mesmo lugar.
+          </p>
         </div>
-        <p className="text-xs text-nav-muted">Versão de desenvolvimento</p>
+        <p className="fx-rise hidden text-xs text-on-night-muted lg:block" style={{ "--d": 4 } as CSSProperties}>
+          Versão de desenvolvimento
+        </p>
       </div>
-      <main className="flex flex-col justify-center px-4 py-10 sm:px-12">
-        <div className="mx-auto w-full max-w-sm">
+      <main className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10">
+        <div className="fx-rise fx-glow mx-auto w-full max-w-sm rounded-lg bg-bg p-6 text-fg sm:p-8" style={{ "--d": 2 } as CSSProperties}>
           <h1 className="text-xl text-fg">{title}</h1>
           <p className="mt-1 text-base text-muted">{subtitle}</p>
           <div className="mt-6">{children}</div>
@@ -58,7 +71,7 @@ export function SignInForm() {
         <FormError state={state} />
         <Field label="Email" name="email" type="email" autoComplete="email" defaultValue={state.values?.email} required autoFocus />
         <Field label="Senha" name="password" type="password" autoComplete="current-password" required />
-        <Button type="submit" size="lg" loading={pending}>
+        <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Entrar
         </Button>
       </form>
@@ -86,7 +99,7 @@ export function SignUpForm() {
         <Field label="Seu nome" name="name" autoComplete="name" defaultValue={state.values?.name} required autoFocus />
         <Field label="Email de trabalho" name="email" type="email" autoComplete="email" defaultValue={state.values?.email} required />
         <Field label="Senha" name="password" type="password" autoComplete="new-password" hint="Pelo menos 8 caracteres" required minLength={8} />
-        <Button type="submit" size="lg" loading={pending}>
+        <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Criar conta
         </Button>
       </form>
@@ -159,7 +172,7 @@ export function OnboardingForm() {
           </div>
         </div>
         <p className="text-sm text-muted">Criamos um funil “Vendas” com 4 etapas, Ganho e Perdido, e o chat do site pronto para instalar.</p>
-        <Button type="submit" size="lg" loading={pending}>
+        <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Abrir meu funil
         </Button>
       </form>

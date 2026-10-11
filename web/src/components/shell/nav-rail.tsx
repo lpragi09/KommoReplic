@@ -96,7 +96,7 @@ export function NavRail({
             on ? "bg-nav-hover text-nav-text" : "text-nav-muted hover:bg-nav-hover hover:text-nav-text",
           )}
         >
-          {on && <span className="absolute left-0 top-2 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
+          {on && <span className="fx-glow absolute left-0 top-2 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
           <it.icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
           <span className={cn(!expanded && "sr-only")}>{it.label}</span>
           {!!it.badge &&
@@ -123,7 +123,7 @@ export function NavRail({
     >
       <div className="mb-4 flex h-8 items-center gap-2 overflow-hidden px-4">
         {/* marca provisória: troca no replica-brand */}
-        <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-accent text-sm font-bold text-on-accent" aria-hidden>
+        <span className="fx-glow grid size-8 shrink-0 place-items-center rounded-sm bg-accent text-sm font-bold text-on-accent" aria-hidden>
           C
         </span>
         <span className={cn("truncate text-md font-semibold", !expanded && "sr-only")}>{workspaceName}</span>

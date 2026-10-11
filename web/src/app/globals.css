@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./effects.css";
 
 /* next/font gera um nome de família próprio; ligamos a variável dele aos tokens */
 :root {
