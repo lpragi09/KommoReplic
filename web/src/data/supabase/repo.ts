@@ -222,6 +222,13 @@ export async function workspaceForUser(slug: string, _userId: ID): Promise<Works
 
 export async function createWorkspace(_userId: ID, input: { name: string; slug: string; timezone: string; currency: string }) {
   const sb = await userClient();
+  // usuário criado no painel do Supabase antes do setup.sql não tem perfil: cria agora
+  const { data: me } = await sb.auth.getUser();
+  if (me.user) {
+    await adminClient()
+      .from("profiles")
+      .upsert({ id: me.user.id, email: me.user.email, full_name: (me.user.user_metadata?.full_name as string) ?? "" }, { onConflict: "id", ignoreDuplicates: true });
+  }
   check(await sb.rpc("create_workspace", { p_name: input.name, p_slug: input.slug, p_timezone: input.timezone, p_currency: input.currency }));
   return workspaceForUser(input.slug, _userId);
 }
