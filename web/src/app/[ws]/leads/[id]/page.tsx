@@ -7,6 +7,8 @@ import { Feed } from "@/components/lead/feed";
 import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", webchat: "Chat do site" };
 
 export default async function LeadPage({ params }: PageProps<"/[ws]/leads/[id]">) {

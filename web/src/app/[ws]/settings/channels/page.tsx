@@ -5,6 +5,8 @@ import { requireWorkspace } from "@/data/session";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const statusLabel = { connecting: "Conectando", connected: "Conectado", error: "Com erro", disconnected: "Desconectado" };
 
 export default async function ChannelsPage({ params }: PageProps<"/[ws]/settings/channels">) {

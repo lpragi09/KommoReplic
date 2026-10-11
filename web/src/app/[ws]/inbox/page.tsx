@@ -10,6 +10,8 @@ import { Feed } from "@/components/lead/feed";
 import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const filters: { v: ConvFilter; label: string }[] = [
   { v: "all", label: "Todas" },
   { v: "unread", label: "Não lidas" },

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter, Search, X } from "lucide-react";
-import { Badge, SegmentedControl } from "@/components/ui/bits";
+import { Badge } from "@/components/ui/bits";
+import { SegmentedControl } from "@/components/ui/interactive";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { cn } from "@/lib/cn";

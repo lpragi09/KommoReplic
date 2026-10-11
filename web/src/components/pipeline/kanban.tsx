@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition, type FormEvent } from "react";
+import { useId, useOptimistic, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,13 +15,15 @@ import {
   useSensors,
   type Announcements,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { leadTitle, money, when } from "@/lib/format";
 import type { IncomingLead, LeadCard as LeadCardT, LossReason, Stage, StageColor } from "@/data/types";
 import { acceptIncomingAction, createLeadAction, declineIncomingAction, linkIncomingAction, moveLeadAction } from "@/app/actions";
-import { Avatar, Tag, useToast } from "@/components/ui/bits";
+import { Avatar, Tag } from "@/components/ui/bits";
+import { useToast } from "@/components/ui/interactive";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
@@ -32,6 +34,18 @@ export const stageBar: Record<StageColor, string> = {
 };
 
 type Column = { stage: Stage; leads: LeadCardT[]; count: number; totalCents: number };
+
+/** Setas ←/→ levam o card para a coluna vizinha (o padrão do dnd-kit anda só 25px). */
+const jumpBetweenColumns: KeyboardCoordinateGetter = (event, { context, currentCoordinates }) => {
+  if (event.code !== "ArrowRight" && event.code !== "ArrowLeft") return undefined;
+  event.preventDefault();
+  const cols = [...context.droppableRects.entries()].sort((a, b) => a[1].left - b[1].left);
+  if (!cols.length) return undefined;
+  const x = currentCoordinates.x;
+  const idx = context.over ? cols.findIndex(([id]) => id === context.over!.id) : cols.findIndex(([, r]) => x >= r.left && x < r.left + r.width);
+  const next = cols[Math.min(cols.length - 1, Math.max(0, (idx < 0 ? 0 : idx) + (event.code === "ArrowRight" ? 1 : -1)))];
+  return { x: next[1].left + 8, y: next[1].top + 8 };
+};
 type Move = { leadId: string; stageId: string };
 
 export function Board({
@@ -62,12 +76,13 @@ export function Board({
       return { ...c, leads, count: leads.length, totalCents: leads.reduce((s, l) => s + l.priceCents, 0) };
     });
   });
+  const dndId = useId(); // ids de acessibilidade iguais no servidor e no cliente
   const [dragging, setDragging] = useState<LeadCardT | null>(null);
   const [lost, setLost] = useState<Move | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: jumpBetweenColumns }),
   );
   const owner = (id: string | null) => users.find((u) => u.id === id)?.name ?? "Sem responsável";
 
@@ -106,6 +121,7 @@ export function Board({
   return (
     <>
       <DndContext
+        id={dndId}
         sensors={sensors}
         accessibility={{
           announcements,

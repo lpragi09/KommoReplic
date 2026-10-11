@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/ui/bits";
 import { TaskItem } from "@/components/lead/feed";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const TZ = "America/Sao_Paulo";
 /** meia-noite de hoje no fuso do workspace, em UTC */
 function startOfDay(offsetDays = 0) {

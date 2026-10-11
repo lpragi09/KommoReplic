@@ -10,6 +10,8 @@ import { LeadsToolbar } from "@/components/pipeline/toolbar";
 import { NewLeadButton } from "@/components/pipeline/new-lead";
 import { Avatar, EmptyState, Tag } from "@/components/ui/bits";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 type SP = { pipeline?: string; view?: string; q?: string; owner?: string; task?: string; tag?: string };
 
 export default async function LeadsPage({ params, searchParams }: PageProps<"/[ws]/leads">) {

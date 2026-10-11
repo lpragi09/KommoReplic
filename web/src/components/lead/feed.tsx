@@ -44,7 +44,7 @@ const filters: { v: Filter; label: string }[] = [
 
 export function Feed({ slug, items, contactName }: { slug: string; items: FeedItem[]; contactName: string }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const end = useRef<HTMLDivElement>(null);
+  const end = useRef<HTMLLIElement>(null);
   const shown = filter === "all" ? items : items.filter((i) => i.type === filter);
   const count = items.length;
   useEffect(() => {
@@ -85,7 +85,7 @@ export function Feed({ slug, items, contactName }: { slug: string; items: FeedIt
             </li>
           );
         })}
-        <div ref={end} />
+        <li ref={end} aria-hidden className="list-none" />
       </ol>
     </div>
   );

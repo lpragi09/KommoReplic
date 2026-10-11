@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/ui/bits";
 import { ListsTabs } from "@/components/lists/lists";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 export default async function CompaniesPage({ params }: PageProps<"/[ws]/companies">) {
   const { ws: slug } = await params;
   const { ws } = await requireWorkspace(slug);

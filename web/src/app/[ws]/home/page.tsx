@@ -5,6 +5,8 @@ import { money } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const periodStart = (days: number) =>
   days === 0 ? new Date(new Date().setHours(0, 0, 0, 0)).toISOString() : new Date(Date.now() - days * 864e5).toISOString();
 

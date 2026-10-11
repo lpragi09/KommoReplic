@@ -8,6 +8,8 @@ import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/bits";
 import { stageBar } from "@/components/pipeline/kanban";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 const icon = { phone: Phone, email: Mail, whatsapp: MessageCircle, instagram: MessageCircle, webchat: MessageCircle };
 const label = { phone: "Telefone", email: "Email", whatsapp: "WhatsApp", instagram: "Instagram", webchat: "Chat do site" };
 
