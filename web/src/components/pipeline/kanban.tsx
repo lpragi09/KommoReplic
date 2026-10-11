@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useOptimistic, useState, useTransition, type FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -13,132 +16,266 @@ import {
   type Announcements,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, Trash2 } from "lucide-react";
+import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Avatar, Tag } from "@/components/ui/bits";
-import { IconButton } from "@/components/ui/button";
+import { leadTitle, money, when } from "@/lib/format";
+import type { IncomingLead, LeadCard as LeadCardT, LossReason, Stage, StageColor } from "@/data/types";
+import { acceptIncomingAction, createLeadAction, declineIncomingAction, linkIncomingAction, moveLeadAction } from "@/app/actions";
+import { Avatar, Tag, useToast } from "@/components/ui/bits";
+import { Button, IconButton } from "@/components/ui/button";
+import { Field } from "@/components/ui/input";
+import { Dialog } from "@/components/ui/overlay";
 
-export type Stage = { id: string; name: string; color: StageColor; kind?: "open" | "won" | "lost" };
-export type StageColor = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "won" | "lost";
-export type Lead = {
-  id: string;
-  stageId: string;
-  name: string;
-  contact: string;
-  priceCents: number;
-  tags: string[];
-  owner: string;
-  task: { label: string; state: "ok" | "late" } | null;
-  unread?: boolean;
-  channel?: "whatsapp" | "instagram" | "webchat";
-};
-
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-
-/* Tailwind precisa ver as classes inteiras no código */
-const stageBar: Record<StageColor, string> = {
+export const stageBar: Record<StageColor, string> = {
   "1": "bg-stage-1", "2": "bg-stage-2", "3": "bg-stage-3", "4": "bg-stage-4", "5": "bg-stage-5",
   "6": "bg-stage-6", "7": "bg-stage-7", "8": "bg-stage-8", won: "bg-stage-won", lost: "bg-stage-lost",
 };
 
-export function Kanban({ stages, initialLeads, leading }: { stages: Stage[]; initialLeads: Lead[]; leading?: ReactNode }) {
-  const [leads, setLeads] = useState(initialLeads);
-  const [dragging, setDragging] = useState<Lead | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor));
+type Column = { stage: Stage; leads: LeadCardT[]; count: number; totalCents: number };
+type Move = { leadId: string; stageId: string };
 
-  const stageName = (id?: string | number) => stages.find((s) => s.id === id)?.name ?? "";
-  const leadName = (id: string | number) => leads.find((l) => l.id === id)?.name ?? "";
-  const announcements: Announcements = {
-    onDragStart: ({ active }) => `Lead ${leadName(active.id)} pego.`,
-    onDragOver: ({ active, over }) => (over ? `${leadName(active.id)} sobre ${stageName(over.id)}.` : `${leadName(active.id)} fora das etapas.`),
-    onDragEnd: ({ active, over }) => (over ? `${leadName(active.id)} movido para ${stageName(over.id)}.` : `${leadName(active.id)} solto sem mudar de etapa.`),
-    onDragCancel: ({ active }) => `Movimento de ${leadName(active.id)} cancelado.`,
+export function Board({
+  slug,
+  pipelineId,
+  columns,
+  incoming,
+  lossReasons,
+  users,
+  linkTargets,
+}: {
+  slug: string;
+  pipelineId: string;
+  columns: Column[];
+  incoming: IncomingLead[];
+  lossReasons: LossReason[];
+  users: { id: string; name: string }[];
+  linkTargets: { id: string; title: string }[];
+}) {
+  const toast = useToast();
+  const [, start] = useTransition();
+  const [optimistic, applyMove] = useOptimistic(columns, (cols: Column[], m: Move) => {
+    const lead = cols.flatMap((c) => c.leads).find((l) => l.id === m.leadId);
+    if (!lead) return cols;
+    return cols.map((c) => {
+      const without = c.leads.filter((l) => l.id !== m.leadId);
+      const leads = c.stage.id === m.stageId ? [{ ...lead, stageId: m.stageId }, ...without] : without;
+      return { ...c, leads, count: leads.length, totalCents: leads.reduce((s, l) => s + l.priceCents, 0) };
+    });
+  });
+  const [dragging, setDragging] = useState<LeadCardT | null>(null);
+  const [lost, setLost] = useState<Move | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor),
+  );
+  const owner = (id: string | null) => users.find((u) => u.id === id)?.name ?? "Sem responsável";
+
+  const all = optimistic.flatMap((c) => c.leads);
+  const name = (id: string | number) => {
+    const l = all.find((x) => x.id === id);
+    return l ? leadTitle(l) : "";
   };
+  const stageName = (id?: string | number) => optimistic.find((c) => c.stage.id === id)?.stage.name ?? "";
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `${name(active.id)} pego.`,
+    onDragOver: ({ active, over }) => (over ? `${name(active.id)} sobre ${stageName(over.id)}.` : `${name(active.id)} fora das etapas.`),
+    onDragEnd: ({ active, over }) => (over ? `${name(active.id)} solto em ${stageName(over.id)}.` : `${name(active.id)} solto sem mudar de etapa.`),
+    onDragCancel: ({ active }) => `Movimento de ${name(active.id)} cancelado.`,
+  };
+
+  function commit(m: Move, lossReasonId?: string) {
+    start(async () => {
+      applyMove(m);
+      const r = await moveLeadAction(slug, m.leadId, m.stageId, lossReasonId);
+      if (!r.ok) toast.show({ text: r.error, tone: "error" });
+    });
+  }
 
   function onDragEnd(e: DragEndEvent) {
     setDragging(null);
     if (!e.over) return;
-    const to = String(e.over.id);
-    setLeads((ls) => ls.map((l) => (l.id === e.active.id ? { ...l, stageId: to } : l)));
+    const m = { leadId: String(e.active.id), stageId: String(e.over.id) };
+    const from = all.find((l) => l.id === m.leadId)?.stageId;
+    if (from === m.stageId) return;
+    const target = optimistic.find((c) => c.stage.id === m.stageId)?.stage;
+    if (target?.kind === "lost") return setLost(m);
+    commit(m);
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      accessibility={{
-        announcements,
-        screenReaderInstructions: { draggable: "Espaço para pegar o lead, setas para mover entre etapas, espaço para soltar, Esc para cancelar." },
-      }}
-      onDragStart={(e) => setDragging(leads.find((l) => l.id === e.active.id) ?? null)}
-      onDragCancel={() => setDragging(null)}
-      onDragEnd={onDragEnd}
-    >
-      <div className="flex h-full gap-2 overflow-x-auto bg-canvas p-3">
-        {leading}
-        {stages.map((s) => (
-          <Column key={s.id} stage={s} leads={leads.filter((l) => l.stageId === s.id)} />
-        ))}
-      </div>
-      <DragOverlay>{dragging && <LeadCard lead={dragging} overlay />}</DragOverlay>
-    </DndContext>
+    <>
+      <DndContext
+        sensors={sensors}
+        accessibility={{
+          announcements,
+          screenReaderInstructions: { draggable: "Espaço para pegar o lead, setas para mover entre etapas, espaço para soltar, Esc para cancelar." },
+        }}
+        onDragStart={(e) => setDragging(all.find((l) => l.id === e.active.id) ?? null)}
+        onDragCancel={() => setDragging(null)}
+        onDragEnd={onDragEnd}
+      >
+        <div className="flex min-h-0 flex-1 snap-x gap-2 overflow-x-auto bg-canvas p-3">
+          <IncomingColumn slug={slug} items={incoming} linkTargets={linkTargets} onError={(t) => toast.show({ text: t, tone: "error" })} />
+          {optimistic.map((c) => (
+            <ColumnView key={c.stage.id} slug={slug} pipelineId={pipelineId} col={c} owner={owner} onError={(t) => toast.show({ text: t, tone: "error" })} />
+          ))}
+        </div>
+        <DragOverlay>{dragging && <LeadCard lead={dragging} owner={owner(dragging.responsibleUserId)} slug={slug} overlay />}</DragOverlay>
+      </DndContext>
+
+      <LostDialog
+        open={!!lost}
+        reasons={lossReasons}
+        onCancel={() => setLost(null)}
+        onConfirm={(reason) => {
+          if (lost) commit(lost, reason);
+          setLost(null);
+        }}
+      />
+      {toast.node}
+    </>
   );
 }
 
-function Column({ stage, leads }: { stage: Stage; leads: Lead[] }) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage.id });
-  const total = leads.reduce((s, l) => s + l.priceCents, 0);
+export function LostDialog({ open, reasons, onCancel, onConfirm }: { open: boolean; reasons: LossReason[]; onCancel: () => void; onConfirm: (id: string) => void }) {
+  const [reason, setReason] = useState(reasons[0]?.id ?? "");
   return (
-    <section aria-label={`${stage.name}, ${leads.length} leads`} className="flex w-[var(--kanban-column)] shrink-0 flex-col">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => !o && onCancel()}
+      size="sm"
+      title="Por que este negócio foi perdido?"
+      description="O motivo entra no relatório de perdas."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button variant="danger" disabled={!reason} onClick={() => onConfirm(reason)}>
+            Marcar como perdido
+          </Button>
+        </>
+      }
+    >
+      <fieldset className="flex flex-col gap-1">
+        <legend className="sr-only">Motivo</legend>
+        {reasons.map((r) => (
+          <label key={r.id} className="flex h-9 cursor-pointer items-center gap-2 rounded-sm px-2 text-base hover:bg-surface">
+            <input type="radio" name="loss" value={r.id} checked={reason === r.id} onChange={() => setReason(r.id)} className="size-4 accent-[var(--accent)]" />
+            {r.name}
+          </label>
+        ))}
+      </fieldset>
+    </Dialog>
+  );
+}
+
+function ColumnView({
+  slug,
+  pipelineId,
+  col,
+  owner,
+  onError,
+}: {
+  slug: string;
+  pipelineId: string;
+  col: Column;
+  owner: (id: string | null) => string;
+  onError: (t: string) => void;
+}) {
+  const { stage, leads } = col;
+  const { setNodeRef, isOver } = useDroppable({ id: stage.id });
+  const [adding, setAdding] = useState(false);
+  const closed = stage.kind !== "open";
+  return (
+    <section aria-label={`${stage.name}, ${col.count} leads`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col">
       <header className="mb-2 overflow-hidden rounded-md bg-bg">
         <div className={cn("h-1", stageBar[stage.color])} aria-hidden />
-        <div className="flex items-center justify-between px-3 py-2">
-          <div>
-            <h3 className="text-caps uppercase text-fg">{stage.name}</h3>
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <div className="min-w-0">
+            <h2 className="truncate text-caps uppercase text-fg">{stage.name}</h2>
             <p className="text-xs text-muted">
-              {leads.length} {leads.length === 1 ? "lead" : "leads"} · {brl.format(total / 100)}
+              {col.count} {col.count === 1 ? "lead" : "leads"} · {money(col.totalCents)}
             </p>
           </div>
-          {stage.kind !== "won" && stage.kind !== "lost" && (
-            <IconButton label={`Adicionar rápido em ${stage.name}`} size={28}>
+          {!closed && (
+            <IconButton label={`Adicionar lead em ${stage.name}`} size={28} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
               <Plus className="size-4" />
             </IconButton>
           )}
         </div>
       </header>
-      <div
+      {adding && <QuickAdd slug={slug} pipelineId={pipelineId} stageId={stage.id} onDone={() => setAdding(false)} onError={onError} />}
+      <ul
         ref={setNodeRef}
-        role="list"
         className={cn(
-          "flex min-h-24 flex-1 flex-col gap-2 rounded-md transition-colors duration-fast",
+          "flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto rounded-md pb-2 transition-colors duration-fast",
           isOver && "bg-accent-soft outline-2 outline-dashed outline-accent",
         )}
       >
         {leads.map((l) => (
-          <DraggableCard key={l.id} lead={l} />
+          <DraggableCard key={l.id} lead={l} slug={slug} owner={owner(l.responsibleUserId)} />
         ))}
-        {leads.length === 0 && (
-          <p className="rounded-md border border-dashed border-border-input px-3 py-6 text-center text-sm text-muted">
-            Arraste leads para cá
-          </p>
+        {leads.length === 0 && !adding && (
+          <li className="rounded-md border border-dashed border-border-input px-3 py-6 text-center text-sm text-muted">
+            {closed ? "Nenhum negócio aqui ainda" : "Arraste leads para cá"}
+          </li>
         )}
-      </div>
+      </ul>
     </section>
   );
 }
 
-function DraggableCard({ lead }: { lead: Lead }) {
-  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id: lead.id });
+function QuickAdd({ slug, pipelineId, stageId, onDone, onError }: { slug: string; pipelineId: string; stageId: string; onDone: () => void; onError: (t: string) => void }) {
+  const [pending, start] = useTransition();
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await createLeadAction(slug, {
+        pipelineId,
+        stageId,
+        name: String(f.get("name") ?? ""),
+        price: String(f.get("price") ?? ""),
+        contactName: String(f.get("contactName") ?? ""),
+        contactPhone: String(f.get("contactPhone") ?? ""),
+      });
+      if (r.ok) onDone();
+      else onError(r.error);
+    });
+  }
   return (
-    <div role="listitem" ref={setNodeRef} className={cn(isDragging && "opacity-40")}>
-      <LeadCard lead={lead} handle={{ ...attributes, ...listeners }} />
-    </div>
+    <form onSubmit={submit} data-editing className="mb-2 flex flex-col gap-2 rounded-md border border-accent bg-bg p-3 shadow-card" aria-label="Adicionar lead">
+      <Field label="Nome do negócio" name="name" placeholder="Vazio vira “Lead #número”" autoFocus />
+      <Field label="Valor" name="price" adornment="R$" inputMode="decimal" placeholder="0,00" />
+      <Field label="Contato" name="contactName" placeholder="Nome" />
+      <Field label="Telefone" name="contactPhone" type="tel" placeholder="+55 11 90000-0000" />
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+          Cancelar
+        </Button>
+        <Button type="submit" size="sm" loading={pending}>
+          Adicionar
+        </Button>
+      </div>
+    </form>
   );
 }
 
-const channelIcon = { whatsapp: MessageCircle, instagram: MessageCircle, webchat: MessageCircle };
+function DraggableCard({ lead, slug, owner }: { lead: LeadCardT; slug: string; owner: string }) {
+  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id: lead.id });
+  return (
+    <li ref={setNodeRef} className={cn(isDragging && "opacity-40")}>
+      <LeadCard lead={lead} slug={slug} owner={owner} handle={{ ...attributes, ...listeners }} />
+    </li>
+  );
+}
 
-export function LeadCard({ lead, overlay, handle }: { lead: Lead; overlay?: boolean; handle?: Record<string, unknown> }) {
-  const ChannelIcon = lead.channel ? channelIcon[lead.channel] : null;
+const channelLabel = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", webchat: "Chat do site" };
+
+export function LeadCard({ lead, slug, owner, overlay, handle }: { lead: LeadCardT; slug: string; owner: string; overlay?: boolean; handle?: Record<string, unknown> }) {
+  const title = leadTitle(lead);
   return (
     <article
       className={cn(
@@ -147,104 +284,160 @@ export function LeadCard({ lead, overlay, handle }: { lead: Lead; overlay?: bool
       )}
     >
       <div className="flex items-start gap-2">
-        <a href="#" className="min-w-0 flex-1 after:absolute after:inset-0">
-          <h4 className={cn("line-clamp-2 text-base text-fg", lead.unread ? "font-semibold" : "font-medium")}>
-            {lead.unread && <span className="mr-1.5 inline-block size-2 rounded-pill bg-accent align-middle" aria-label="Mensagem não lida" />}
-            {lead.name}
-          </h4>
-        </a>
-        {ChannelIcon && <ChannelIcon className="size-4 shrink-0 text-muted" aria-label={`Canal: ${lead.channel}`} />}
+        <h3 className={cn("min-w-0 flex-1 break-words text-base text-fg", lead.hasUnread ? "font-semibold" : "font-medium")}>
+          <Link href={`/${slug}/leads/${lead.id}`} className="line-clamp-2 outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:outline-2 focus-visible:after:outline-focus">
+            {lead.hasUnread && <span className="mr-1.5 inline-block size-2 rounded-pill bg-accent align-middle" aria-hidden />}
+            {lead.hasUnread && <span className="sr-only">Mensagem não lida: </span>}
+            {title}
+          </Link>
+        </h3>
+        {lead.channelKind && <MessageCircle className="size-4 shrink-0 text-muted" aria-label={`Canal: ${channelLabel[lead.channelKind]}`} />}
         {handle && (
           <button
             type="button"
-            aria-label={`Mover ${lead.name}`}
-            className="relative z-10 -mr-1 cursor-grab rounded-xs p-0.5 text-muted opacity-0 hover:bg-surface focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label={`Mover ${title} para outra etapa`}
+            className="relative z-10 -mr-1 cursor-grab touch-none rounded-xs p-0.5 text-muted hover:bg-surface [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
             {...handle}
           >
-            <GripVertical className="size-4" />
+            <GripVertical className="size-4" aria-hidden />
           </button>
         )}
       </div>
-      <p className="mt-0.5 truncate text-sm text-muted">{lead.contact}</p>
+      {lead.mainContact && <p className="mt-0.5 truncate text-sm text-muted">{lead.mainContact.name}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-sm font-semibold text-fg">{brl.format(lead.priceCents / 100)}</span>
+        <span className="text-sm font-semibold text-fg">{money(lead.priceCents)}</span>
         {lead.tags.slice(0, 2).map((t) => (
           <Tag key={t}>{t}</Tag>
         ))}
         {lead.tags.length > 2 && <span className="text-xs text-muted">+{lead.tags.length - 2}</span>}
       </div>
-      <footer className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs">
-        {lead.task ? (
-          <span className={cn("flex items-center gap-1", lead.task.state === "late" ? "text-danger" : "text-muted")}>
-            {lead.task.state === "late" ? <AlarmClock className="size-3.5" aria-hidden /> : <CalendarCheck className="size-3.5" aria-hidden />}
-            {lead.task.state === "late" && <span className="sr-only">Atrasada:</span>}
-            {lead.task.label}
-          </span>
-        ) : (
+      <footer className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs">
+        {lead.taskState === "none" ? (
           <span className="flex items-center gap-1 text-warning">
             <AlarmClock className="size-3.5" aria-hidden /> Sem tarefa
           </span>
+        ) : (
+          <span className={cn("flex items-center gap-1", lead.taskState === "late" ? "text-danger" : "text-muted")}>
+            {lead.taskState === "late" ? <AlarmClock className="size-3.5" aria-hidden /> : <CalendarCheck className="size-3.5" aria-hidden />}
+            {lead.taskState === "late" && <span className="sr-only">Tarefa atrasada:</span>}
+            <time suppressHydrationWarning>{when(lead.closestTaskAt!)}</time>
+          </span>
         )}
-        <Avatar name={lead.owner} size={20} />
+        <Avatar name={owner} size={20} />
       </footer>
     </article>
   );
 }
 
-export type Incoming = { id: string; kind: "chat" | "call" | "email" | "form"; who: string; preview: string; at: string };
-const kindIcon = { chat: MessageCircle, call: Phone, email: Mail, form: CalendarCheck };
-const kindLabel = { chat: "Mensagem", call: "Chamada", email: "Email", form: "Formulário" };
+// ---------------------------------------------------------------------------
+// leads de entrada
+// ---------------------------------------------------------------------------
+const kindIcon = { chat: MessageCircle, call: Phone, email: Mail, form: FileText };
+const kindLabel = { chat: "Mensagens", call: "Chamadas", email: "Emails", form: "Formulários" };
 
-export function IncomingColumn({ items }: { items: Incoming[] }) {
+function IncomingColumn({ slug, items, linkTargets, onError }: { slug: string; items: IncomingLead[]; linkTargets: { id: string; title: string }[]; onError: (t: string) => void }) {
+  const [filter, setFilter] = useState<IncomingLead["kind"] | null>(null);
   const counts = items.reduce<Record<string, number>>((a, i) => ((a[i.kind] = (a[i.kind] ?? 0) + 1), a), {});
+  const shown = filter ? items.filter((i) => i.kind === filter) : items;
   return (
-    <section aria-label={`Leads de entrada, ${items.length}`} className="flex w-[var(--kanban-column)] shrink-0 flex-col">
+    <section aria-label={`Leads de entrada, ${items.length}`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col">
       <header className="mb-2 rounded-md border border-dashed border-border-input bg-surface px-3 py-2">
-        <h3 className="text-caps uppercase text-fg">Leads de entrada</h3>
-        <div className="mt-1 flex gap-3 text-xs text-muted">
-          {(Object.keys(kindIcon) as Incoming["kind"][]).map((k) => {
+        <h2 className="text-caps uppercase text-fg">Leads de entrada</h2>
+        <div className="mt-1 flex gap-1" role="group" aria-label="Filtrar por tipo">
+          {(Object.keys(kindIcon) as IncomingLead["kind"][]).map((k) => {
             const Icon = kindIcon[k];
+            const on = filter === k;
             return (
-              <span key={k} className="flex items-center gap-1" title={kindLabel[k]}>
+              <button
+                key={k}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setFilter(on ? null : k)}
+                title={kindLabel[k]}
+                className={cn("flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-xs", on ? "bg-accent-soft text-accent-text" : "text-muted hover:bg-bg")}
+              >
                 <Icon className="size-3.5" aria-hidden />
                 <span className="sr-only">{kindLabel[k]}:</span>
                 {counts[k] ?? 0}
-              </span>
+              </button>
             );
           })}
         </div>
       </header>
-      <ul className="flex flex-col gap-2">
-        {items.map((i) => (
-          <IncomingCard key={i.id} item={i} />
+      <ul className="flex flex-col gap-2 overflow-y-auto pb-2">
+        {shown.map((i) => (
+          <IncomingCard key={i.id} slug={slug} item={i} linkTargets={linkTargets} onError={onError} />
         ))}
+        {shown.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nada novo por aqui. Mensagens de pessoas desconhecidas aparecem nesta coluna.</li>}
       </ul>
     </section>
   );
 }
 
-function IncomingCard({ item }: { item: Incoming }) {
+function IncomingCard({ slug, item, linkTargets, onError }: { slug: string; item: IncomingLead; linkTargets: { id: string; title: string }[]; onError: (t: string) => void }) {
   const Icon = kindIcon[item.kind];
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [linking, setLinking] = useState(false);
+  const [q, setQ] = useState("");
+  const act = (fn: () => Promise<{ ok: boolean; error?: string; data?: unknown }>, after?: (d: unknown) => void) =>
+    start(async () => {
+      const r = await fn();
+      if (!r.ok) onError(r.error ?? "Erro");
+      else after?.(r.data);
+    });
+  const matches = linkTargets.filter((t) => t.title.toLowerCase().includes(q.toLowerCase())).slice(0, 6);
   return (
-    <li className="group rounded-md border border-border bg-bg p-3">
+    <li className={cn("group rounded-md border border-border bg-bg p-3", pending && "opacity-60")} aria-busy={pending || undefined}>
       <div className="flex items-center gap-2">
-        <Icon className="size-4 text-accent" aria-label={kindLabel[item.kind]} />
-        <span className="flex-1 truncate text-base font-medium text-fg">{item.who}</span>
-        <time className="text-xs text-muted">{item.at}</time>
+        <Icon className="size-4 shrink-0 text-accent" aria-label={kindLabel[item.kind]} />
+        <span className="min-w-0 flex-1 truncate text-base font-medium text-fg">{item.who}</span>
+        <time className="text-xs text-muted" suppressHydrationWarning>
+          {when(item.createdAt)}
+        </time>
       </div>
-      <p className="mt-1 line-clamp-2 text-sm text-muted">{item.preview}</p>
-      {/* sempre visível no foco e em telas de toque; no desktop aparece no hover */}
+      <p className="mt-1 line-clamp-2 break-words text-sm text-muted">{item.preview}</p>
       <div className="mt-2 flex justify-end gap-1 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100">
-        <IconButton label={`Aceitar ${item.who}`} tone="success" size={28}>
+        <IconButton
+          label={`Aceitar ${item.who} como lead`}
+          tone="success"
+          size={28}
+          disabled={pending}
+          onClick={() => act(() => acceptIncomingAction(slug, item.id), (d) => router.push(`/${slug}/leads/${(d as { leadId: string }).leadId}`))}
+        >
           <Check className="size-4" />
         </IconButton>
-        <IconButton label={`Vincular ${item.who} a um lead existente`} tone="accent" size={28}>
+        <IconButton label={`Vincular ${item.who} a um lead existente`} tone="accent" size={28} disabled={pending} aria-expanded={linking} onClick={() => setLinking((v) => !v)}>
           <Link2 className="size-4" />
         </IconButton>
-        <IconButton label={`Excluir ${item.who}`} tone="danger" size={28}>
+        <IconButton label={`Recusar ${item.who}`} tone="danger" size={28} disabled={pending} onClick={() => act(() => declineIncomingAction(slug, item.id))}>
           <Trash2 className="size-4" />
         </IconButton>
       </div>
+      {linking && (
+        <div className="mt-2 border-t border-border pt-2" data-editing>
+          <div className="flex items-end gap-1">
+            <Field label="Buscar lead" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou #número" autoFocus className="flex-1" />
+            <IconButton label="Fechar busca" size={36} onClick={() => setLinking(false)}>
+              <X className="size-4" />
+            </IconButton>
+          </div>
+          <ul className="mt-1 flex flex-col">
+            {matches.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => act(() => linkIncomingAction(slug, item.id, t.id))}
+                  className="w-full truncate rounded-sm px-2 py-1.5 text-left text-sm text-fg hover:bg-accent-soft"
+                >
+                  {t.title}
+                </button>
+              </li>
+            ))}
+            {matches.length === 0 && <li className="px-2 py-1.5 text-sm text-muted">Nenhum lead encontrado</li>}
+          </ul>
+        </div>
+      )}
     </li>
   );
 }
