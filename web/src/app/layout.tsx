@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { BRAND } from "@/lib/brand";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CRM",
-  description: "CRM conversacional",
+  title: { default: BRAND.name, template: `%s · ${BRAND.name}` },
+  description: `${BRAND.name} — ${BRAND.tagline}`,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

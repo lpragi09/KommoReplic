@@ -385,7 +385,7 @@ export async function listTasks(wsId: ID, f: { from?: string; to?: string; owner
 function pendingIncoming(wsId: ID, id: ID): IncomingLead {
   const il = db.incoming.find((x) => x.id === id && x.workspaceId === wsId);
   if (!il) throw new DomainError("not_found");
-  if (il.status !== "pending") throw new DomainError("already_resolved", "Outra pessoa já tratou este lead.");
+  if (il.status !== "pending") throw new DomainError("already_resolved", "Alguém da equipe já cuidou deste contato.");
   return il;
 }
 

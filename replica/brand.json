@@ -1,0 +1,6 @@
+{
+  "name": "Recadi",
+  "avoid": ["Kommo", "amoCRM", "amocrm", "Salesbot"],
+  "domains": ["kommo.com", "amocrm.com", "amocrm.ru"],
+  "colors": ["#0e0142"]
+}

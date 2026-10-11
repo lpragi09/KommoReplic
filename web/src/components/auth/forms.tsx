@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createWorkspaceAction, signInAction, signUpAction, type FormState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
+import { BRAND } from "@/lib/brand";
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -15,7 +16,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
       </span>
       <div className="relative z-10 flex flex-col justify-between gap-10 px-6 pt-8 sm:px-10 lg:py-10">
         <span className="fx-rise fx-glow grid size-10 place-items-center rounded-md bg-accent text-lg font-bold text-on-accent" aria-hidden>
-          C
+          {BRAND.initial}
         </span>
         <div className="hidden max-w-xl lg:block">
           <p className="fx-rise text-caps uppercase text-on-night-muted" style={{ "--d": 1 } as CSSProperties}>
@@ -29,7 +30,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
           </p>
         </div>
         <p className="fx-rise hidden text-xs text-on-night-muted lg:block" style={{ "--d": 4 } as CSSProperties}>
-          Versão de desenvolvimento
+          {BRAND.name} · versão de desenvolvimento
         </p>
       </div>
       <main className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10">
@@ -57,7 +58,7 @@ export function SignInForm() {
   return (
     <AuthShell
       title="Entrar"
-      subtitle="Bem-vindo de volta."
+      subtitle="Que bom te ver de novo."
       footer={
         <>
           Ainda não tem conta?{" "}

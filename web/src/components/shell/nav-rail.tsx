@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
+import { BRAND } from "@/lib/brand";
 
 /* preferência de menu aberto/fechado: só conveniência local, sem servidor */
 const NAV_KEY = "nav-expanded";
@@ -124,7 +125,7 @@ export function NavRail({
       <div className="mb-4 flex h-8 items-center gap-2 overflow-hidden px-4">
         {/* marca provisória: troca no replica-brand */}
         <span className="fx-glow grid size-8 shrink-0 place-items-center rounded-sm bg-accent text-sm font-bold text-on-accent" aria-hidden>
-          C
+          {BRAND.initial}
         </span>
         <span className={cn("truncate text-md font-semibold", !expanded && "sr-only")}>{workspaceName}</span>
       </div>
