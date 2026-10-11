@@ -40,8 +40,18 @@ export async function userBySessionToken(token: string | undefined): Promise<Use
 }
 
 export async function signIn(email: string, password: string): Promise<string> {
-  const u = db.users.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
-  if (!u || u.passwordHash !== hash(password)) throw new DomainError("invalid", "Email ou senha incorretos.");
+  const addr = email.trim().toLowerCase();
+  let u = db.users.find((x) => x.email.toLowerCase() === addr);
+  if (!u) {
+    // MODO DEMONSTRAÇÃO (só no repositório falso): email novo entra direto, já como admin da "Loja Demo".
+    // No Supabase o login exige conta de verdade.
+    if (password.length < 1) throw new DomainError("invalid", "Digite a senha.");
+    u = { id: uid(), name: addr.split("@")[0], email: addr, passwordHash: hash(password) };
+    db.users.push(u);
+    const demo = db.workspaces.find((w) => w.slug === "demo");
+    if (demo) db.memberships.push({ workspaceId: demo.id, userId: u.id, role: "admin" });
+  }
+  if (u.passwordHash !== hash(password)) throw new DomainError("invalid", "Email ou senha incorretos.");
   const token = uid();
   db.sessions.push({ token, userId: u.id });
   return token;
