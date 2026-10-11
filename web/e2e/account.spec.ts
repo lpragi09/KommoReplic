@@ -10,13 +10,18 @@ test.describe("conta e cobrança", () => {
     await expect(dlg.getByRole("button", { name: "Excluir para sempre" })).toBeDisabled();
     await dlg.getByLabel("Digite EXCLUIR").fill("EXCLUIR");
     await dlg.getByRole("button", { name: "Excluir para sempre" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Nenhum cliente perdido no caminho." })).toBeVisible();
+    await expect(page).toHaveURL(/localhost:\d+\/$/, { timeout: 20_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Nenhum cliente perdido no caminho." })).toBeVisible({ timeout: 20_000 });
 
+    // a empresa antiga sumiu junto com a conta
     await page.goto("/login");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Senha").fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "Email ou senha incorretos" })).toBeVisible();
+    // modo demonstração: o mesmo email entra de novo como conta NOVA, na Loja Demo
+    await expect(page).toHaveURL(/\/demo\/leads/);
+    await page.goto(`/${slug}/leads`);
+    await expect(page.getByText("Não encontramos esta página")).toBeVisible();
   });
 
   test("A-N1 assinar sem Stripe configurado avisa, sem quebrar", async ({ page }) => {
