@@ -9,7 +9,8 @@ import type { Company, Contact, LeadCard, LossReason, Stage } from "@/data/types
 import { deleteLeadAction, moveLeadAction, updateLeadAction } from "@/app/actions";
 import { leadTitle, money, moneyInput, phone } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { Avatar, Tag, useToast } from "@/components/ui/bits";
+import { Avatar, Tag } from "@/components/ui/bits";
+import { useToast } from "@/components/ui/interactive";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
 import { Tabs } from "@/components/ui/overlay";

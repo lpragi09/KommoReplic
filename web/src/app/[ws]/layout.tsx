@@ -1,8 +1,13 @@
 import { Suspense } from "react";
+
 import { MobileNav, NavRail } from "@/components/shell/nav-rail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { requireWorkspace } from "@/data/session";
 import { getBoard, listConversations } from "@/data";
+
+// Telas atrás de login leem a sessão a cada pedido: a navegação bloqueia no servidor de propósito.
+// Revisitar com "use cache: private" quando os dados vierem do Supabase.
+export const instant = false;
 
 async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile?: boolean }) {
   const { ws: slug } = await params;

@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Avatar, EmptyState } from "@/components/ui/bits";
 import { ListsTabs, NewContactButton } from "@/components/lists/lists";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 export default async function ContactsPage({ params, searchParams }: PageProps<"/[ws]/contacts">) {
   const { ws: slug } = await params;
   const { q = "" } = (await searchParams) as { q?: string };

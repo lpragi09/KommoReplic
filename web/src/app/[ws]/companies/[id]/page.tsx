@@ -8,6 +8,8 @@ import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/bits";
 import { stageBar } from "@/components/pipeline/kanban";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 export default async function CompanyPage({ params }: PageProps<"/[ws]/companies/[id]">) {
   const { ws: slug, id } = await params;
   const { ws } = await requireWorkspace(slug);

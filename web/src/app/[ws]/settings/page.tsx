@@ -3,6 +3,8 @@ import { ChevronRight, Columns3, CreditCard, ListPlus, MessageSquare, Users } fr
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 export default async function SettingsPage({ params }: PageProps<"/[ws]/settings">) {
   const { ws: slug } = await params;
   const { ws } = await requireWorkspace(slug);

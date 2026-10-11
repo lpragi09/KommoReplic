@@ -33,7 +33,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
   const [text, setText] = useState("");
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
-  const end = useRef<HTMLDivElement>(null);
+  const end = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     if (!vid) return;
@@ -46,7 +46,9 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
       clearInterval(t);
     };
   }, [vid, publicKey]);
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [msgs.length]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [msgs.length]);
 
   function send() {
     if (!vid || !text.trim()) return;
@@ -86,7 +88,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
             </li>
           );
         })}
-        <div ref={end} />
+        <li ref={end} aria-hidden className="list-none" />
       </ol>
       <form
         className="flex flex-col gap-2 border-t border-border p-3"

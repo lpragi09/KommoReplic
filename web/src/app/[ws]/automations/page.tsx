@@ -1,5 +1,7 @@
 import { StubPage } from "@/components/shell/page-header";
 
+export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
+
 export const metadata = { title: "Automações" };
 
 export default function Page() {

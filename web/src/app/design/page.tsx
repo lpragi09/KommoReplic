@@ -5,7 +5,8 @@ import { Filter, Inbox, Plus, Search, TrendingDown, TrendingUp } from "lucide-re
 import { Composer, ConversationList, MessageBubble, type Conv, type Msg } from "@/components/chat/chat";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
-import { Avatar, Badge, EmptyState, SegmentedControl, Skeleton, Tag, useToast } from "@/components/ui/bits";
+import { Avatar, Badge, EmptyState, Skeleton, Tag } from "@/components/ui/bits";
+import { SegmentedControl, useToast } from "@/components/ui/interactive";
 import { Dialog, DialogClose, Tabs } from "@/components/ui/overlay";
 
 /* Galeria do design system. Dados fictícios, só para ver os estados. */

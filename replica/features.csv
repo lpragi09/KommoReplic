@@ -1,53 +1,53 @@
 feature,area,priority,original,clone,notes
-Cadastro e login com email e Google,auth,must,yes,no,S01
-Criar workspace com fuso e moeda,onboarding,must,yes,no,S02 S29
-Onboarding com modelo de funil inicial,onboarding,must,yes,no,S02
-Menu lateral por hubs recolhível,shell,must,yes,no,S03
-Funil Kanban com colunas por etapa,funil,must,yes,no,S04
-Contagem e soma de valor por coluna,funil,must,yes,no,S04
-Arrastar lead entre etapas,funil,must,yes,no,S04 F05
-Adicionar rápido no topo da coluna,funil,must,yes,no,S07 F06
-Etapas fixas Ganho e Perdido com motivo de perda,funil,must,yes,no,S06 F05
-Múltiplos funis com seletor,funil,must,yes,no,S04
-Criar renomear reordenar e colorir etapas,funil,must,yes,no,S19 F08
-Visão em lista dos leads,funil,must,yes,no,S05
-Filtro de leads por etapa responsável tag e data,funil,must,yes,no,S05 F12
-Cartão do lead com painel de dados e feed,lead,must,yes,no,S06
-Edição inline de nome valor etapa e responsável,lead,must,yes,no,S06
-Vincular contatos e empresa ao lead,lead,must,yes,no,S06
-Tags coloridas em leads e contatos,lead,must,yes,no,S04 S06
-Notas no feed,lead,must,yes,no,S06
-Histórico automático de mudanças no feed,lead,must,yes,no,S06 Event
-Contatos lista e cartão,listas,must,yes,no,S12 S13
-Empresas lista e cartão,listas,must,yes,no,S14 S15
-Tarefas com tipo prazo e responsável,tarefas,must,yes,no,S06 F07
-Calendário de tarefas lista e dia/semana/mês,tarefas,must,yes,no,S16
-Concluir tarefa com resultado,tarefas,must,yes,no,F07
-Etapa de leads de entrada com aceitar excluir e vincular,inbox,must,yes,no,S08 F03 F13
-Caixa de entrada unificada com lista de conversas,inbox,must,yes,no,S09
-Responder do cartão do lead e da inbox,inbox,must,yes,no,S10 F04
-Status de mensagem enviando entregue lida falhou,inbox,must,yes,no,S10
+Cadastro e login com email e Google,auth,must,yes,partial,S01; só email e senha; Google com o Supabase Auth
+Criar workspace com fuso e moeda,onboarding,must,yes,yes,S02 S29
+Onboarding com modelo de funil inicial,onboarding,must,yes,yes,S02
+Menu lateral por hubs recolhível,shell,must,yes,yes,S03
+Funil Kanban com colunas por etapa,funil,must,yes,yes,S04
+Contagem e soma de valor por coluna,funil,must,yes,yes,S04
+Arrastar lead entre etapas,funil,must,yes,yes,"S04 F05; mouse, toque e teclado"
+Adicionar rápido no topo da coluna,funil,must,yes,yes,S07 F06
+Etapas fixas Ganho e Perdido com motivo de perda,funil,must,yes,yes,S06 F05
+Múltiplos funis com seletor,funil,must,yes,partial,S04; seletor pronto; criar novo funil ainda não
+Criar renomear reordenar e colorir etapas,funil,must,yes,no,S19 F08; S19 só leitura
+Visão em lista dos leads,funil,must,yes,yes,S05
+Filtro de leads por etapa responsável tag e data,funil,must,yes,partial,"S05 F12; responsável, tarefa e busca; falta tag e data na UI"
+Cartão do lead com painel de dados e feed,lead,must,yes,yes,S06
+Edição inline de nome valor etapa e responsável,lead,must,yes,yes,S06
+Vincular contatos e empresa ao lead,lead,must,yes,partial,S06; contato na criação e via entrada; sem vincular depois
+Tags coloridas em leads e contatos,lead,must,yes,partial,"S04 S06; tags em leads, sem cor escolhida, sem tags em contatos"
+Notas no feed,lead,must,yes,yes,S06
+Histórico automático de mudanças no feed,lead,must,yes,yes,S06 Event
+Contatos lista e cartão,listas,must,yes,yes,S12 S13
+Empresas lista e cartão,listas,must,yes,partial,S14 S15; só leitura; sem criar empresa
+Tarefas com tipo prazo e responsável,tarefas,must,yes,yes,S06 F07
+Calendário de tarefas lista e dia/semana/mês,tarefas,must,yes,partial,S16; lista agrupada por dia; sem grade semana/mês
+Concluir tarefa com resultado,tarefas,must,yes,yes,F07
+Etapa de leads de entrada com aceitar excluir e vincular,inbox,must,yes,yes,S08 F03 F13
+Caixa de entrada unificada com lista de conversas,inbox,must,yes,yes,S09
+Responder do cartão do lead e da inbox,inbox,must,yes,yes,S10 F04
+Status de mensagem enviando entregue lida falhou,inbox,must,yes,partial,S10; ícones prontos; só 'enviada' acontece sem canal real
 Anexos imagens e áudio na conversa,inbox,must,yes,no,S10
 Conectar WhatsApp via Cloud API oficial,canais,must,yes,no,S25 F02
-Chat para site (widget próprio),canais,must,yes,no,S25 canal sem dependência da Meta para o vertical slice
-Atualização em tempo real de inbox e Kanban,inbox,must,yes,no,Supabase Realtime
+Chat para site (widget próprio),canais,must,yes,partial,S25 canal sem dependência da Meta para o vertical slice; página pública /chat/[chave]; falta o snippet embutível
+Atualização em tempo real de inbox e Kanban,inbox,must,yes,partial,Supabase Realtime; refresh a cada 4s; Supabase Realtime no backend
 Convidar usuários,equipe,must,yes,no,S24 F10
-Papéis com permissão todos equipe ou só os meus,equipe,must,yes,no,S24
-Busca global de leads contatos e empresas,shell,must,yes,no,S28
-Notificações in-app de nova mensagem e tarefa,shell,must,yes,no,S27
+Papéis com permissão todos equipe ou só os meus,equipe,must,yes,partial,S24; RLS no schema.sql testado; app ainda não aplica
+Busca global de leads contatos e empresas,shell,must,yes,yes,S28
+Notificações in-app de nova mensagem e tarefa,shell,must,yes,partial,S27; lista calculada; sem marcar como lida
 Conectar Instagram Direct,canais,should,yes,no,Meta Graph API
 Conectar Facebook Messenger,canais,should,yes,no,Meta Graph API
 Modelos de resposta com atalho /,inbox,should,yes,no,S10 S22
 Modelos WhatsApp com status de aprovação,inbox,should,yes,no,S22 janela de 24h
-Bloquear envio fora da janela de 24h e sugerir modelo,inbox,should,yes,no,S10
-Menções @ e notas internas na conversa,inbox,should,yes,no,S10
+Bloquear envio fora da janela de 24h e sugerir modelo,inbox,should,yes,partial,S10; bloqueio pronto; sem modelos
+Menções @ e notas internas na conversa,inbox,should,yes,partial,S10; notas internas sim; menções não
 Campos dinâmicos [ nas mensagens,inbox,should,yes,no,S10
-Atribuir conversa a usuário e fechar conversa,inbox,should,yes,no,S09
+Atribuir conversa a usuário e fechar conversa,inbox,should,yes,partial,S09; atribui automaticamente ao responder; sem UI
 Campos personalizados por entidade,lead,should,yes,no,S26
 Assinantes do cartão do lead,lead,should,yes,no,S06
 Ações em massa (etapa responsável tag excluir),funil,should,yes,no,S05 F12
-Painel com widgets de conversas leads e tarefas,insights,should,yes,no,S17 F11
-Filtro do painel por período e usuário,insights,should,yes,no,S17
+Painel com widgets de conversas leads e tarefas,insights,should,yes,yes,S17 F11
+Filtro do painel por período e usuário,insights,should,yes,yes,S17
 Gatilhos por etapa: tarefa mudar etapa tag responsável,automação,should,yes,no,S20 F09
 Gatilho enviar webhook,automação,should,yes,no,S20
 Distribuição automática de leads entre vendedores,automação,should,yes,no,plano Avançado

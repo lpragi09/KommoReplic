@@ -1,0 +1,20 @@
+import Link from "next/link";
+import { SearchX } from "lucide-react";
+import { EmptyState } from "@/components/ui/bits";
+
+export default function NotFound() {
+  return (
+    <main className="grid min-h-dvh place-items-center">
+      <EmptyState
+        icon={SearchX}
+        title="Não encontramos esta página"
+        text="O endereço pode estar errado, o item pode ter sido excluído ou você não tem acesso a ele."
+        action={
+          <Link href="/" className="text-sm font-medium text-accent-text underline">
+            Voltar ao início
+          </Link>
+        }
+      />
+    </main>
+  );
+}
