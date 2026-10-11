@@ -7,6 +7,12 @@ import { z } from "zod";
 import * as data from "@/data";
 import { SESSION_COOKIE, currentUser, requireWorkspace } from "@/data/session";
 import { DomainError } from "@/data/types";
+import { rateLimit } from "@/lib/rate-limit";
+
+async function clientIp() {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+}
 
 export type Result<T = null> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -28,6 +34,7 @@ async function run<T>(fn: () => Promise<T>): Promise<Result<T>> {
 // autenticação
 // ---------------------------------------------------------------------------
 async function setSession(token: string) {
+  if (data.MANAGES_OWN_SESSION) return; // Supabase Auth já gravou os próprios cookies
   const secure = (await headers()).get("x-forwarded-proto") === "https";
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 60 * 60 * 24 * 30 });
 }
@@ -49,6 +56,8 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
   const values = { email: String(form.get("email") ?? "") };
   const parsed = signInSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!rateLimit(`login:${await clientIp()}:${parsed.data.email.toLowerCase()}`, 5, 60_000))
+    return { error: "Muitas tentativas. Espere um minuto e tente de novo.", values };
   try {
     await setSession(await data.signIn(parsed.data.email, parsed.data.password));
   } catch (e) {
@@ -69,6 +78,7 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
   const values = { name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") };
   const parsed = signUpSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!rateLimit(`signup:${await clientIp()}`, 5, 10 * 60_000)) return { error: "Muitos cadastros deste endereço. Tente mais tarde.", values };
   try {
     await setSession(await data.signUp(parsed.data.name, parsed.data.email, parsed.data.password));
   } catch (e) {
@@ -81,7 +91,7 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
 export async function signOutAction() {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) await data.signOut(token);
+  if (token || data.MANAGES_OWN_SESSION) await data.signOut(token ?? "");
   jar.delete(SESSION_COOKIE);
   redirect("/login");
 }
@@ -280,8 +290,10 @@ const visitorMsg = z.object({
 export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
   return run(async () => {
     const v = visitorMsg.parse(input);
+    const ip = await clientIp();
+    if (!rateLimit(`chat-ip:${ip}`, 30, 60_000) || !rateLimit(`chat-v:${v.visitorId}`, 12, 60_000))
+      throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     const { channelId } = await data.getWebchat(v.publicKey);
-    // TODO(replica-backend): rate limit por IP + visitante antes de gravar
     await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
     return null;
   });
@@ -292,4 +304,58 @@ export async function visitorThreadAction(publicKey: string, visitorId: string) 
   const msgs = await data.visitorThread(v.publicKey, v.visitorId);
   // o visitante só vê texto, direção e hora — nada de ids internos ou de quem respondeu
   return msgs.map((m) => ({ id: m.id, direction: m.direction, body: m.body, sentAt: m.sentAt }));
+}
+
+// ---------------------------------------------------------------------------
+// conta e cobrança
+// ---------------------------------------------------------------------------
+/** Exclui a conta de verdade (LGPD e exigência da Apple). Empresas em que a pessoa é a única integrante vão junto. */
+export async function deleteAccountAction() {
+  const user = await currentUser();
+  if (!user) redirect("/login");
+  await data.deleteAccount(user.id);
+  (await cookies()).delete(SESSION_COOKIE);
+  redirect("/");
+}
+
+async function stripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new DomainError("invalid", "Cobrança ainda não configurada.");
+  const { default: Stripe } = await import("stripe");
+  return new Stripe(key);
+}
+
+const LOOKUP = z.enum(["autonomo_mensal", "autonomo_anual", "equipe_mensal", "equipe_anual", "operacao_mensal", "operacao_anual"]);
+
+/** Stripe Checkout para assinar um plano. Nada de formulário de cartão nosso. */
+export async function startCheckoutAction(slug: string, lookupKey: string, seats: number) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    const s = await stripe();
+    const prices = await s.prices.list({ lookup_keys: [LOOKUP.parse(lookupKey)], limit: 1 });
+    if (!prices.data[0]) throw new DomainError("invalid", "Plano não encontrado no Stripe.");
+    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
+    const session = await s.checkout.sessions.create({
+      mode: "subscription",
+      client_reference_id: ws.id,
+      customer_email: user.email,
+      // formas de pagamento (cartão, Pix) vêm do painel do Stripe
+      line_items: [{ price: prices.data[0].id, quantity: Math.max(1, Math.min(500, Math.round(seats))) }],
+      subscription_data: { metadata: { workspace_id: ws.id } },
+      success_url: `${origin}/${slug}/settings/billing?ok=1`,
+      cancel_url: `${origin}/${slug}/settings/billing`,
+    });
+    return { url: session.url };
+  });
+}
+
+/** Portal do Stripe: trocar plano, cartão, usuários — e cancelar em um clique. */
+export async function openBillingPortalAction(slug: string, customerId: string) {
+  return run(async () => {
+    await requireWorkspace(slug);
+    const s = await stripe();
+    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
+    const portal = await s.billingPortal.sessions.create({ customer: customerId, return_url: `${origin}/${slug}/settings/billing` });
+    return { url: portal.url };
+  });
 }

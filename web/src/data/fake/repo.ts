@@ -16,12 +16,15 @@ import {
   type Stage,
   type Task,
   type User,
+  type Subscription,
   type Workspace,
 } from "../types";
 
 /* Repositório falso. Cada função é a mesma assinatura que a versão Supabase terá
    (src/data/supabase/repo.ts). Permissões por papel ainda NÃO são aplicadas aqui:
    no Supabase quem aplica é o RLS do schema.sql. */
+
+export const MANAGES_OWN_SESSION = false; // sessão própria em cookie (crm_session)
 
 const live = () => connection(); // impede o Next de congelar dados em memória no prerender
 
@@ -56,6 +59,22 @@ export async function signUp(name: string, email: string, password: string): Pro
 
 export async function signOut(token: string) {
   db.sessions = db.sessions.filter((s) => s.token !== token);
+}
+
+export async function getSubscription(wsId: ID): Promise<Subscription> {
+  await live();
+  const ws = db.workspaces.find((w) => w.id === wsId);
+  if (!ws) throw new DomainError("not_found");
+  return { plan: "trial", status: "trialing", seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString(), currentPeriodEnd: null };
+}
+
+export async function deleteAccount(userId: ID) {
+  const mine = db.memberships.filter((m) => m.userId === userId).map((m) => m.workspaceId);
+  const solo = mine.filter((ws) => db.memberships.filter((m) => m.workspaceId === ws).length === 1);
+  db.workspaces = db.workspaces.filter((w) => !solo.includes(w.id));
+  db.memberships = db.memberships.filter((m) => m.userId !== userId && !solo.includes(m.workspaceId));
+  db.sessions = db.sessions.filter((s) => s.userId !== userId);
+  db.users = db.users.filter((u) => u.id !== userId);
 }
 
 export async function workspacesOf(userId: ID): Promise<Workspace[]> {

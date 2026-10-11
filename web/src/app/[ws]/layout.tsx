@@ -15,13 +15,10 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   if (mobile) return <MobileNav slug={slug} />;
   const [convs, board] = await Promise.all([listConversations(ws.id, user.id, "unread"), getBoard(ws.id, undefined)]);
   return (
-    <NavRail
-      slug={slug}
-      userName={user.name}
-      workspaceName={ws.name}
-      unread={convs.length}
-      incoming={board.incoming.length}
-    />
+    <>
+      <NavRail slug={slug} userName={user.name} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
+      <LiveRefresh wsId={ws.id} />
+    </>
   );
 }
 
@@ -38,7 +35,6 @@ export default function WorkspaceLayout({ children, params }: LayoutProps<"/[ws]
       <Suspense fallback={<div className="h-14 bg-nav-bg md:hidden" />}>
         <Nav params={p} mobile />
       </Suspense>
-      <LiveRefresh />
     </div>
   );
 }

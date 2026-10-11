@@ -2,16 +2,43 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 
-/* Tempo real provisório: recarrega os dados do servidor a cada 4s com a aba visível.
-   O replica-backend troca por Supabase Realtime (canal ws:{workspace_id}). */
-export function LiveRefresh({ ms = 4000 }: { ms?: number }) {
+const editing = () => !!document.querySelector("[data-editing]");
+
+/* Atualização ao vivo.
+   - Supabase: assina o canal privado ws:{workspace} (o banco avisa por trigger) e recarrega os dados
+     do servidor; quem decide o que aparece continua sendo o RLS.
+   - Repositório falso: recarrega a cada 4s com a aba visível. */
+export function LiveRefresh({ wsId, ms = 4000 }: { wsId: string; ms?: number }) {
   const router = useRouter();
+
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DATA_BACKEND === "supabase") {
+      const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+      let pending: ReturnType<typeof setTimeout> | null = null;
+      const refresh = () => {
+        // junta rajadas de eventos (ex.: 20 mensagens chegando) num refresh só
+        if (pending) return;
+        pending = setTimeout(() => {
+          pending = null;
+          if (!editing()) router.refresh();
+        }, 300);
+      };
+      let channel: ReturnType<typeof sb.channel> | null = null;
+      void sb.realtime.setAuth().then(() => {
+        channel = sb.channel(`ws:${wsId}`, { config: { private: true } }).on("broadcast", { event: "change" }, refresh).subscribe();
+      });
+      return () => {
+        if (pending) clearTimeout(pending);
+        if (channel) void sb.removeChannel(channel);
+      };
+    }
     const t = setInterval(() => {
-      if (document.visibilityState === "visible" && !document.querySelector("[data-editing]")) router.refresh();
+      if (document.visibilityState === "visible" && !editing()) router.refresh();
     }, ms);
     return () => clearInterval(t);
-  }, [router, ms]);
+  }, [router, ms, wsId]);
+
   return null;
 }

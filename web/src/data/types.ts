@@ -150,6 +150,16 @@ export type FeedItem =
   | { type: "task"; at: ISO; task: Task }
   | { type: "event"; at: ISO; event: LeadEvent; text: string };
 
+
+export type Subscription = {
+  plan: "trial" | "basic" | "advanced" | "pro";
+  status: "trialing" | "active" | "past_due" | "canceled" | "unpaid";
+  seats: number;
+  stripeCustomerId: string | null;
+  trialEndsAt: ISO | null;
+  currentPeriodEnd: ISO | null;
+};
+
 /** Erro de domínio com código estável — a UI traduz o código, não a mensagem. */
 export class DomainError extends Error {
   constructor(
