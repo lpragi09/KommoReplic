@@ -75,3 +75,11 @@ Telefonia VoIP integrada,canais,could,yes,skip,depende de operadoras parceiras
 Gestão de anúncios e Meta CAPI,marketing,could,yes,skip,exige aprovações e acordos próprios
 Integração Bling,integrações,could,yes,skip,parceria regional
 SSO SLA e gerente de conta dedicado,enterprise,could,yes,skip,serviço não software
+Rastro de entrega por mensagem e tela onde está minha mensagem,inbox,should,no,no,fix 1 (fixes.md): instabilidade + mensagens perdidas
+Vínculo mensagem→lead à prova de troca com trilha de auditoria,inbox,must,no,partial,fix 2: unique (channel_id external_thread_id) no schema e dedup no repositório; falta trilha na UI
+Página de status pública e aviso de canal fora do ar no app,shell,should,no,no,fix 3
+Plano mensal sem fidelidade com cancelamento em 1 clique e reembolso proporcional,cobrança,should,no,no,fix 4
+Conexão do WhatsApp guiada com checagem de pré-requisitos,canais,should,no,no,fix 5
+Suporte dentro do app com contexto do caso anexado,shell,could,no,no,fix 6
+Notificações push confiáveis com botão de teste,shell,should,no,no,fix 7
+Página honesta do que o produto faz e não faz,marketing,could,no,no,fix 8 (replica-launch)
