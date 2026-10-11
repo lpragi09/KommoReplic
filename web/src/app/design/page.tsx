@@ -2,8 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 import { Filter, Inbox, Plus, Search, TrendingDown, TrendingUp } from "lucide-react";
-import { NavRail } from "@/components/shell/nav-rail";
-import { Kanban, IncomingColumn, type Lead, type Stage } from "@/components/pipeline/kanban";
 import { Composer, ConversationList, MessageBubble, type Conv, type Msg } from "@/components/chat/chat";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -11,21 +9,6 @@ import { Avatar, Badge, EmptyState, SegmentedControl, Skeleton, Tag, useToast } 
 import { Dialog, DialogClose, Tabs } from "@/components/ui/overlay";
 
 /* Galeria do design system. Dados fictícios, só para ver os estados. */
-
-const stages: Stage[] = [
-  { id: "s1", name: "Primeiro contato", color: "2" },
-  { id: "s2", name: "Qualificado", color: "4" },
-  { id: "s3", name: "Proposta", color: "6" },
-  { id: "s4", name: "Negociação", color: "8" },
-  { id: "won", name: "Ganho", color: "won", kind: "won" },
-];
-
-const leads: Lead[] = [
-  { id: "l1", stageId: "s1", name: "Clínica Vida — implante", contact: "Marina Alves", priceCents: 1250000, tags: ["indicação"], owner: "Ana Souza", task: { label: "Hoje 14:00", state: "ok" }, unread: true, channel: "whatsapp" },
-  { id: "l2", stageId: "s1", name: "Lead #1042", contact: "+55 11 98888-1234", priceCents: 0, tags: [], owner: "Bruno Lima", task: null, channel: "webchat" },
-  { id: "l3", stageId: "s2", name: "Pet Shop Bicho Feliz — plano anual", contact: "Carlos Reis", priceCents: 480000, tags: ["varejo", "SP", "anual"], owner: "Ana Souza", task: { label: "Ontem 10:00", state: "late" }, channel: "instagram" },
-  { id: "l4", stageId: "s3", name: "Escola Saber — 3 unidades", contact: "Joana Prado", priceCents: 3600000, tags: ["educação"], owner: "Bruno Lima", task: { label: "Sex 09:30", state: "ok" } },
-];
 
 const conversations: Conv[] = [
   { id: "c1", name: "Marina Alves", channel: "WhatsApp", preview: "Vocês atendem sábado?", at: "14:02", unread: 2, waiting: "12 min" },
@@ -56,7 +39,6 @@ export default function DesignPage() {
 
   return (
     <div className="flex h-screen">
-      <NavRail active="leads" />
 
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         {/* Topbar */}
@@ -80,20 +62,7 @@ export default function DesignPage() {
           </div>
         </header>
 
-        <div className="h-[560px] shrink-0 border-b border-border">
-          <Kanban
-            stages={stages}
-            initialLeads={leads}
-            leading={
-              <IncomingColumn
-                items={[
-                  { id: "i1", kind: "chat", who: "+55 21 99777-4521", preview: "Boa tarde, queria saber o valor da consulta", at: "14:10" },
-                  { id: "i2", kind: "form", who: "Paulo Mendes", preview: "Formulário do site: orçamento para 10 usuários", at: "11:32" },
-                ]}
-              />
-            }
-          />
-        </div>
+        <p className="border-b border-border bg-surface px-6 py-3 text-sm text-muted">Quadro Kanban, cartão do lead e inbox de verdade: entre em /login com a conta de exemplo.</p>
 
         <div className="grid gap-10 p-6 lg:grid-cols-2">
           <Section title="Botões">
