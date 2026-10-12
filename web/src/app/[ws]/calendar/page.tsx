@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck } from "@/components/ui/icons";
 import { listTasks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle } from "@/lib/format";

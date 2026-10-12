@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2 } from "@/components/ui/icons";
 import { getCompany } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money } from "@/lib/format";

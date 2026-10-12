@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { Send } from "lucide-react";
+import { Send } from "@/components/ui/icons";
 import { visitorSendAction, visitorThreadAction } from "@/app/actions";
 import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";

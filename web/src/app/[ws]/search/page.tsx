@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Columns3, Contact, Search } from "lucide-react";
+import { Building2, Columns3, Contact, Search } from "@/components/ui/icons";
 import { search } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, phone } from "@/lib/format";

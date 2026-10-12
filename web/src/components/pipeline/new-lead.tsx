@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/ui/icons";
 import type { Stage } from "@/data/types";
 import { createLeadAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";

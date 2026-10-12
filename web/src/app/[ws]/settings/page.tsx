@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Columns3, CreditCard, ListPlus, MessageSquare, Users } from "lucide-react";
+import { ChevronRight, Columns3, CreditCard, ListPlus, MessageSquare, Users } from "@/components/ui/icons";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 

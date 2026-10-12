@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 
 /** Moldura das páginas legais. O texto é RASCUNHO até revisão de um advogado. */

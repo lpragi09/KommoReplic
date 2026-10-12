@@ -2,6 +2,7 @@ import { axe, expect, test } from "./helpers";
 
 test.describe("landing pública", () => {
   test("L-H1 landing sem login, acessível, CTA leva ao cadastro", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" }); // tudo visível de uma vez para o axe medir
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Nenhum cliente perdido no caminho." })).toBeVisible();
     await expect(page.getByText("Em construção")).toBeVisible(); // recurso não pronto é marcado

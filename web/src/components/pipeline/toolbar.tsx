@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Filter, Search, X } from "lucide-react";
+import { Filter, Search, X } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/bits";
 import { SegmentedControl } from "@/components/ui/interactive";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export function LeadsToolbar({ pipelines, users }: { pipelines: { id: string; na
   };
   const view = (sp.get("view") as "kanban" | "list") ?? "kanban";
   const activeFilters = ["owner", "task", "tag"].filter((k) => sp.get(k)).length;
-  const sel = "h-9 rounded-sm border border-border-input bg-bg px-2 text-base text-fg";
+  const sel = "h-9 rounded-sm border border-border bg-bg px-2.5 text-base text-fg shadow-[0_1px_2px_rgba(14,26,58,.06)] hover:border-border-input focus:border-focus";
 
   return (
     <>

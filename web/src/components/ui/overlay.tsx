@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Dialog as D, Tabs as T } from "radix-ui";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export function Dialog({

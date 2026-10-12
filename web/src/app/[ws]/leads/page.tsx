@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Columns3 } from "lucide-react";
+import { Columns3 } from "@/components/ui/icons";
 import { getBoard, listLeads, listLossReasons, listUsers, type LeadFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";

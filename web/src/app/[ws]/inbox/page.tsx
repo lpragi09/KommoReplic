@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Inbox, MessageSquare } from "lucide-react";
+import { Inbox, MessageSquare } from "@/components/ui/icons";
 import { getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
@@ -85,10 +85,10 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
                       )}
                     </div>
                     <p className="truncate text-sm text-muted">{c.lastMessagePreview}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs">
-                      <span className="text-muted">{channelName[c.channel.kind]}</span>
-                      {!c.lead && <span className="font-medium text-accent-text">Novo contato</span>}
-                      {c.isUnanswered && <span className="font-medium text-warning">Aguardando resposta</span>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="whitespace-nowrap rounded-xs bg-canvas px-1.5 py-0.5 text-muted">{channelName[c.channel.kind]}</span>
+                      {!c.lead && <span className="whitespace-nowrap rounded-xs bg-accent-soft px-1.5 py-0.5 font-medium text-accent-text">Novo</span>}
+                      {c.isUnanswered && <span className="whitespace-nowrap rounded-xs bg-warning-soft px-1.5 py-0.5 font-medium text-warning">Sem resposta</span>}
                       {c.unreadCount > 0 && (
                         <Badge className="ml-auto">
                           {c.unreadCount}

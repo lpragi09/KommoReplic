@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, CircleCheck, Clock, StickyNote } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, CircleCheck, Clock, StickyNote } from "@/components/ui/icons";
 import type { FeedItem, MessageStatus } from "@/data/types";
 import { completeTaskAction } from "@/app/actions";
 import { dayLabel, timeOnly, when } from "@/lib/format";

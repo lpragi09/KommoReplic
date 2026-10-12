@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Check, CheckCheck, Clock, FileText, Mic, Paperclip, Send, Smile, StickyNote } from "lucide-react";
+import { AlertTriangle, Check, CheckCheck, Clock, FileText, Mic, Paperclip, Send, Smile, StickyNote } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { Button, IconButton } from "@/components/ui/button";

@@ -17,7 +17,7 @@ import {
   type DragEndEvent,
   type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
-import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "lucide-react";
+import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { leadTitle, money, when } from "@/lib/format";
 import type { IncomingLead, LeadCard as LeadCardT, LossReason, Stage, StageColor } from "@/data/types";

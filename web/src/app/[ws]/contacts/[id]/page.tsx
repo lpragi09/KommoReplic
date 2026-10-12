@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Building2, Mail, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Building2, Mail, MessageCircle, Phone } from "@/components/ui/icons";
 import { getContact } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, phone } from "@/lib/format";

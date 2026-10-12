@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, MessageCircle } from "lucide-react";
+import { ExternalLink, MessageCircle } from "@/components/ui/icons";
 import { listChannels } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { cn } from "@/lib/cn";
