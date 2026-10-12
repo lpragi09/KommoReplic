@@ -12,7 +12,7 @@ export default async function BillingPage({ params }: PageProps<"/[ws]/settings/
   const sub = await getSubscription(ws.id);
   return (
     <>
-      <PageHeader title="Plano e cobrança" />
+      <PageHeader title="Plano e cobrança" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-8 p-4 sm:p-6">
           <Billing slug={slug} sub={sub} />

@@ -12,7 +12,7 @@ export default async function PipelinesSettings({ params }: PageProps<"/[ws]/set
   const pipelines = await listPipelines(ws.id);
   return (
     <>
-      <PageHeader title="Funis e etapas" />
+      <PageHeader title="Funis e etapas" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl p-4 sm:p-6">
           <p className="mb-4 rounded-sm bg-warning-soft px-3 py-2 text-sm text-warning">Edição de etapas (renomear, reordenar, cores) ainda não está pronta. Por enquanto, só leitura.</p>
