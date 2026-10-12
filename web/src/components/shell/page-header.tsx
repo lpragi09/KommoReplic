@@ -1,8 +1,26 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { ChevronRight } from "@/components/ui/icons";
+import { BackButton } from "./back-button";
 
 /** Topbar da seção: título à esquerda, controles no meio, ações à direita. Quebra em 2 linhas no celular. */
-export function PageHeader({ title, children, actions, className }: { title: ReactNode; children?: ReactNode; actions?: ReactNode; className?: string }) {
+export function PageHeader({
+  title,
+  children,
+  actions,
+  className,
+  crumbs,
+  back = true,
+}: {
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+  /** trilha acima do título, ex.: [{ label: "Configurações", href: "/ws/settings" }] */
+  crumbs?: { label: string; href: string }[];
+  back?: boolean;
+}) {
   return (
     <header
       className={cn(
@@ -10,7 +28,24 @@ export function PageHeader({ title, children, actions, className }: { title: Rea
         className,
       )}
     >
-      <h1 className="min-w-0 truncate text-lg text-fg">{title}</h1>
+      <div className="flex min-w-0 items-center gap-1.5">
+        {back && <BackButton className="-ml-2" />}
+        <div className="min-w-0">
+          {crumbs && crumbs.length > 0 && (
+            <nav aria-label="Trilha" className="flex items-center gap-1 text-xs text-muted">
+              {crumbs.map((c) => (
+                <span key={c.href} className="flex items-center gap-1">
+                  <Link href={c.href} className="hover:text-fg hover:underline">
+                    {c.label}
+                  </Link>
+                  <ChevronRight className="size-3" aria-hidden />
+                </span>
+              ))}
+            </nav>
+          )}
+          <h1 className="truncate text-lg font-semibold tracking-tight text-fg">{title}</h1>
+        </div>
+      </div>
       {children}
       {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

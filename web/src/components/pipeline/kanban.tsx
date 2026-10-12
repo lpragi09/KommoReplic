@@ -17,7 +17,7 @@ import {
   type DragEndEvent,
   type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
-import { AlarmClock, CalendarCheck, Check, GripVertical, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "@/components/ui/icons";
+import { AlarmClock, CalendarCheck, Check, GripVertical, Inbox, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { leadTitle, money, when } from "@/lib/format";
 import type { IncomingLead, LeadCard as LeadCardT, LossReason, Stage, StageColor } from "@/data/types";
@@ -131,7 +131,7 @@ export function Board({
         onDragCancel={() => setDragging(null)}
         onDragEnd={onDragEnd}
       >
-        <div className="flex min-h-0 flex-1 snap-x gap-2 overflow-x-auto bg-canvas p-3">
+        <div className="flex min-h-0 flex-1 snap-x gap-3 overflow-x-auto bg-surface p-4">
           <IncomingColumn slug={slug} items={incoming} linkTargets={linkTargets} onError={(t) => toast.show({ text: t, tone: "error" })} />
           {optimistic.map((c) => (
             <ColumnView key={c.stage.id} slug={slug} pipelineId={pipelineId} col={c} owner={owner} onError={(t) => toast.show({ text: t, tone: "error" })} />
@@ -205,15 +205,16 @@ function ColumnView({
   const [adding, setAdding] = useState(false);
   const closed = stage.kind !== "open";
   return (
-    <section aria-label={`${stage.name}, ${col.count} leads`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col">
-      <header className="mb-2 overflow-hidden rounded-md bg-bg">
-        <div className={cn("h-1", stageBar[stage.color])} aria-hidden />
-        <div className="flex items-center justify-between gap-2 px-3 py-2">
+    <section aria-label={`${stage.name}, ${col.count} leads`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col rounded-lg bg-[color-mix(in_srgb,var(--canvas)_60%,var(--bg))] p-1.5 shadow-[inset_0_0_0_1px_var(--border)]">
+      <header className="mb-1.5 px-2 pb-1 pt-1.5">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="truncate text-caps uppercase text-fg">{stage.name}</h2>
-            <p className="text-xs text-muted">
-              {col.count} {col.count === 1 ? "lead" : "leads"} · {money(col.totalCents)}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className={cn("size-2.5 shrink-0 rounded-pill ring-2 ring-bg", stageBar[stage.color])} aria-hidden />
+              <h2 className="truncate text-base font-semibold text-fg">{stage.name}</h2>
+              <span className="rounded-xs bg-bg px-1.5 text-xs font-medium tabular-nums text-muted shadow-[inset_0_0_0_1px_var(--border)]">{col.count}</span>
+            </div>
+            <p className="mt-0.5 pl-[18px] text-xs tabular-nums text-muted">{money(col.totalCents)}</p>
           </div>
           {!closed && (
             <IconButton label={`Adicionar lead em ${stage.name}`} size={28} aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
@@ -234,7 +235,7 @@ function ColumnView({
           <DraggableCard key={l.id} lead={l} slug={slug} owner={owner(l.responsibleUserId)} index={i} />
         ))}
         {leads.length === 0 && !adding && (
-          <li className="rounded-md border border-dashed border-border-input px-3 py-6 text-center text-sm text-muted">
+          <li className="rounded-md border border-dashed border-border px-3 py-8 text-center text-sm text-muted">
             {closed ? "Nenhum negócio aqui ainda" : "Arraste leads para cá"}
           </li>
         )}
@@ -296,7 +297,7 @@ export function LeadCard({ lead, slug, owner, overlay, handle }: { lead: LeadCar
   return (
     <article
       className={cn(
-        "fx-lift group relative rounded-md border border-border bg-bg p-3 shadow-card hover:border-border-input",
+        "fx-lift group relative rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.05)] hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-8px_rgba(14,26,58,.25)]",
         overlay && "rotate-[1.5deg] shadow-drag",
       )}
     >
@@ -357,9 +358,12 @@ function IncomingColumn({ slug, items, linkTargets, onError }: { slug: string; i
   const counts = items.reduce<Record<string, number>>((a, i) => ((a[i.kind] = (a[i.kind] ?? 0) + 1), a), {});
   const shown = filter ? items.filter((i) => i.kind === filter) : items;
   return (
-    <section aria-label={`Leads de entrada, ${items.length}`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col">
-      <header className="mb-2 rounded-md border border-dashed border-border-input bg-surface px-3 py-2">
-        <h2 className="text-caps uppercase text-fg">Leads de entrada</h2>
+    <section aria-label={`Leads de entrada, ${items.length}`} className="flex w-[var(--kanban-column)] shrink-0 snap-start flex-col rounded-lg border border-dashed border-border-input bg-bg p-1.5">
+      <header className="mb-1.5 px-2 pb-1 pt-1.5">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-fg">
+          <Inbox className="size-4 text-accent" aria-hidden /> Leads de entrada
+          <span className="rounded-xs bg-accent-soft px-1.5 text-xs font-medium tabular-nums text-accent-text">{items.length}</span>
+        </h2>
         <div className="mt-1 flex gap-1" role="group" aria-label="Filtrar por tipo">
           {(Object.keys(kindIcon) as IncomingLead["kind"][]).map((k) => {
             const Icon = kindIcon[k];

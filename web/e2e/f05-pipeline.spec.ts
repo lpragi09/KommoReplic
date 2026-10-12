@@ -25,7 +25,7 @@ test.describe("F05/F06/F07/F12 funil, leads e tarefas", () => {
     await expect(page.getByRole("button", { name: /Editar valor: R\$\s?12\.501/ })).toBeVisible();
     await page.goto(`/${slug}/leads`);
     await expect(page.getByRole("link", { name: long })).toBeVisible();
-    await expect(page.getByRole("region", { name: /Primeiro contato, 1 lead/ }).getByText("1 lead · R$ 12.501")).toBeVisible();
+    await expect(page.getByRole("region", { name: /Primeiro contato, 1 lead/ }).getByText("R$ 12.501")).toHaveCount(2); // total da coluna + card
   });
 
   test("F05-H1 mover pelo teclado entre etapas", async ({ page }) => {

@@ -16,7 +16,7 @@ export default async function ChannelsPage({ params }: PageProps<"/[ws]/settings
   const webchat = channels.filter((c) => c.kind === "webchat");
   return (
     <>
-      <PageHeader title="Canais" />
+      <PageHeader title="Canais" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 sm:p-6">
           {webchat.map((c) => (

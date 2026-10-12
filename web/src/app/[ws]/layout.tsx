@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { MobileNav, NavRail } from "@/components/shell/nav-rail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
+import { NavTracker } from "@/components/shell/back-button";
 import { requireWorkspace } from "@/data/session";
 import { getBoard, listConversations } from "@/data";
 
@@ -18,6 +19,7 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
     <>
       <NavRail slug={slug} userName={user.name} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
       <LiveRefresh wsId={ws.id} />
+      <NavTracker />
     </>
   );
 }

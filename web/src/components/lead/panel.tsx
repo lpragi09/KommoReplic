@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { ArrowLeft, Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2, Trophy, XCircle } from "@/components/ui/icons";
+import { Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2, Trophy, XCircle } from "@/components/ui/icons";
 import type { Company, Contact, LeadCard, LossReason, Stage } from "@/data/types";
 import { deleteLeadAction, moveLeadAction, updateLeadAction } from "@/app/actions";
 import { leadTitle, money, moneyInput, phone } from "@/lib/format";
@@ -15,6 +15,7 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
 import { Tabs } from "@/components/ui/overlay";
 import { LostDialog, stageBar } from "@/components/pipeline/kanban";
+import { BackButton } from "@/components/shell/back-button";
 
 type Props = {
   slug: string;
@@ -60,9 +61,7 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
       )}
 
       <div className="flex items-start gap-2 px-4 pt-4">
-        <Link href={`/${slug}/leads`} className="mt-1 rounded-sm p-1 text-muted hover:bg-surface hover:text-fg" aria-label="Voltar ao funil">
-          <ArrowLeft className="size-4" />
-        </Link>
+        <BackButton fallback={`/${slug}/leads`} className="-ml-2" />
         <div className="min-w-0 flex-1">
           <InlineText label="Nome do lead" value={lead.name} placeholder={leadTitle(lead)} display={leadTitle(lead)} onSave={(v) => patch({ name: v })} big />
           <p className="text-xs text-muted">#{lead.number}</p>

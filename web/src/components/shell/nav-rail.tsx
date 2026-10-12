@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { Fragment, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
@@ -49,6 +49,8 @@ function subscribeNav(l: () => void) {
 }
 
 type Item = { href: string; label: string; icon: LucideIcon; badge?: number; match?: string[] };
+
+const friendly = (n: string) => (n.includes("@") ? n.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : n);
 
 export function NavRail({
   slug,
@@ -130,7 +132,15 @@ export function NavRail({
         <span className={cn("truncate text-md font-semibold", !expanded && "sr-only")}>{workspaceName}</span>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-0.5 px-2">{items.map(link)}</ul>
+      <ul className="flex flex-1 flex-col gap-0.5 px-2">
+        {items.map((it, i) => (
+          <Fragment key={it.href}>
+            {/* divisórias finas entre os grupos: início | trabalho do dia | configurar e analisar */}
+            {(i === 1 || i === 5) && <li aria-hidden className="mx-3 my-2 h-px bg-nav-hover" />}
+            {link(it)}
+          </Fragment>
+        ))}
+      </ul>
 
       <ul className="flex flex-col gap-0.5 px-2">
         {footer.map(link)}
@@ -148,8 +158,11 @@ export function NavRail({
         <li>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger className="mt-1 flex w-full items-center gap-3 rounded-sm px-2 py-1 text-left hover:bg-nav-hover" aria-label={`Conta de ${userName}`}>
-              <Avatar name={userName} size={32} />
-              <span className={cn("truncate text-sm", !expanded && "sr-only")}>{userName}</span>
+              <Avatar name={friendly(userName)} size={32} />
+              <span className={cn("min-w-0 flex-col text-left", expanded ? "flex" : "sr-only")}>
+                <span className="truncate text-sm text-nav-text">{friendly(userName)}</span>
+                {userName.includes("@") && <span className="truncate text-xs text-nav-muted">{userName}</span>}
+              </span>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content side="right" align="end" sideOffset={8} className="z-50 min-w-48 rounded-md border border-border bg-bg p-1 shadow-pop">
