@@ -57,7 +57,7 @@ export function LeadsToolbar({ pipelines, users }: { pipelines: { id: string; na
           set({ q: q.trim() || null });
         }}
       >
-        <Field label="Buscar leads" hideLabel placeholder="Buscar nome ou #número" adornment={<Search className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} />
+        <Field label="Buscar leads" hideLabel placeholder="Buscar nome ou #número…" adornment={<Search className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} />
       </form>
       <Button variant="secondary" icon={<Filter className="size-4" aria-hidden />} aria-expanded={open} aria-controls="filtros" onClick={() => setOpen((v) => !v)}>
         Filtros {activeFilters > 0 && <Badge tone="neutral">{activeFilters}</Badge>}

@@ -41,11 +41,11 @@ export function Avatar({ name, size = 32, badge }: { name: string; size?: 20 | 2
   const dim = { 20: "size-5 text-[9px]", 24: "size-6 text-[10px]", 32: "size-8 text-xs", 40: "size-10 text-sm" }[size];
   return (
     <span className="relative inline-flex shrink-0">
-      <span className={cn("inline-flex items-center justify-center rounded-pill bg-canvas font-semibold text-fg", dim)} aria-hidden>
+      <span className={cn("inline-flex items-center justify-center rounded-sm bg-canvas font-semibold text-fg", dim)} aria-hidden>
         {initials}
       </span>
       <span className="sr-only">{name}</span>
-      {badge && <span className="absolute -bottom-0.5 -right-0.5 rounded-pill bg-bg p-px">{badge}</span>}
+      {badge && <span className="absolute -bottom-0.5 -right-0.5 rounded-xs bg-bg p-px">{badge}</span>}
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Eye, Inbox, MessageCircle, Radio, ShieldCheck, Workflow } from "lucide-react";
+import { ArrowRight, Check, Eye, Fingerprint, Inbox, MessageCircle, Radio, Workflow } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 
@@ -15,7 +15,7 @@ const features: { icon: typeof Eye; title: string; text: string; status: "pronto
   { icon: Inbox, title: "Desconhecido vira lead em 1 clique", text: "Quem escreve pela primeira vez cai numa coluna de entrada. Aceite e o cartão do lead já abre com a conversa e o campo de resposta.", status: "pronto" },
   { icon: Workflow, title: "Funil que você arrasta", text: "Etapas com valor somado, Ganho e Perdido com motivo, tarefas com prazo. Funciona no mouse, no toque e no teclado.", status: "pronto" },
   { icon: Eye, title: "O caminho de cada mensagem", text: "Recebida, gravada, entregue, lida — com hora. Se algo falhar, você vê onde e pode reenviar.", status: "em breve" },
-  { icon: ShieldCheck, title: "Cada conversa no contato certo", text: "A mensagem só entra no lead se o remetente bater, com trilha de auditoria. Pensado para quem atende dados sensíveis.", status: "em breve" },
+  { icon: Fingerprint, title: "Cada conversa no contato certo", text: "A mensagem só entra no lead se o remetente bater, com trilha de auditoria. Pensado para quem atende dados sensíveis.", status: "em breve" },
   { icon: Radio, title: "Aviso na hora quando um canal cai", text: "Página de status pública e faixa dentro do app com o que parou, desde quando e a previsão.", status: "em breve" },
   { icon: MessageCircle, title: "WhatsApp pela API oficial", text: "Conexão guiada que confere os pré-requisitos da Meta antes de você pagar nada.", status: "em breve" },
 ];
@@ -37,8 +37,11 @@ const faq = [
 function Section({ id, eyebrow, title, children, className }: { id: string; eyebrow: string; title: string; children: ReactNode; className?: string }) {
   return (
     <section id={id} aria-labelledby={`${id}-t`} className={cn("mx-auto w-full max-w-6xl px-4 py-20 sm:px-6", className)}>
-      <p className="text-caps uppercase text-accent-text">{eyebrow}</p>
-      <h2 id={`${id}-t`} className="mt-2 max-w-2xl text-xl text-fg sm:text-display">
+      <p className="flex items-center gap-2 text-sm font-medium text-accent-text">
+        <span className="h-px w-6 bg-accent" aria-hidden />
+        {eyebrow}
+      </p>
+      <h2 id={`${id}-t`} className="mt-3 max-w-2xl text-xl tracking-tight text-fg sm:text-display">
         {title}
       </h2>
       <div className="mt-10">{children}</div>
@@ -73,7 +76,7 @@ export function Landing() {
 
         <div className="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:pb-28 lg:pt-16">
           <div>
-            <p className="fx-rise text-caps uppercase text-on-night-muted">CRM para quem vende pelo WhatsApp</p>
+            <p className="fx-rise text-sm font-medium text-on-night-muted">CRM para quem vende pelo WhatsApp</p>
             <h1 className="fx-rise fx-gradient-text mt-3 text-display sm:text-hero" style={d(1)}>
               Nenhum cliente perdido no caminho.
             </h1>
@@ -93,7 +96,7 @@ export function Landing() {
         </div>
       </header>
 
-      <main>
+      <main id="conteudo">
         {/* ---------- problema ---------- */}
         <Section id="problema" eyebrow="O problema" title="Quando o CRM falha, quem paga é a venda.">
           <div className="grid gap-4 md:grid-cols-2">
@@ -112,18 +115,21 @@ export function Landing() {
         {/* ---------- como funciona ---------- */}
         <div className="bg-surface">
           <Section id="como" eyebrow="Como funciona" title="Da primeira mensagem ao negócio fechado, em três passos.">
-            <ol className="grid gap-6 md:grid-cols-3">
+            <ol className="relative grid gap-10 md:grid-cols-[repeat(3,minmax(0,1fr))] md:gap-6">
+              <span aria-hidden className="absolute left-[19px] top-10 h-[calc(100%-5rem)] w-px bg-border md:left-0 md:top-[19px] md:h-px md:w-full" />
               {[
-                { n: "1", t: "O cliente escreve", x: "Pelo chat do seu site (e em breve WhatsApp e Instagram). Se for alguém novo, aparece na coluna de entrada." },
-                { n: "2", t: "Você aceita e responde", x: "Um clique e o cartão do lead abre com a conversa, o histórico e o campo de resposta." },
-                { n: "3", t: "Arrasta até o Ganho", x: "Etapas com valor somado, tarefas com prazo e o motivo quando um negócio é perdido." },
-              ].map((s) => (
-                <li key={s.n} className="fx-lift rounded-lg border border-border bg-bg p-6">
-                  <span className="grid size-9 place-items-center rounded-pill bg-inverse-bg text-sm font-bold text-on-inverse" aria-hidden>
+                { n: "01", t: "O cliente escreve", x: "Pelo chat do seu site (e em breve WhatsApp e Instagram). Se for alguém novo, aparece na coluna de entrada." },
+                { n: "02", t: "Você aceita e responde", x: "Um clique e o cartão do lead abre com a conversa, o histórico e o campo de resposta." },
+                { n: "03", t: "Arrasta até o Ganho", x: "Etapas com valor somado, tarefas com prazo e o motivo quando um negócio é perdido." },
+              ].map((s, i) => (
+                <li key={s.n} className={cn("relative flex gap-5 md:block", i === 1 && "md:mt-10", i === 2 && "md:mt-20")}>
+                  <span className="relative z-10 grid size-10 shrink-0 place-items-center rounded-sm bg-inverse-bg font-mono text-sm font-semibold text-on-inverse" aria-hidden>
                     {s.n}
                   </span>
-                  <h3 className="mt-4 text-lg text-fg">{s.t}</h3>
-                  <p className="mt-2 text-base text-muted">{s.x}</p>
+                  <div className="md:mt-6 md:pr-6">
+                    <h3 className="text-lg text-fg">{s.t}</h3>
+                    <p className="mt-2 max-w-[38ch] text-base text-muted">{s.x}</p>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -132,20 +138,38 @@ export function Landing() {
 
         {/* ---------- recursos ---------- */}
         <Section id="recursos" eyebrow="Recursos" title="Feito para não deixar mensagem para trás.">
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <li key={f.title} className="fx-lift rounded-lg border border-border p-6">
-                <div className="flex items-center justify-between">
-                  <f.icon className="size-6 text-accent" aria-hidden />
-                  <span className={cn("rounded-pill px-2 py-0.5 text-xs font-medium", f.status === "pronto" ? "bg-success-soft text-success" : "bg-accent-soft text-accent-text")}>
-                    {f.status}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-md font-semibold text-fg">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted">{f.text}</p>
-              </li>
-            ))}
-          </ul>
+          <div className="grid gap-4 lg:grid-cols-6">
+            {features
+              .filter((f) => f.status === "pronto")
+              .map((f, i) => (
+                <article key={f.title} className={cn("fx-lift relative overflow-hidden rounded-lg bg-surface p-8", i === 0 ? "lg:col-span-4" : "lg:col-span-2")}>
+                  <f.icon className="size-7 text-accent" aria-hidden />
+                  <h3 className="mt-6 text-lg text-fg">{f.title}</h3>
+                  <p className="mt-2 max-w-[52ch] text-base text-muted">{f.text}</p>
+                  {i === 0 && (
+                    <div className="mt-8 overflow-hidden rounded-md border border-border shadow-pop">
+                      <Image src="/produto-lead.png" alt="Cartão do lead com a conversa do cliente, tarefas e histórico" width={1440} height={900} sizes="(min-width: 1024px) 640px, 100vw" />
+                    </div>
+                  )}
+                </article>
+              ))}
+            <div className="rounded-lg border border-dashed border-border-input p-6 lg:col-span-6">
+              <p className="text-sm font-medium text-fg">
+                Em construção <span className="font-normal text-muted">— o que vem a seguir, na ordem em que vamos entregar</span>
+              </p>
+              <ul className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {features
+                  .filter((f) => f.status !== "pronto")
+                  .map((f) => (
+                    <li key={f.title}>
+                      <f.icon className="size-5 text-muted" aria-hidden />
+                      <h3 className="mt-3 text-base font-semibold text-fg">{f.title}</h3>
+                      <p className="mt-1 text-sm text-muted">{f.text}</p>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
         </Section>
 
         {/* ---------- preços ---------- */}
@@ -154,10 +178,13 @@ export function Landing() {
             <div className="grid gap-4 lg:grid-cols-3">
               {plans.map((p) => (
                 <div key={p.name} className={cn("flex flex-col rounded-lg border bg-bg p-6", p.highlight ? "fx-glow border-accent" : "border-border")}>
-                  <h3 className="text-lg text-fg">{p.name}</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-lg text-fg">{p.name}</h3>
+                    {p.highlight && <span className="rounded-xs bg-accent px-2 py-0.5 text-xs font-medium text-on-accent">Mais escolhido</span>}
+                  </div>
                   <p className="text-sm text-muted">Para {p.who}</p>
                   <p className="mt-4">
-                    <span className="text-display text-fg">R$ {p.m}</span>
+                    <span className="text-display tabular-nums tracking-tight text-fg">R$ {p.m}</span>
                     <span className="text-sm text-muted"> por usuário/mês</span>
                   </p>
                   <p className="text-sm text-muted">ou R$ {p.a}/mês no anual (2 meses grátis)</p>
@@ -180,19 +207,14 @@ export function Landing() {
 
         {/* ---------- perguntas ---------- */}
         <Section id="faq" eyebrow="Perguntas" title="O que perguntam antes de assinar.">
-          <div className="divide-y divide-border rounded-lg border border-border">
+          <dl className="grid gap-x-12 gap-y-10 md:grid-cols-2">
             {faq.map((f) => (
-              <details key={f.q} className="group p-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between text-md font-medium text-fg">
-                  {f.q}
-                  <span className="text-muted transition-transform group-open:rotate-45" aria-hidden>
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-base text-muted">{f.a}</p>
-              </details>
+              <div key={f.q} className="border-t border-border pt-5">
+                <dt className="text-md font-medium text-fg">{f.q}</dt>
+                <dd className="mt-2 max-w-[60ch] text-base text-muted">{f.a}</dd>
+              </div>
             ))}
-          </div>
+          </dl>
         </Section>
 
         {/* ---------- chamada final ---------- */}
@@ -213,7 +235,14 @@ export function Landing() {
           <span>
             © {BRAND.name} · {BRAND.tagline}
           </span>
-          <span className="ml-auto">Termos e privacidade: em preparação</span>
+          <nav aria-label="Legal" className="ml-auto flex gap-4">
+            <Link href="/termos" className="hover:text-fg hover:underline">
+              Termos de uso
+            </Link>
+            <Link href="/privacidade" className="hover:text-fg hover:underline">
+              Privacidade
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

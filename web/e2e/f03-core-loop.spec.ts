@@ -91,3 +91,20 @@ test.describe("F03/F04/F05 do chat do site até o ganho", () => {
     await expect(page.getByLabel("Mensagem", { exact: true })).toHaveCount(0);
   });
 });
+
+test("F03-E4 recusar lead de entrada pede confirmação", async ({ page, browser }) => {
+  const { slug } = await signUp(page);
+  const key = await webchatKey(page, slug);
+  const visitor = await visitorPage(browser);
+  await visitor.goto(`/chat/${key}`);
+  await visitor.getByLabel("Seu nome (opcional)").fill("Spam");
+  await visitor.getByLabel("Mensagem", { exact: true }).fill("compre já");
+  await visitor.getByRole("button", { name: "Enviar mensagem" }).click();
+  await expect(visitor.getByText("compre já")).toBeVisible();
+  await page.goto(`/${slug}/leads`);
+  await page.getByRole("button", { name: "Recusar Spam" }).click();
+  await expect(page.getByRole("region", { name: "Leads de entrada, 1" })).toBeVisible(); // 1º clique não apaga
+  await page.getByRole("alert").filter({ hasText: "Recusar e fechar a conversa?" }).getByRole("button", { name: "Recusar" }).click();
+  await expect(page.getByText("Spam")).toHaveCount(0); // recusado: some do funil
+  await expect(page.getByText("Seu funil está vazio")).toBeVisible();
+});

@@ -102,14 +102,14 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
             <label htmlFor="vname" className="sr-only">
               Seu nome (opcional)
             </label>
-            <input id="vname" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Seu nome (opcional)" className="h-9 rounded-sm border border-border-input px-2 text-base outline-none focus:border-focus" />
+            <input id="vname" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Seu nome (opcional)…" className="h-9 rounded-sm border border-border-input px-2 text-base outline-none focus:border-focus" />
           </>
         )}
         <div className="flex gap-2">
           <label htmlFor="vmsg" className="sr-only">
             Mensagem
           </label>
-          <input id="vmsg" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Escreva sua mensagem" className="h-10 flex-1 rounded-sm border border-border-input px-3 text-base outline-none focus:border-focus" autoComplete="off" />
+          <input id="vmsg" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Escreva sua mensagem…" className="h-10 flex-1 rounded-sm border border-border-input px-3 text-base outline-none focus:border-focus" autoComplete="off" />
           <Button type="submit" size="lg" loading={pending} disabled={!text.trim() || !vid} aria-label="Enviar mensagem">
             <Send className="size-4" aria-hidden />
           </Button>
