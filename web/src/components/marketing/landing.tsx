@@ -92,7 +92,7 @@ export function Landing() {
             <div className="fx-rise">
               <Eyebrow>CRM para quem vende pelo WhatsApp</Eyebrow>
             </div>
-            <h1 className="fx-rise mt-7 text-[clamp(2.75rem,7.4vw,6rem)] font-semibold leading-[0.95] tracking-[-0.045em]" style={d(1)}>
+            <h1 className="fx-slide mt-7 text-[clamp(2.75rem,7.4vw,6rem)] font-semibold leading-[0.95] tracking-[-0.045em]" style={d(1)}>
               <span className="block">Nenhum cliente</span> <span className="fx-gradient-text block">perdido no caminho.</span>
             </h1>
             <p className="fx-rise mx-auto mt-7 max-w-[54ch] text-md text-on-night-muted md:text-lg" style={d(2)}>
@@ -110,7 +110,7 @@ export function Landing() {
           </div>
 
           {/* tela real do produto, em moldura dupla e perspectiva */}
-          <div className="fx-rise relative mx-auto mt-16 max-w-5xl md:mt-20" style={d(5)}>
+          <div className="fx-slide relative mx-auto mt-16 max-w-5xl md:mt-20" style={d(3)}>
             <div className="fx-orb -inset-x-10 -bottom-10 top-10 opacity-70" aria-hidden />
             <div className="fx-tilt relative">
               <div className="fx-bezel">

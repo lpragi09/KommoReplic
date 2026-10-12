@@ -226,3 +226,14 @@
 .fx-bezel.is-hot > .fx-core {
   background: linear-gradient(180deg, color-mix(in srgb, var(--aurora-1) 30%, var(--night-raised)), var(--night-raised) 70%);
 }
+
+/* entrada só com deslize, já visível: o navegador conta o conteúdo principal (LCP) no 1º quadro */
+.fx-slide {
+  animation: fx-slide 0.9s var(--ease-out) both;
+  animation-delay: calc(var(--d, 0) * 70ms);
+}
+@keyframes fx-slide {
+  from { transform: translate3d(0, 18px, 0); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .fx-slide { animation: none !important; } }
