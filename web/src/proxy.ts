@@ -4,6 +4,12 @@ import { createServerClient } from "@supabase/ssr";
 /* Renova a sessão do Supabase a cada pedido (o token expira em ~1h).
    Com o repositório falso não faz nada. Não decide acesso: isso é do RLS e das páginas. */
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  // landing e páginas legais são estáticas: não tocam no banco
+  if (pathname === "/" || pathname === "/termos" || pathname === "/privacidade") {
+    const logged = request.cookies.getAll().some((c) => c.name === "crm_session" || (c.name.startsWith("sb-") && c.name.includes("auth-token")));
+    return pathname === "/" && logged ? NextResponse.redirect(new URL("/app", request.url)) : NextResponse.next();
+  }
   if (process.env.NEXT_PUBLIC_DATA_BACKEND !== "supabase") return NextResponse.next();
 
   let response = NextResponse.next({ request });
