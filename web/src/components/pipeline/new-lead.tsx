@@ -43,7 +43,7 @@ export function NewLeadButton({ slug, pipelineId, stages, defaultStageId }: { sl
       trigger={<Button icon={<Plus className="size-4" aria-hidden />}>Novo lead</Button>}
     >
       <form onSubmit={submit} className="flex flex-col gap-3" data-editing>
-        <Field label="Nome do negócio" name="name" placeholder="Ex.: Clínica Vida — 2 implantes" autoFocus maxLength={200} />
+        <Field label="Nome do negócio" name="name" placeholder="Ex.: Clínica Vida — 2 implantes…" autoFocus maxLength={200} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Valor" name="price" adornment="R$" inputMode="decimal" placeholder="0,00" />
           <div className="flex flex-col gap-1">

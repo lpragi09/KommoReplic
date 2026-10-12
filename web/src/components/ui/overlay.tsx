@@ -31,7 +31,7 @@ export function Dialog({
         <D.Overlay className="fixed inset-0 z-40 bg-inverse-bg/50" />
         <D.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-bg shadow-pop",
+            "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-lg bg-bg shadow-pop",
             { sm: "max-w-[400px]", md: "max-w-[560px]", lg: "max-w-[720px]" }[size],
           )}
         >

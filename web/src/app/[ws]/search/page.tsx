@@ -24,7 +24,7 @@ export default async function SearchPage({ params, searchParams }: PageProps<"/[
             <label htmlFor="gq" className="sr-only">
               Buscar leads, contatos e empresas
             </label>
-            <input id="gq" name="q" defaultValue={q} autoFocus placeholder="Nome, telefone ou #número do lead" className="h-11 flex-1 bg-transparent text-md outline-none" />
+            <input id="gq" name="q" defaultValue={q} autoFocus autoComplete="off" placeholder="Nome, telefone ou #número do lead…" className="h-11 flex-1 bg-transparent text-md outline-none" />
           </form>
           {q.trim().length >= 2 && total === 0 && <EmptyState icon={Search} title="Nada encontrado" text={`Nenhum resultado para “${q}”.`} />}
           {q.trim().length < 2 && <p className="mt-4 text-sm text-muted">Digite pelo menos 2 letras e tecle Enter.</p>}

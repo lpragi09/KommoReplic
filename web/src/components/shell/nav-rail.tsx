@@ -93,11 +93,11 @@ export function NavRail({
           aria-current={on ? "page" : undefined}
           title={expanded ? undefined : it.label}
           className={cn(
-            "relative flex h-10 items-center gap-3 rounded-sm px-3 text-sm transition-colors duration-fast",
+            "relative flex h-11 items-center gap-3 rounded-sm px-3 text-sm transition-colors duration-fast",
             on ? "bg-nav-hover text-nav-text" : "text-nav-muted hover:bg-nav-hover hover:text-nav-text",
           )}
         >
-          {on && <span className="fx-glow absolute left-0 top-2 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
+          {on && <span className="fx-glow absolute left-0 top-2.5 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
           <it.icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
           <span className={cn(!expanded && "sr-only")}>{it.label}</span>
           {!!it.badge &&
@@ -139,7 +139,7 @@ export function NavRail({
             type="button"
             onClick={toggle}
             aria-expanded={expanded}
-            className="flex h-10 w-full items-center gap-3 rounded-sm px-3 text-sm text-nav-muted hover:bg-nav-hover hover:text-nav-text"
+            className="flex h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-nav-muted hover:bg-nav-hover hover:text-nav-text"
           >
             {expanded ? <ChevronsLeft className="size-5" aria-hidden /> : <ChevronsRight className="size-5" aria-hidden />}
             <span className={cn(!expanded && "sr-only")}>{expanded ? "Recolher menu" : "Expandir menu"}</span>

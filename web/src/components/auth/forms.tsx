@@ -33,7 +33,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
           {BRAND.name} · versão de desenvolvimento
         </p>
       </div>
-      <main className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10">
+      <main id="conteudo" className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10">
         <div className="fx-rise fx-glow mx-auto w-full max-w-sm rounded-lg bg-bg p-6 text-fg sm:p-8" style={{ "--d": 2 } as CSSProperties}>
           <h1 className="text-xl text-fg">{title}</h1>
           <p className="mt-1 text-base text-muted">{subtitle}</p>
@@ -70,7 +70,7 @@ export function SignInForm() {
     >
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
-        <Field label="Email" name="email" type="email" autoComplete="email" defaultValue={state.values?.email} required autoFocus />
+        <Field label="Email" name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={state.values?.email} required autoFocus />
         <Field label="Senha" name="password" type="password" autoComplete="current-password" required />
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Entrar
@@ -98,7 +98,7 @@ export function SignUpForm() {
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
         <Field label="Seu nome" name="name" autoComplete="name" defaultValue={state.values?.name} required autoFocus />
-        <Field label="Email de trabalho" name="email" type="email" autoComplete="email" defaultValue={state.values?.email} required />
+        <Field label="Email de trabalho" name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={state.values?.email} required />
         <Field label="Senha" name="password" type="password" autoComplete="new-password" hint="Pelo menos 8 caracteres" required minLength={8} />
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Criar conta

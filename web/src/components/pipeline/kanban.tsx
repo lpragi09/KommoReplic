@@ -263,9 +263,9 @@ function QuickAdd({ slug, pipelineId, stageId, onDone, onError }: { slug: string
   }
   return (
     <form onSubmit={submit} data-editing className="mb-2 flex flex-col gap-2 rounded-md border border-accent bg-bg p-3 shadow-card" aria-label="Adicionar lead">
-      <Field label="Nome do negócio" name="name" placeholder="Vazio vira “Lead #número”" autoFocus />
+      <Field label="Nome do negócio" name="name" placeholder="Vazio vira “Lead #número”…" autoFocus />
       <Field label="Valor" name="price" adornment="R$" inputMode="decimal" placeholder="0,00" />
-      <Field label="Contato" name="contactName" placeholder="Nome" />
+      <Field label="Contato" name="contactName" placeholder="Nome…" />
       <Field label="Telefone" name="contactPhone" type="tel" placeholder="+55 11 90000-0000" />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
@@ -396,6 +396,7 @@ function IncomingCard({ slug, item, linkTargets, onError }: { slug: string; item
   const router = useRouter();
   const [pending, start] = useTransition();
   const [linking, setLinking] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
   const [q, setQ] = useState("");
   const act = (fn: () => Promise<{ ok: boolean; error?: string; data?: unknown }>, after?: (d: unknown) => void) =>
     start(async () => {
@@ -427,14 +428,27 @@ function IncomingCard({ slug, item, linkTargets, onError }: { slug: string; item
         <IconButton label={`Vincular ${item.who} a um lead existente`} tone="accent" size={28} disabled={pending} aria-expanded={linking} onClick={() => setLinking((v) => !v)}>
           <Link2 className="size-4" />
         </IconButton>
-        <IconButton label={`Recusar ${item.who}`} tone="danger" size={28} disabled={pending} onClick={() => act(() => declineIncomingAction(slug, item.id))}>
+        <IconButton label={`Recusar ${item.who}`} tone="danger" size={28} disabled={pending} aria-pressed={confirmDecline} onClick={() => setConfirmDecline((v) => !v)}>
           <Trash2 className="size-4" />
         </IconButton>
       </div>
+      {confirmDecline && (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-sm bg-danger-soft px-2 py-1.5 text-sm text-danger" role="alert">
+          Recusar e fechar a conversa?
+          <span className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setConfirmDecline(false)}>
+              Não
+            </Button>
+            <Button size="sm" variant="danger" loading={pending} onClick={() => act(() => declineIncomingAction(slug, item.id))}>
+              Recusar
+            </Button>
+          </span>
+        </div>
+      )}
       {linking && (
         <div className="mt-2 border-t border-border pt-2" data-editing>
           <div className="flex items-end gap-1">
-            <Field label="Buscar lead" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou #número" autoFocus className="flex-1" />
+            <Field label="Buscar lead" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome ou #número…" autoFocus className="flex-1" />
             <IconButton label="Fechar busca" size={36} onClick={() => setLinking(false)}>
               <X className="size-4" />
             </IconButton>

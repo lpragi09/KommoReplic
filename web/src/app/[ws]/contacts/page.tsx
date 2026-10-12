@@ -18,12 +18,12 @@ export default async function ContactsPage({ params, searchParams }: PageProps<"
     <>
       <PageHeader title="Contatos" actions={<NewContactButton slug={slug} />}>
         <ListsTabs slug={slug} active="contacts" />
-        <form role="search" className="flex w-full items-center gap-2 rounded-sm border border-border-input px-2 sm:w-64">
+        <form role="search" className="flex w-full items-center gap-2 rounded-sm border border-border-input px-2 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30 sm:w-64">
           <Search className="size-4 text-muted" aria-hidden />
           <label htmlFor="cq" className="sr-only">
             Buscar contatos
           </label>
-          <input id="cq" name="q" defaultValue={q} placeholder="Nome ou telefone" className="h-9 flex-1 bg-transparent text-base outline-none" />
+          <input id="cq" name="q" defaultValue={q} autoComplete="off" placeholder="Nome ou telefone…" className="h-9 flex-1 bg-transparent text-base outline-none" />
         </form>
       </PageHeader>
       {contacts.length === 0 ? (

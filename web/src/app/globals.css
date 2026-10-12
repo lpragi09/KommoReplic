@@ -1,12 +1,26 @@
 @import "./tokens.css";
 @import "./effects.css";
 
-/* next/font gera um nome de família próprio; ligamos a variável dele aos tokens */
+/* next/font gera nomes de família próprios; ligamos as variáveis deles aos tokens */
 :root {
-  --font-body: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: var(--font-geist), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
+}
+
+@layer base {
+  /* títulos sem palavra órfã; parágrafos com quebra mais bonita */
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  /* dinheiro e contagens alinham em coluna */
+  .tabular-nums, time { font-variant-numeric: tabular-nums; }
+  a, button, input, select, textarea, label { touch-action: manipulation; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }

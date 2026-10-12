@@ -175,7 +175,7 @@ export function TaskItem({ slug, t }: { slug: string; t: Extract<FeedItem, { typ
             autoFocus
             value={result}
             onChange={(e) => setResult(e.target.value)}
-            placeholder="O que aconteceu? (opcional)"
+            placeholder="O que aconteceu? (opcional)…"
             className="h-8 flex-1 rounded-sm border border-border-input px-2 text-base outline-none focus:border-focus"
           />
           <div className="flex gap-2">

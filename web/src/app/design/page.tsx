@@ -55,7 +55,7 @@ export default function DesignPage() {
             ]}
           />
           <div className="ml-auto flex items-center gap-2">
-            <Field label="Buscar leads" hideLabel placeholder="Buscar" adornment={<Search className="size-4" />} className="w-56" />
+            <Field label="Buscar leads" hideLabel placeholder="Buscar…" adornment={<Search className="size-4" />} className="w-56" />
             <Button variant="secondary" icon={<Filter className="size-4" aria-hidden />}>
               Filtros <Badge tone="neutral">2</Badge>
             </Button>
@@ -91,7 +91,7 @@ export default function DesignPage() {
 
           <Section title="Campos">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Nome do lead" placeholder="Ex.: Clínica Vida" />
+              <Field label="Nome do lead" placeholder="Ex.: Clínica Vida…" />
               <Field label="Valor" adornment="R$" inputMode="decimal" defaultValue="12.500,00" />
               <Field label="Telefone" error="Número inválido — use DDD + número" defaultValue="11 9999" />
               <Field label="Email" hint="Usado para convites" disabled defaultValue="ana@empresa.com.br" />
@@ -179,7 +179,7 @@ export default function DesignPage() {
                   </>
                 }
               >
-                <Field label="Motivo" placeholder="Ex.: Preço" />
+                <Field label="Motivo" placeholder="Ex.: Preço…" />
               </Dialog>
               <Button variant="secondary" onClick={() => toast.show({ text: "Lead excluído", tone: "info", action: "Desfazer" })}>
                 Aviso com desfazer

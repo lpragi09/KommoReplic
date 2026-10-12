@@ -51,7 +51,7 @@ export function NewContactButton({ slug }: { slug: string }) {
       <form onSubmit={submit} className="flex flex-col gap-3" data-editing>
         <Field label="Nome" name="name" required autoFocus maxLength={120} />
         <Field label="Telefone" name="phone" type="tel" placeholder="+55 11 90000-0000" maxLength={30} />
-        <Field label="Email" name="email" type="email" maxLength={200} />
+        <Field label="Email" name="email" type="email" maxLength={200} spellCheck={false} autoComplete="off" />
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
