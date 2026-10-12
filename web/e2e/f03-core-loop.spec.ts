@@ -68,6 +68,9 @@ test.describe("F03/F04/F05 do chat do site até o ganho", () => {
     const tab2 = await context.newPage();
     await page.goto(`/${slug}/leads`);
     await tab2.goto(`/${slug}/leads`);
+    // só clica depois que a página "acordou" (hidratação), senão o clique se perde
+    await page.waitForLoadState("networkidle");
+    await tab2.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Aceitar Duplo como lead" }).click();
     await expect(page).toHaveURL(/\/leads\/[0-9a-f-]{36}/);
     await tab2.getByRole("button", { name: "Aceitar Duplo como lead" }).click();

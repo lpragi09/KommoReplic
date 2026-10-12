@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SearchX } from "lucide-react";
+import { SearchX } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/bits";
 
 export default function NotFound() {

@@ -19,7 +19,7 @@ import {
   Search,
   Settings,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
@@ -94,11 +94,11 @@ export function NavRail({
           title={expanded ? undefined : it.label}
           className={cn(
             "relative flex h-11 items-center gap-3 rounded-sm px-3 text-sm transition-colors duration-fast",
-            on ? "bg-nav-hover text-nav-text" : "text-nav-muted hover:bg-nav-hover hover:text-nav-text",
+            on ? "bg-nav-active/15 text-nav-text shadow-[inset_0_0_0_1px_rgba(91,138,246,.25)]" : "text-nav-muted hover:bg-nav-hover hover:text-nav-text",
           )}
         >
-          {on && <span className="fx-glow absolute left-0 top-2.5 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
-          <it.icon className="size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+          {on && <span className="fx-glow absolute -left-2 top-2.5 h-6 w-[3px] rounded-r-xs bg-nav-active" aria-hidden />}
+          <it.icon className={cn("size-5 shrink-0", on && "text-stage-3")} weight={on ? "fill" : "regular"} aria-hidden />
           <span className={cn(!expanded && "sr-only")}>{it.label}</span>
           {!!it.badge &&
             (expanded ? (
@@ -118,7 +118,7 @@ export function NavRail({
     <nav
       aria-label="Principal"
       className={cn(
-        "hidden h-full shrink-0 flex-col bg-nav-bg py-3 text-nav-text transition-[width] duration-base ease-out md:flex",
+        "hidden h-full shrink-0 flex-col border-r border-nav-hover bg-[linear-gradient(180deg,var(--nav-bg)_0%,var(--night-raised)_100%)] py-3 text-nav-text transition-[width] duration-base ease-out md:flex",
         expanded ? "w-[var(--nav-expanded)]" : "w-[var(--nav-collapsed)]",
       )}
     >
@@ -196,7 +196,7 @@ export function MobileNav({ slug }: { slug: string }) {
             aria-current={on ? "page" : undefined}
             className={cn("flex flex-1 flex-col items-center justify-center gap-0.5 text-xs", on ? "text-nav-text" : "text-nav-muted")}
           >
-            <it.icon className={cn("size-5", on && "text-stage-3")} strokeWidth={1.75} aria-hidden />
+            <it.icon className={cn("size-5", on && "text-stage-3")} weight={on ? "fill" : "regular"} aria-hidden />
             {it.label}
           </Link>
         );

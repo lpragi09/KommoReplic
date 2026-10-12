@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 import type { Subscription } from "@/data/types";
 import { deleteAccountAction, openBillingPortalAction, startCheckoutAction } from "@/app/actions";
 import { cn } from "@/lib/cn";

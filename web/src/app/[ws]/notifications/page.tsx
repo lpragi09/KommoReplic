@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlarmClock, Bell, MessageSquare, UserPlus } from "lucide-react";
+import { AlarmClock, Bell, MessageSquare, UserPlus } from "@/components/ui/icons";
 import { getBoard, listConversations, listTasks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, when } from "@/lib/format";

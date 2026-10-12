@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Contact, Search } from "lucide-react";
+import { Contact, Search } from "@/components/ui/icons";
 import { listContacts } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { phone } from "@/lib/format";

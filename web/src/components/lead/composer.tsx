@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
-import { AlertTriangle, FileText, Send } from "lucide-react";
+import { AlertTriangle, FileText, Send } from "@/components/ui/icons";
 import { addNoteAction, createTaskAction, sendMessageAction } from "@/app/actions";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";

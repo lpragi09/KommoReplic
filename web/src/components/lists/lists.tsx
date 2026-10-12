@@ -3,7 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/ui/icons";
 import { createContactAction } from "@/app/actions";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";

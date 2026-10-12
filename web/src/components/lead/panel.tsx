@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { ArrowLeft, Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2, Trophy, XCircle } from "lucide-react";
+import { ArrowLeft, Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2, Trophy, XCircle } from "@/components/ui/icons";
 import type { Company, Contact, LeadCard, LossReason, Stage } from "@/data/types";
 import { deleteLeadAction, moveLeadAction, updateLeadAction } from "@/app/actions";
 import { leadTitle, money, moneyInput, phone } from "@/lib/format";

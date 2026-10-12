@@ -1,6 +1,6 @@
 /* Componentes sem estado: servem tanto em componentes de servidor quanto de cliente. */
 import type { ReactNode } from "react";
-import { X, type LucideIcon } from "lucide-react";
+import { X, type LucideIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export function Badge({ children, tone = "accent", className }: { children?: ReactNode; tone?: "accent" | "neutral" | "dot"; className?: string }) {
@@ -53,7 +53,7 @@ export function Avatar({ name, size = 32, badge }: { name: string; size?: 20 | 2
 export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-      <Icon className="size-8 text-muted" aria-hidden strokeWidth={1.5} />
+      <Icon className="size-9 text-muted" weight="light" aria-hidden />
       <p className="text-md text-fg">{title}</p>
       <p className="max-w-xs text-sm text-muted">{text}</p>
       {action && <div className="mt-2">{action}</div>}

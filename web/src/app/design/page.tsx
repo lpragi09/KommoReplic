@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Filter, Inbox, Plus, Search, TrendingDown, TrendingUp } from "lucide-react";
+import { Filter, Inbox, Plus, Search, TrendingDown, TrendingUp } from "@/components/ui/icons";
 import { Composer, ConversationList, MessageBubble, type Conv, type Msg } from "@/components/chat/chat";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
