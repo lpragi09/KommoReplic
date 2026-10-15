@@ -224,3 +224,75 @@
   to { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .fx-slide { animation: none !important; } }
+
+/* =====================================================================
+   Vida nas seções escuras — tudo ESTÁTICO (pinta uma vez, rolar não custa):
+   brilhos em radial-gradient (sem filter: blur), molduras com luz no topo,
+   blocos de ícone com gradiente. Só o hover anima, e só transform.
+   ===================================================================== */
+
+/* atmosfera de fundo de uma seção: dois focos de luz azul nas posições --g1 / --g2 */
+.fx-atmos {
+  position: relative;
+  isolation: isolate;
+}
+.fx-atmos::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 45% at var(--g1, 10% 20%), color-mix(in srgb, var(--aurora-1) 42%, transparent), transparent 72%),
+    radial-gradient(45% 50% at var(--g2, 90% 80%), color-mix(in srgb, var(--aurora-2) 22%, transparent), transparent 72%);
+}
+/* linha de luz entre seções */
+.fx-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--aurora-2) 55%, transparent), transparent);
+}
+
+/* cartão com luz azul vindo do topo */
+.fx-lit {
+  position: relative;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(120% 70% at 50% -10%, color-mix(in srgb, var(--aurora-1) 34%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--night-raised), color-mix(in srgb, var(--night-raised) 60%, var(--night)));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--on-night) 12%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--aurora-2) 16%, transparent),
+    0 30px 60px -30px rgba(0, 0, 0, 0.7);
+  transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
+}
+.fx-lit:hover {
+  transform: translate3d(0, -4px, 0);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--on-night) 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--aurora-2) 34%, transparent),
+    0 36px 70px -30px color-mix(in srgb, var(--aurora-1) 55%, transparent);
+}
+
+/* bloco de ícone: gradiente azul com brilho */
+.fx-tile {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: #fff;
+  background: linear-gradient(140deg, var(--aurora-2), var(--aurora-1) 60%, var(--aurora-3));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 10px 24px -10px color-mix(in srgb, var(--aurora-2) 80%, transparent);
+}
+
+/* número grande com gradiente (passos) */
+.fx-num {
+  background: linear-gradient(180deg, var(--on-night), color-mix(in srgb, var(--aurora-2) 70%, transparent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-lit, .fx-lit:hover { transition: none; transform: none; }
+}
