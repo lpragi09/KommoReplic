@@ -30,10 +30,10 @@
 .fx-aurora::after {
   inset: 0;
   background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--on-night) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--on-night) 6%, transparent) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(70% 60% at 50% 40%, #000 30%, transparent 80%);
+    radial-gradient(70% 60% at 50% 40%, transparent 30%, var(--night) 85%),
+    linear-gradient(to right, color-mix(in srgb, var(--on-night) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--on-night) 5%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
 }
 
 /* ---------- palavra gigante atrás do conteúdo (tom só um pouco mais claro que o fundo) ---------- */
@@ -165,16 +165,12 @@
   z-index: 0;
   pointer-events: none;
   border-radius: 999px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--aurora-1) 55%, transparent), transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--aurora-1) 36%, transparent), transparent);
 }
 
 /* tela do produto inclinada em perspectiva, endireita no hover */
-.fx-tilt {
-  transform: perspective(1600px) rotateX(9deg) scale(0.97);
-  transform-origin: 50% 0%;
-  transition: transform var(--duration-slow) var(--ease-out);
-}
-.fx-tilt:hover { transform: perspective(1600px) rotateX(2deg) scale(1); }
+/* plana de propósito: inclinação 3D fazia o Firefox redesenhar a imagem inteira a cada rolagem */
+.fx-tilt { transform: none; }
 
 /* faixa que corre (duas cópias lado a lado, desloca 50%) */
 .fx-marquee { display: flex; width: max-content; animation: fx-marquee 40s linear infinite; }
@@ -262,7 +258,7 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--on-night) 12%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--aurora-2) 16%, transparent),
-    0 30px 60px -30px rgba(0, 0, 0, 0.7);
+    0 12px 24px -14px rgba(0, 0, 0, 0.7);
   transition: transform var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out);
 }
 .fx-lit:hover {
@@ -270,7 +266,7 @@
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--on-night) 14%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--aurora-2) 34%, transparent),
-    0 36px 70px -30px color-mix(in srgb, var(--aurora-1) 55%, transparent);
+    0 14px 28px -14px color-mix(in srgb, var(--aurora-1) 55%, transparent);
 }
 
 /* bloco de ícone: gradiente azul com brilho */

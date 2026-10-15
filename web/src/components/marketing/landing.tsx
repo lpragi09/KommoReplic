@@ -248,7 +248,7 @@ export function Landing() {
       <header className="fx-aurora relative min-h-[100dvh] pt-32 md:pt-40">
         <span
           aria-hidden
-          className="fx-backword bottom-[-3vw] left-1/2 -translate-x-1/2 lowercase opacity-70"
+          className="fx-backword bottom-[-3vw] left-1/2 -translate-x-1/2 lowercase [color:color-mix(in_srgb,var(--night-raised)_70%,var(--night))]"
         >
           {BRAND.name}
         </span>
@@ -300,7 +300,7 @@ export function Landing() {
             style={d(3)}
           >
             <div
-              className="fx-orb -inset-x-10 -bottom-10 top-10 opacity-70"
+              className="fx-orb -inset-x-10 -bottom-10 top-10"
               aria-hidden
             />
             <div className="fx-tilt relative">
@@ -518,7 +518,7 @@ export function Landing() {
                 Aceite e o cartão do lead já abre com a conversa e o campo de
                 resposta.
               </p>
-              <div className="mt-8 overflow-hidden rounded-lg shadow-[0_0_0_1px_color-mix(in_srgb,var(--aurora-2)_25%,transparent),0_30px_60px_-30px_rgba(0,0,0,.8)]">
+              <div className="mt-8 overflow-hidden rounded-lg shadow-[0_0_0_1px_color-mix(in_srgb,var(--aurora-2)_25%,transparent),0_12px_24px_-14px_rgba(0,0,0,.8)]">
                 <Image
                   src="/produto-lead.png"
                   alt="Cartão do lead com a conversa do cliente, tarefa e histórico"
@@ -753,7 +753,7 @@ export function Landing() {
           className="relative overflow-hidden px-4 pb-32 pt-12 sm:px-6"
         >
           <div
-            className="fx-orb left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 opacity-60"
+            className="fx-orb left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2"
             aria-hidden
           />
           <div className="fx-reveal relative z-10 mx-auto max-w-4xl text-center">
