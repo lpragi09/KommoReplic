@@ -18,7 +18,7 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   return (
     <>
       <NavRail slug={slug} userName={user.name} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
-      <LiveRefresh wsId={ws.id} />
+      <LiveRefresh wsId={ws.id} slug={ws.slug} />
       <NavTracker />
     </>
   );

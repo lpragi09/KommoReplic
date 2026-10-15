@@ -1,9 +1,9 @@
-import { StubPage } from "@/components/shell/page-header";
+import { redirect } from "next/navigation";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
-export const metadata = { title: "Bots" };
-
-export default function Page() {
-  return <StubPage title="Bots" screen="S21" text="Editor visual de bots de conversa." />;
+/* Os bots viraram "robôs" dentro de Automações (mesmo editor de passos). */
+export default async function Page({ params }: PageProps<"/[ws]/automations/bots">) {
+  const { ws } = await params;
+  redirect(`/${ws}/automations`);
 }

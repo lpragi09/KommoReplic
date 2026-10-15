@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Check, CheckCheck, Eye, Fingerprint, Inbox, Lightning, MessageCircle, Radio, Sparkle, Workflow } from "@/components/ui/icons";
+import { ArrowUpRight, Bot, Check, CheckCheck, Eye, Fingerprint, Inbox, Lightning, MessageCircle, Radio, Sparkle, Workflow } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 import { IslandNav } from "./island-nav";
@@ -34,7 +34,7 @@ const faq = [
   { q: "Meus dados ficam onde?", a: "Num banco de dados em São Paulo, com acesso separado por empresa. Você pode exportar ou apagar tudo quando quiser." },
 ];
 
-const ticker = ["Chat do site", "Funil Kanban", "Leads de entrada", "Tarefas com prazo", "Painel da equipe", "WhatsApp · em breve", "Instagram · em breve", "Messenger · em breve"];
+const ticker = ["Chat do site", "Funil Kanban", "Leads de entrada", "Robôs de automação", "Tarefas com prazo", "Disparos", "Relatórios", "Chat da equipe", "WhatsApp · em breve", "Instagram · em breve", "Messenger · em breve"];
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
@@ -219,6 +219,25 @@ export function Landing() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </article>
+            <article className="fx-reveal fx-bezel md:col-span-12">
+              <div className="fx-core grid gap-8 p-8 md:grid-cols-[1fr_1.1fr] md:items-center">
+                <div>
+                  <Bot className="size-7 text-aurora-2" weight="light" aria-hidden />
+                  <h3 className="mt-6 text-xl tracking-tight text-on-night">Robôs que respondem e organizam sozinhos</h3>
+                  <p className="mt-2 max-w-[52ch] text-base text-on-night-muted">
+                    Lead caiu na primeira etapa? O robô manda as boas-vindas na hora, cria a tarefa e, se a proposta parar, cobra depois de 2 dias. Por etapa do funil, por palavra-chave ou no primeiro contato.
+                  </p>
+                </div>
+                {/* fluxo ilustrativo, feito em CSS */}
+                <ol className="flex flex-col items-start gap-2 text-sm" aria-label="Exemplo de robô">
+                  {["Lead entra em “Primeiro contato”", "Envia: “Oi, Marina! Já já te respondemos.”", "Cria tarefa: Responder Marina", "Espera 2 dias → cobra a proposta"].map((t, i) => (
+                    <li key={t} className={cn("rounded-pill px-4 py-2", i === 0 ? "bg-on-night font-medium text-night" : "bg-[color-mix(in_srgb,var(--on-night)_8%,transparent)] text-on-night")} style={{ marginLeft: `${i * 1.25}rem` }}>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
               </div>
             </article>
             <div className="fx-reveal md:col-span-12">

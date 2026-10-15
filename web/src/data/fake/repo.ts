@@ -314,6 +314,8 @@ function eventText(e: LeadEvent): string {
       return `${userName(e.actorUserId)} concluiu uma tarefa`;
     case "contact_linked":
       return `${userName(e.actorUserId)} vinculou um contato`;
+    case "automation_ran":
+      return `Robô “${String(e.after?.robot ?? "")}”: ${String(e.after?.text ?? "")}`;
   }
 }
 
@@ -552,7 +554,7 @@ export async function getWebchat(publicKey: string) {
   const ch = db.channels.find((c) => c.kind === "webchat" && c.publicKey === publicKey && c.status === "connected");
   if (!ch) throw new DomainError("not_found");
   const ws = db.workspaces.find((w) => w.id === ch.workspaceId)!;
-  return { channelId: ch.id, workspaceName: ws.name };
+  return { channelId: ch.id, workspaceId: ws.id, workspaceName: ws.name };
 }
 
 export async function visitorThread(publicKey: string, visitorId: string) {
@@ -564,14 +566,15 @@ export async function visitorThread(publicKey: string, visitorId: string) {
 }
 
 /** Mesmo caminho que o webhook da Meta vai usar: acha/cria contato → conversa → mensagem → lead de entrada. */
-export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string) {
+export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean } | null> {
   const ch = db.channels.find((c) => c.id === channelId);
   if (!ch) throw new DomainError("not_found");
   const text = body.trim().slice(0, 4000);
   if (!text) throw new DomainError("invalid");
 
   let conv = db.conversations.find((c) => c.channelId === ch.id && c.externalThreadId === externalThreadId);
-  if (conv && db.messages.some((m) => m.conversationId === conv!.id && m.clientId === externalId)) return; // dedup
+  if (conv && db.messages.some((m) => m.conversationId === conv!.id && m.clientId === externalId)) return null; // dedup
+  const isNew = !conv;
   if (!conv) {
     const idKind = ch.kind === "messenger" ? "webchat" : ch.kind;
     let contact = db.contacts.find((c) => c.workspaceId === ch.workspaceId && c.identities.some((i) => i.kind === idKind && i.value === externalThreadId));
@@ -619,12 +622,12 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
   if (conv.leadId) {
     const l = db.leads.find((x) => x.id === conv!.leadId);
     if (l) l.lastActivityAt = now();
-    return;
+    return { conversationId: conv.id, isNew };
   }
   const pending = db.incoming.find((i) => i.conversationId === conv!.id && i.status === "pending");
   if (pending) {
     pending.preview = text; // um card por conversa: atualiza a prévia
-    return;
+    return { conversationId: conv.id, isNew };
   }
   const contact = db.contacts.find((c) => c.id === conv!.contactId)!;
   db.incoming.push({
@@ -642,6 +645,7 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
     resolvedBy: null,
     createdAt: now(),
   });
+  return { conversationId: conv.id, isNew };
 }
 
 // ---------------------------------------------------------------------------
@@ -753,3 +757,6 @@ export async function getDashboard(wsId: ID, f: { from: string; owner?: ID }) {
     tasksDue: db.tasks.filter((t) => t.workspaceId === wsId && !t.completedAt && (!f.owner || t.responsibleUserId === f.owner)).length,
   };
 }
+
+export * from "./robots";
+export * from "./extras";

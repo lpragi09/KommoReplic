@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { tickRobotsAction } from "@/app/actions";
 
 const editing = () => !!document.querySelector("[data-editing]");
 
@@ -10,8 +11,16 @@ const editing = () => !!document.querySelector("[data-editing]");
    - Supabase: assina o canal privado ws:{workspace} (o banco avisa por trigger) e recarrega os dados
      do servidor; quem decide o que aparece continua sendo o RLS.
    - Repositório falso: recarrega a cada 4s com a aba visível. */
-export function LiveRefresh({ wsId, ms = 4000 }: { wsId: string; ms?: number }) {
+export function LiveRefresh({ wsId, slug, ms = 4000 }: { wsId: string; slug: string; ms?: number }) {
   const router = useRouter();
+
+  // robôs com "Esperar": enquanto alguém da equipe está com o painel aberto, continua os que venceram
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") void tickRobotsAction(slug).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [slug]);
 
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DATA_BACKEND === "supabase") {

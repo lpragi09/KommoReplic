@@ -77,3 +77,23 @@ export const Users = icon(P.UsersThree);
 export const Workflow = icon(P.FlowArrow);
 export const X = icon(P.X, "bold");
 export const XCircle = icon(P.XCircle);
+
+/* robôs e canais */
+export const ChevronDown = icon(P.CaretDown);
+export const ChevronUp = icon(P.CaretUp);
+export const Copy = icon(P.Copy);
+export const Globe = icon(P.Globe);
+export const Hourglass = icon(P.HourglassMedium);
+export const InstagramLogo = icon(P.InstagramLogo);
+export const MessengerLogo = icon(P.MessengerLogo);
+export const Play = icon(P.Play, "fill");
+export const TagIcon = icon(P.Tag);
+export const WhatsappLogo = icon(P.WhatsappLogo);
+export const ChatText = icon(P.ChatText);
+export const Megaphone = icon(P.Megaphone);
+export const SlidersHorizontal = icon(P.SlidersHorizontal);
+export const ChartPie = icon(P.ChartPieSlice);
+export const Funnel = icon(P.Funnel);
+export const UserGear = icon(P.UserGear);
+export const Textbox = icon(P.Textbox);
+export const At = icon(P.At);

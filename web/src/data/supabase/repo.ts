@@ -445,6 +445,8 @@ export async function getLead(wsId: ID, id: ID) {
         return `${userName(e.actor_user_id)} concluiu uma tarefa`;
       case "contact_linked":
         return `${userName(e.actor_user_id)} vinculou um contato`;
+      case "automation_ran":
+        return `Robô “${a.robot ?? ""}”: ${a.text ?? ""}`;
       default:
         return e.kind;
     }
@@ -590,10 +592,10 @@ export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body:
 // chat do site (público): só pelo servidor, com a chave secreta
 // ---------------------------------------------------------------------------
 export async function getWebchat(publicKey: string) {
-  const { data } = await adminClient().from("channels").select("id, workspaces(name)").eq("kind", "webchat").eq("public_key", publicKey).eq("status", "connected").maybeSingle();
+  const { data } = await adminClient().from("channels").select("id, workspace_id, workspaces(name)").eq("kind", "webchat").eq("public_key", publicKey).eq("status", "connected").maybeSingle();
   if (!data) throw new DomainError("not_found");
   const ws = data.workspaces as unknown as { name: string } | null;
-  return { channelId: data.id as string, workspaceName: ws?.name ?? "" };
+  return { channelId: data.id as string, workspaceId: data.workspace_id as string, workspaceName: ws?.name ?? "" };
 }
 
 export async function visitorThread(publicKey: string, visitorId: string): Promise<Message[]> {
@@ -601,8 +603,13 @@ export async function visitorThread(publicKey: string, visitorId: string): Promi
   return rows.map((m) => ({ id: m.id, conversationId: "", direction: m.direction, body: m.body, senderUserId: null, clientId: null, status: "received", sentAt: isoReq(m.sent_at) }));
 }
 
-export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string) {
-  check(await adminClient().rpc("receive_inbound", { p_channel: channelId, p_thread: externalThreadId, p_sender_name: senderName, p_body: body, p_external_id: externalId }));
+export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean } | null> {
+  const a = adminClient();
+  const msgId = check(await a.rpc("receive_inbound", { p_channel: channelId, p_thread: externalThreadId, p_sender_name: senderName, p_body: body, p_external_id: externalId })) as string | null;
+  if (!msgId) return null; // repetida
+  const m = check(await a.from("messages").select("conversation_id").eq("id", msgId).single());
+  const { count } = await a.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).eq("direction", "in");
+  return { conversationId: m.conversation_id, isNew: count === 1 };
 }
 
 // ---------------------------------------------------------------------------
@@ -727,3 +734,6 @@ export async function getDashboard(wsId: ID, f: { from: string; owner?: ID }) {
     tasksDue: tasks.count ?? 0,
   };
 }
+
+export * from "./robots";
+export * from "./extras";

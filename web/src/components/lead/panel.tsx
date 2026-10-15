@@ -4,9 +4,31 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { Building2, Mail, MoreHorizontal, Pencil, Phone, Trash2, Trophy, XCircle } from "@/components/ui/icons";
-import type { Company, Contact, LeadCard, LossReason, Stage } from "@/data/types";
-import { deleteLeadAction, moveLeadAction, updateLeadAction } from "@/app/actions";
+import {
+  Building2,
+  Mail,
+  MoreHorizontal,
+  Pencil,
+  Phone,
+  Trash2,
+  Trophy,
+  XCircle,
+} from "@/components/ui/icons";
+import type {
+  Company,
+  Contact,
+  CustomField,
+  FieldValue,
+  LeadCard,
+  LossReason,
+  Stage,
+} from "@/data/types";
+import { CustomFieldInput } from "./custom-field";
+import {
+  deleteLeadAction,
+  moveLeadAction,
+  updateLeadAction,
+} from "@/app/actions";
 import { leadTitle, money, moneyInput, phone } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Avatar, Tag } from "@/components/ui/bits";
@@ -26,9 +48,22 @@ type Props = {
   users: { id: string; name: string }[];
   lossReasons: LossReason[];
   lossReasonName: string | null;
+  fields?: CustomField[];
+  custom?: Record<string, FieldValue>;
 };
 
-export function LeadPanel({ slug, lead, stages, contacts, company, users, lossReasons, lossReasonName }: Props) {
+export function LeadPanel({
+  slug,
+  lead,
+  stages,
+  contacts,
+  company,
+  users,
+  lossReasons,
+  lossReasonName,
+  fields = [],
+  custom = {},
+}: Props) {
   const toast = useToast();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -45,16 +80,38 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
       const r = await p;
       if (!r.ok) toast.show({ text: r.error ?? "Erro", tone: "error" });
     });
-  const move = (stageId: string, reason?: string) => run(moveLeadAction(slug, lead.id, stageId, reason));
-  const patch = (p: Parameters<typeof updateLeadAction>[2]) => run(updateLeadAction(slug, lead.id, p));
+  const move = (stageId: string, reason?: string) =>
+    run(moveLeadAction(slug, lead.id, stageId, reason));
+  const patch = (p: Parameters<typeof updateLeadAction>[2]) =>
+    run(updateLeadAction(slug, lead.id, p));
 
   return (
-    <aside aria-label="Dados do lead" className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-border bg-bg lg:w-[var(--entity-panel)] lg:border-r">
+    <aside
+      aria-label="Dados do lead"
+      className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-border bg-bg lg:w-[var(--entity-panel)] lg:border-r"
+    >
       {stage.kind !== "open" && (
-        <div className={cn("flex items-center gap-2 px-4 py-2 text-sm font-medium", stage.kind === "won" ? "bg-success-soft text-success" : "bg-danger-soft text-danger")}>
-          {stage.kind === "won" ? <Trophy className="size-4" aria-hidden /> : <XCircle className="size-4" aria-hidden />}
-          {stage.kind === "won" ? "Negócio ganho" : `Negócio perdido${lossReasonName ? ` · ${lossReasonName}` : ""}`}
-          <button className="ml-auto text-xs underline" onClick={() => move(open[0].id)} disabled={pending}>
+        <div
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-medium",
+            stage.kind === "won"
+              ? "bg-success-soft text-success"
+              : "bg-danger-soft text-danger",
+          )}
+        >
+          {stage.kind === "won" ? (
+            <Trophy className="size-4" aria-hidden />
+          ) : (
+            <XCircle className="size-4" aria-hidden />
+          )}
+          {stage.kind === "won"
+            ? "Negócio ganho"
+            : `Negócio perdido${lossReasonName ? ` · ${lossReasonName}` : ""}`}
+          <button
+            className="ml-auto text-xs underline"
+            onClick={() => move(open[0].id)}
+            disabled={pending}
+          >
             Reabrir
           </button>
         </div>
@@ -63,7 +120,14 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
       <div className="flex items-start gap-2 px-4 pt-4">
         <BackButton fallback={`/${slug}/leads`} className="-ml-2" />
         <div className="min-w-0 flex-1">
-          <InlineText label="Nome do lead" value={lead.name} placeholder={leadTitle(lead)} display={leadTitle(lead)} onSave={(v) => patch({ name: v })} big />
+          <InlineText
+            label="Nome do lead"
+            value={lead.name}
+            placeholder={leadTitle(lead)}
+            display={leadTitle(lead)}
+            onSave={(v) => patch({ name: v })}
+            big
+          />
           <p className="text-xs text-muted">#{lead.number}</p>
         </div>
         <DropdownMenu.Root>
@@ -73,7 +137,11 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
             </IconButton>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
-            <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-44 rounded-md border border-border bg-bg p-1 shadow-pop">
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={4}
+              className="z-50 min-w-44 rounded-md border border-border bg-bg p-1 shadow-pop"
+            >
               <DropdownMenu.Item
                 onSelect={() => setConfirmDelete(true)}
                 className="flex h-8 cursor-pointer items-center gap-2 rounded-sm px-2 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft"
@@ -87,7 +155,11 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
 
       {/* seletor de etapa */}
       <div className="px-4 pt-3">
-        <div role="radiogroup" aria-label="Etapa do funil" className="flex gap-0.5">
+        <div
+          role="radiogroup"
+          aria-label="Etapa do funil"
+          className="flex gap-0.5"
+        >
           {open.map((s, i) => {
             const on = s.id === lead.stageId;
             const passed = stage.kind !== "open" ? true : i <= idx;
@@ -99,7 +171,11 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
                 title={s.name}
                 disabled={pending}
                 onClick={() => move(s.id)}
-                className={cn("h-2 flex-1 rounded-pill transition-opacity first:rounded-l-pill", passed ? stageBar[s.color] : "bg-canvas", !on && "opacity-80 hover:opacity-100")}
+                className={cn(
+                  "h-2 flex-1 rounded-pill transition-opacity first:rounded-l-pill",
+                  passed ? stageBar[s.color] : "bg-canvas",
+                  !on && "opacity-80 hover:opacity-100",
+                )}
               >
                 <span className="sr-only">{s.name}</span>
               </button>
@@ -111,10 +187,24 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
         </p>
         {stage.kind === "open" && (
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <Button size="sm" variant="secondary" className="text-success" icon={<Trophy className="size-4" aria-hidden />} onClick={() => move(won.id)} disabled={pending}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-success"
+              icon={<Trophy className="size-4" aria-hidden />}
+              onClick={() => move(won.id)}
+              disabled={pending}
+            >
               Ganho
             </Button>
-            <Button size="sm" variant="secondary" className="text-danger" icon={<XCircle className="size-4" aria-hidden />} onClick={() => setAskLost(true)} disabled={pending}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-danger"
+              icon={<XCircle className="size-4" aria-hidden />}
+              onClick={() => setAskLost(true)}
+              disabled={pending}
+            >
               Perdido
             </Button>
           </div>
@@ -128,35 +218,80 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
               value: "main",
               label: "Principal",
               content: (
-                <dl className="flex flex-col divide-y divide-border">
-                  <Row label="Valor">
-                    <InlineText label="Valor" value={moneyInput(lead.priceCents)} display={money(lead.priceCents)} inputMode="decimal" prefix="R$" onSave={(v) => patch({ price: v })} />
-                  </Row>
-                  <Row label="Responsável">
-                    <label className="sr-only" htmlFor="owner">
-                      Responsável
-                    </label>
-                    <select
-                      id="owner"
-                      value={lead.responsibleUserId ?? ""}
-                      onChange={(e) => patch({ responsibleUserId: e.target.value || null })}
-                      className="h-8 w-full rounded-sm border border-transparent bg-transparent px-1 text-base text-fg hover:border-border-input focus:border-focus"
-                    >
-                      <option value="">Sem responsável</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Row>
-                  <Row label="Tags">
-                    <TagEditor tags={lead.tags} onChange={(tags) => patch({ tags })} />
-                  </Row>
-                  <Row label="Origem">
-                    <span className="px-1 text-base text-fg">{({ manual: "Manual", chat: "Chat", form: "Formulário", call: "Ligação", email: "Email" } as Record<string, string>)[lead.source] ?? lead.source}</span>
-                  </Row>
-                </dl>
+                <>
+                  <dl className="flex flex-col divide-y divide-border">
+                    <Row label="Valor">
+                      <InlineText
+                        label="Valor"
+                        value={moneyInput(lead.priceCents)}
+                        display={money(lead.priceCents)}
+                        inputMode="decimal"
+                        prefix="R$"
+                        onSave={(v) => patch({ price: v })}
+                      />
+                    </Row>
+                    <Row label="Responsável">
+                      <label className="sr-only" htmlFor="owner">
+                        Responsável
+                      </label>
+                      <select
+                        id="owner"
+                        value={lead.responsibleUserId ?? ""}
+                        onChange={(e) =>
+                          patch({ responsibleUserId: e.target.value || null })
+                        }
+                        className="h-8 w-full rounded-sm border border-transparent bg-transparent px-1 text-base text-fg hover:border-border-input focus:border-focus"
+                      >
+                        <option value="">Sem responsável</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Row>
+                    <Row label="Tags">
+                      <TagEditor
+                        tags={lead.tags}
+                        onChange={(tags) => patch({ tags })}
+                      />
+                    </Row>
+                    <Row label="Origem">
+                      <span className="px-1 text-base text-fg">
+                        {(
+                          {
+                            manual: "Manual",
+                            chat: "Chat",
+                            form: "Formulário",
+                            call: "Ligação",
+                            email: "Email",
+                          } as Record<string, string>
+                        )[lead.source] ?? lead.source}
+                      </span>
+                    </Row>
+                    {fields.map((f) => (
+                      <Row key={f.id} label={f.name}>
+                        <CustomFieldInput
+                          slug={slug}
+                          leadId={lead.id}
+                          field={f}
+                          value={custom[f.id]}
+                          onError={(text) =>
+                            toast.show({ text, tone: "error" })
+                          }
+                        />
+                      </Row>
+                    ))}
+                  </dl>
+                  <Link
+                    href={`/${slug}/settings/fields`}
+                    className="mt-1 inline-block py-1 text-xs text-muted hover:text-accent-text hover:underline"
+                  >
+                    {fields.length
+                      ? "Editar campos"
+                      : "+ Criar campos personalizados"}
+                  </Link>
+                </>
               ),
             },
             {
@@ -173,7 +308,10 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
                   <div>
                     <dt className="text-muted">Última atividade</dt>
                     <dd className="text-fg" suppressHydrationWarning>
-                      {new Date(lead.lastActivityAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                      {new Date(lead.lastActivityAt).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
                     </dd>
                   </div>
                 </dl>
@@ -187,13 +325,18 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
         <h2 id="contatos" className="mb-2 text-caps uppercase text-muted">
           Contatos
         </h2>
-        {contacts.length === 0 && <p className="text-sm text-muted">Nenhum contato vinculado.</p>}
+        {contacts.length === 0 && (
+          <p className="text-sm text-muted">Nenhum contato vinculado.</p>
+        )}
         <ul className="flex flex-col gap-2">
           {contacts.map((c) => (
             <li key={c.id} className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
                 <Avatar name={c.name} size={32} />
-                <Link href={`/${slug}/contacts/${c.id}`} className="min-w-0 truncate font-medium text-fg hover:underline">
+                <Link
+                  href={`/${slug}/contacts/${c.id}`}
+                  className="min-w-0 truncate font-medium text-fg hover:underline"
+                >
                   {c.name}
                 </Link>
               </div>
@@ -202,8 +345,19 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
                   .filter((i) => i.kind === "phone" || i.kind === "email")
                   .map((i) => (
                     <li key={i.kind + i.value}>
-                      <a href={i.kind === "phone" ? `tel:${i.value}` : `mailto:${i.value}`} className="inline-flex items-center gap-1.5 text-accent-text hover:underline">
-                        {i.kind === "phone" ? <Phone className="size-3.5" aria-hidden /> : <Mail className="size-3.5" aria-hidden />}
+                      <a
+                        href={
+                          i.kind === "phone"
+                            ? `tel:${i.value}`
+                            : `mailto:${i.value}`
+                        }
+                        className="inline-flex items-center gap-1.5 text-accent-text hover:underline"
+                      >
+                        {i.kind === "phone" ? (
+                          <Phone className="size-3.5" aria-hidden />
+                        ) : (
+                          <Mail className="size-3.5" aria-hidden />
+                        )}
                         {i.kind === "phone" ? phone(i.value) : i.value}
                       </a>
                     </li>
@@ -213,8 +367,12 @@ export function LeadPanel({ slug, lead, stages, contacts, company, users, lossRe
           ))}
         </ul>
         {company && (
-          <Link href={`/${slug}/companies/${company.id}`} className="mt-3 flex items-center gap-2 text-sm text-fg hover:underline">
-            <Building2 className="size-4 text-muted" aria-hidden /> {company.name}
+          <Link
+            href={`/${slug}/companies/${company.id}`}
+            className="mt-3 flex items-center gap-2 text-sm text-fg hover:underline"
+          >
+            <Building2 className="size-4 text-muted" aria-hidden />{" "}
+            {company.name}
           </Link>
         )}
       </section>
@@ -310,12 +468,18 @@ function InlineText({
         )}
       >
         <span className="min-w-0 break-words">{display}</span>
-        <Pencil className="size-3.5 shrink-0 text-muted opacity-0 group-hover:opacity-100" aria-hidden />
+        <Pencil
+          className="size-3.5 shrink-0 text-muted opacity-0 group-hover:opacity-100"
+          aria-hidden
+        />
       </button>
     );
   }
   return (
-    <div data-editing className="flex items-center gap-1 rounded-sm border border-focus px-1 ring-2 ring-focus/30">
+    <div
+      data-editing
+      className="flex items-center gap-1 rounded-sm border border-focus px-1 ring-2 ring-focus/30"
+    >
       {prefix && <span className="text-muted">{prefix}</span>}
       <label className="sr-only" htmlFor={`inline-${label}`}>
         {label}
@@ -333,13 +497,22 @@ function InlineText({
           if (e.key === "Enter") done(true);
           if (e.key === "Escape") done(false);
         }}
-        className={cn("w-full min-w-0 bg-transparent text-fg outline-none", big ? "h-9 text-xl" : "h-8 text-base")}
+        className={cn(
+          "w-full min-w-0 bg-transparent text-fg outline-none",
+          big ? "h-9 text-xl" : "h-8 text-base",
+        )}
       />
     </div>
   );
 }
 
-function TagEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+function TagEditor({
+  tags,
+  onChange,
+}: {
+  tags: string[];
+  onChange: (t: string[]) => void;
+}) {
   const [v, setV] = useState("");
   return (
     <div className="flex flex-wrap items-center gap-1 px-1">

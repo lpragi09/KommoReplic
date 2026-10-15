@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Inbox, MessageSquare } from "@/components/ui/icons";
+import { Inbox, MessageSquare, Users } from "@/components/ui/icons";
 import { getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
@@ -40,7 +40,14 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
 
   return (
     <>
-      <PageHeader title="Caixa de entrada">
+      <PageHeader
+        title="Caixa de entrada"
+        actions={
+          <Link href={`/${slug}/team-chat`} className="inline-flex h-9 items-center gap-2 rounded-sm px-3 text-sm text-fg hover:bg-surface">
+            <Users className="size-4" aria-hidden /> Chat da equipe
+          </Link>
+        }
+      >
         <nav aria-label="Filtrar conversas" className="flex gap-1">
           {filters.map((x) => (
             <Link
