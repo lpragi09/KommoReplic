@@ -12,16 +12,24 @@ import type {
   Message,
   Note,
   Pipeline,
+  Broadcast,
+  CustomField,
+  FieldValue,
+  Robot,
+  RobotRun,
+  TeamMessage,
   Task,
+  Template,
   TaskType,
   User,
   Workspace,
 } from "../types";
+import { PRESETS } from "@/lib/robot-meta";
 
 /* Banco em memória para desenvolvimento, até o replica-backend ligar o Supabase.
    Vive em globalThis para sobreviver ao hot reload. Reinicia ao reiniciar o servidor. */
 
-export type Membership = { workspaceId: string; userId: string; role: "admin" | "member" };
+export type Membership = { workspaceId: string; userId: string; role: "admin" | "member"; roleKey?: "gerente" | "vendedor" };
 export type Session = { token: string; userId: string };
 
 export type DB = {
@@ -43,6 +51,13 @@ export type DB = {
   conversations: Conversation[];
   messages: Message[];
   incoming: IncomingLead[];
+  robots: Robot[];
+  robotRuns: RobotRun[];
+  templates: Template[];
+  fields: (CustomField & { workspaceId: string })[];
+  leadCustom: Record<string, Record<string, FieldValue>>;
+  teamMessages: (Omit<TeamMessage, "userName"> & { workspaceId: string })[];
+  broadcasts: (Broadcast & { workspaceId: string })[];
   leadSeq: number;
 };
 
@@ -107,6 +122,13 @@ function seed(): DB {
     conversations: [],
     messages: [],
     incoming: [],
+    robots: [],
+    robotRuns: [],
+    templates: [],
+    fields: [],
+    leadCustom: {},
+    teamMessages: [],
+    broadcasts: [],
     leadSeq: 1000,
   };
 
@@ -266,6 +288,28 @@ function seed(): DB {
     resolvedBy: null,
     createdAt: ago(6),
   });
+
+  // robôs de exemplo (os mesmos modelos prontos da tela de Automações)
+  for (const p of PRESETS.filter((x) => x.key === "boas-vindas" || x.key === "follow-up")) {
+    const st = typeof p.stage === "number" ? stages[p.stage] : undefined;
+    db.robots.push({ ...structuredClone(p.robot), id: uid(), workspaceId: ws.id, pipelineId: pid, stageId: st?.id ?? null, runCount: 0, lastRunAt: null, createdAt: ago(9000) });
+  }
+  for (const [name, shortcut, body] of [
+    ["Horário de atendimento", "horario", "Atendemos de segunda a sexta, das 9h às 18h, e sábado das 9h às 13h."],
+    ["Endereço", "endereco", "Estamos na Rua Exemplo, 123 — Centro. Tem estacionamento na frente."],
+    ["Pedir dados para orçamento", "orcamento", "Para te mandar o orçamento certinho, me passa: nome completo, cidade e o que você precisa?"],
+  ])
+    db.templates.push({ id: uid(), workspaceId: ws.id, name, shortcut, body, createdAt: ago(9000) });
+
+  db.fields.push(
+    { id: uid(), workspaceId: ws.id, name: "Como conheceu", kind: "select", options: ["Instagram", "Indicação", "Google", "Passou na frente"], sort: 0 },
+    { id: uid(), workspaceId: ws.id, name: "Data do evento", kind: "date", options: [], sort: 1 },
+  );
+  db.leadCustom[l1.id] = { [db.fields[0].id]: "Indicação" };
+  db.teamMessages.push(
+    { id: uid(), workspaceId: ws.id, userId: bruno.id, body: "Pessoal, a Escola Saber pediu reunião na quinta. Alguém cobre a tarde?", createdAt: ago(95) },
+    { id: uid(), workspaceId: ws.id, userId: ana.id, body: "Pego eu! Já criei a tarefa.", createdAt: ago(80) },
+  );
 
   for (const l of db.leads) {
     const open = db.tasks.filter((t) => t.leadId === l.id && !t.completedAt).map((t) => t.dueAt).sort();

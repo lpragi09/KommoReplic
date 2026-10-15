@@ -24,7 +24,7 @@ async function run<T>(fn: () => Promise<T>): Promise<Result<T>> {
     refresh();
     return { ok: true, data: out };
   } catch (e) {
-    if (e instanceof DomainError) return fail(e.code === "invalid" || e.code === "already_resolved" || e.code === "window_closed" ? e.message : "Não deu certo desta vez e nada foi perdido. Tente de novo.");
+    if (e instanceof DomainError) return fail(e.code === "invalid" || e.code === "already_resolved" || e.code === "window_closed" || (e.code === "forbidden" && e.message !== "forbidden") ? e.message : "Não deu certo desta vez e nada foi perdido. Tente de novo.");
     if (e instanceof z.ZodError) return fail(e.issues[0]?.message ?? "Dados inválidos.");
     throw e;
   }
@@ -129,10 +129,18 @@ export async function createWorkspaceAction(_: FormState, form: FormData): Promi
 // ---------------------------------------------------------------------------
 const id = z.string().uuid();
 
+/** Lead novo: robôs de "lead novo no funil" e de "entrou na etapa" (a etapa onde ele nasceu). */
+async function robotsForNewLead(wsId: string, leadId: string, stageId: string) {
+  await data.fireRobots(wsId, { trigger: "lead_created", leadId });
+  await data.fireRobots(wsId, { trigger: "stage_enter", leadId, stageId });
+}
+
 export async function moveLeadAction(slug: string, leadId: string, stageId: string, lossReasonId?: string | null) {
   return run(async () => {
     const { user, ws } = await requireWorkspace(slug);
     await data.moveLead(ws.id, user.id, id.parse(leadId), id.parse(stageId), lossReasonId ? id.parse(lossReasonId) : null);
+    // o quadro só chama ao mudar de etapa; "uma vez por lead" evita repetir se voltar e ir de novo
+    await data.fireRobots(ws.id, { trigger: "stage_enter", leadId, stageId });
     return null;
   });
 }
@@ -159,6 +167,7 @@ export async function createLeadAction(slug: string, input: z.input<typeof newLe
     const { user, ws } = await requireWorkspace(slug);
     const v = newLead.parse(input);
     const l = await data.createLead(ws.id, user.id, { ...v, priceCents: parseBRL(v.price) });
+    await robotsForNewLead(ws.id, l.id, l.stageId);
     return { id: l.id };
   });
 }
@@ -226,6 +235,7 @@ export async function acceptIncomingAction(slug: string, incomingId: string) {
   return run(async () => {
     const { user, ws } = await requireWorkspace(slug);
     const l = await data.acceptIncoming(ws.id, user.id, id.parse(incomingId));
+    await robotsForNewLead(ws.id, l.id, l.stageId);
     return { leadId: l.id };
   });
 }
@@ -293,8 +303,12 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
     const ip = await clientIp();
     if (!rateLimit(`chat-ip:${ip}`, 30, 60_000) || !rateLimit(`chat-v:${v.visitorId}`, 12, 60_000))
       throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
-    const { channelId } = await data.getWebchat(v.publicKey);
-    await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
+    const { channelId, workspaceId: ws } = await data.getWebchat(v.publicKey);
+    const got = await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
+    if (got) {
+      if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
+      await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: v.body });
+    }
     return null;
   });
 }
@@ -357,5 +371,205 @@ export async function openBillingPortalAction(slug: string, customerId: string) 
     const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
     const portal = await s.billingPortal.sessions.create({ customer: customerId, return_url: `${origin}/${slug}/settings/billing` });
     return { url: portal.url };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// robôs e modelos de mensagem
+// ---------------------------------------------------------------------------
+const channelKind = z.enum(["whatsapp", "instagram", "messenger", "webchat"]);
+const stepId = z.string().min(1).max(40);
+const robotStep = z.discriminatedUnion("type", [
+  z.object({ id: stepId, type: z.literal("message"), text: z.string().trim().min(1, "Escreva a mensagem do robô.").max(2000, "Mensagem longa demais.") }),
+  z.object({ id: stepId, type: z.literal("wait"), minutes: z.number().int().min(1, "Espera mínima de 1 minuto.").max(43200, "Espera máxima de 30 dias.") }),
+  z.object({ id: stepId, type: z.literal("task"), text: z.string().trim().min(1, "Escreva o texto da tarefa.").max(500), dueMinutes: z.number().int().min(0).max(43200) }),
+  z.object({ id: stepId, type: z.literal("tag"), tag: z.string().trim().min(1, "Escreva a etiqueta.").max(40) }),
+  z.object({ id: stepId, type: z.literal("responsible"), userId: z.string().uuid("Escolha quem vai ser o responsável.") }),
+  z.object({ id: stepId, type: z.literal("stage"), stageId: z.string().uuid("Escolha a etapa de destino.") }),
+  z.object({ id: stepId, type: z.literal("note"), text: z.string().trim().min(1, "Escreva a nota.").max(2000) }),
+]);
+const robotInput = z
+  .object({
+    name: z.string().trim().min(1, "Dê um nome ao robô.").max(80),
+    active: z.boolean(),
+    trigger: z.enum(["stage_enter", "lead_created", "message_in", "new_contact"]),
+    pipelineId: id.nullable(),
+    stageId: id.nullable(),
+    channels: z.array(channelKind).max(4),
+    keywords: z.array(z.string().trim().min(1).max(40)).max(20),
+    once: z.boolean(),
+    steps: z.array(robotStep).min(1, "Adicione pelo menos um passo.").max(30, "No máximo 30 passos."),
+  })
+  .refine((r) => r.trigger !== "stage_enter" || !!r.stageId, "Escolha a etapa que dispara o robô.");
+
+export async function saveRobotAction(slug: string, robotId: string | null, input: z.input<typeof robotInput>) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    const r = await data.saveRobot(ws.id, user.id, robotId ? id.parse(robotId) : null, robotInput.parse(input));
+    return { id: r.id };
+  });
+}
+
+export async function setRobotActiveAction(slug: string, robotId: string, active: boolean) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    await data.setRobotActive(ws.id, id.parse(robotId), z.boolean().parse(active));
+    return null;
+  });
+}
+
+export async function deleteRobotAction(slug: string, robotId: string) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    await data.deleteRobot(ws.id, id.parse(robotId));
+    return null;
+  });
+}
+
+/** Chamado pela tela aberta a cada ~30s: continua robôs que estavam em "Esperar". */
+export async function tickRobotsAction(slug: string) {
+  const { ws } = await requireWorkspace(slug);
+  const n = await data.tickRobots(ws.id);
+  if (n > 0) refresh();
+  return n;
+}
+
+const templateInput = z.object({
+  name: z.string().trim().min(1, "Dê um nome ao modelo.").max(80),
+  shortcut: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((s) => s.replace(/^\//, ""))
+    .refine((s) => s === "" || /^[a-z0-9-]{2,30}$/.test(s), "Atalho: 2 a 30 letras minúsculas, números ou hífen.")
+    .transform((s) => s || null),
+  body: z.string().trim().min(1, "Escreva o texto do modelo.").max(2000, "Texto longo demais."),
+});
+
+export async function saveTemplateAction(slug: string, templateId: string | null, input: z.input<typeof templateInput>) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    const t = await data.saveTemplate(ws.id, templateId ? id.parse(templateId) : null, templateInput.parse(input));
+    return { id: t.id };
+  });
+}
+
+export async function deleteTemplateAction(slug: string, templateId: string) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    await data.deleteTemplate(ws.id, id.parse(templateId));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// equipe
+// ---------------------------------------------------------------------------
+const newMember = z.object({
+  name: z.string().trim().min(2, "Digite o nome da pessoa.").max(120),
+  email: z.string().trim().email("Digite um email válido."),
+  password: z.string().min(8, "A senha inicial precisa de pelo menos 8 caracteres.").max(72),
+  roleId: id,
+});
+
+export async function addMemberAction(slug: string, input: z.input<typeof newMember>) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.addMember(ws.id, user.id, newMember.parse(input));
+    return null;
+  });
+}
+
+export async function setMemberRoleAction(slug: string, userId: string, roleId: string) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.setMemberRole(ws.id, user.id, id.parse(userId), id.parse(roleId));
+    return null;
+  });
+}
+
+export async function removeMemberAction(slug: string, userId: string) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    if (userId === user.id) throw new DomainError("invalid", "Você não pode remover a si mesmo.");
+    await data.removeMember(ws.id, user.id, id.parse(userId));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// campos personalizados
+// ---------------------------------------------------------------------------
+const fieldInput = z
+  .object({
+    name: z.string().trim().min(1, "Dê um nome ao campo.").max(60),
+    kind: z.enum(["text", "textarea", "number", "money", "select", "date", "checkbox", "url", "phone", "email"]),
+    options: z.array(z.string().trim().min(1).max(60)).max(50),
+  })
+  .refine((f) => f.kind !== "select" || f.options.length >= 2, "Uma lista precisa de pelo menos 2 opções.");
+
+export async function saveFieldAction(slug: string, fieldId: string | null, input: z.input<typeof fieldInput>) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    const f = fieldInput.parse(input);
+    await data.saveField(ws.id, fieldId ? id.parse(fieldId) : null, { ...f, options: f.kind === "select" ? [...new Set(f.options)] : [] });
+    return null;
+  });
+}
+
+export async function deleteFieldAction(slug: string, fieldId: string) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    await data.deleteField(ws.id, id.parse(fieldId));
+    return null;
+  });
+}
+
+const fieldValue = z.union([z.string().max(2000), z.number().finite(), z.boolean(), z.null()]);
+
+export async function setLeadFieldAction(slug: string, leadId: string, fieldId: string, value: z.input<typeof fieldValue>) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.setLeadCustom(ws.id, user.id, id.parse(leadId), id.parse(fieldId), fieldValue.parse(value));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// chat da equipe
+// ---------------------------------------------------------------------------
+export async function sendTeamMessageAction(slug: string, body: string) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    if (!rateLimit(`team:${user.id}`, 30, 60_000)) throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
+    await data.sendTeamMessage(ws.id, user.id, z.string().trim().min(1, "Escreva uma mensagem.").max(4000).parse(body));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// disparos
+// ---------------------------------------------------------------------------
+const bcFilter = z.object({
+  pipelineId: id.nullable(),
+  stageIds: z.array(id).max(50),
+  tag: z.string().trim().max(40).nullable(),
+  channels: z.array(channelKind).max(4),
+});
+
+export async function previewBroadcastAction(slug: string, filter: z.input<typeof bcFilter>) {
+  const { ws } = await requireWorkspace(slug);
+  return data.previewBroadcast(ws.id, bcFilter.parse(filter));
+}
+
+export async function sendBroadcastAction(slug: string, input: { name: string; body: string; filter: z.input<typeof bcFilter> }) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    if (!rateLimit(`bc:${ws.id}`, 5, 60 * 60_000)) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
+    const v = z
+      .object({ name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80), body: z.string().trim().min(1, "Escreva a mensagem.").max(2000), filter: bcFilter })
+      .parse(input);
+    const b = await data.sendBroadcast(ws.id, user.id, v);
+    return { sent: b.sent, failed: b.failed, total: b.total };
   });
 }

@@ -78,7 +78,8 @@ export type EventKind =
   | "price_changed"
   | "name_changed"
   | "task_completed"
-  | "contact_linked";
+  | "contact_linked"
+  | "automation_ran";
 export type LeadEvent = {
   id: ID;
   leadId: ID;
@@ -150,6 +151,57 @@ export type FeedItem =
   | { type: "task"; at: ISO; task: Task }
   | { type: "event"; at: ISO; event: LeadEvent; text: string };
 
+/* ---------- robôs (automações em passos, estilo Salesbot + funil digital) ---------- */
+export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact";
+export type RobotStep =
+  | { id: string; type: "message"; text: string }
+  | { id: string; type: "wait"; minutes: number }
+  | { id: string; type: "task"; text: string; dueMinutes: number }
+  | { id: string; type: "tag"; tag: string }
+  | { id: string; type: "responsible"; userId: string }
+  | { id: string; type: "stage"; stageId: string }
+  | { id: string; type: "note"; text: string };
+export type RobotStepType = RobotStep["type"];
+export type Robot = {
+  id: ID;
+  workspaceId: ID;
+  name: string;
+  active: boolean;
+  trigger: RobotTrigger;
+  pipelineId: ID | null;
+  stageId: ID | null;
+  /** vazio = todos os canais */
+  channels: ChannelKind[];
+  /** só para "message_in": dispara se a mensagem tiver alguma destas palavras (vazio = qualquer mensagem) */
+  keywords: string[];
+  /** roda uma vez só por lead/conversa */
+  once: boolean;
+  steps: RobotStep[];
+  runCount: number;
+  lastRunAt: ISO | null;
+  createdAt: ISO;
+};
+export type RobotInput = Omit<Robot, "id" | "workspaceId" | "runCount" | "lastRunAt" | "createdAt">;
+export type RobotLogLine = { at: ISO; text: string; ok: boolean };
+export type RobotRun = {
+  id: ID;
+  workspaceId: ID;
+  robotId: ID;
+  leadId: ID | null;
+  conversationId: ID | null;
+  step: number;
+  depth: number;
+  status: "waiting" | "running" | "done" | "failed";
+  runAt: ISO;
+  log: RobotLogLine[];
+  createdAt: ISO;
+};
+export type RobotEvent =
+  | { trigger: "stage_enter"; leadId: ID; stageId: ID; depth?: number }
+  | { trigger: "lead_created"; leadId: ID; depth?: number }
+  | { trigger: "message_in" | "new_contact"; conversationId: ID; text: string };
+
+export type Template = { id: ID; workspaceId: ID; name: string; shortcut: string | null; body: string; createdAt: ISO };
 
 export type Subscription = {
   plan: "trial" | "basic" | "advanced" | "pro";
@@ -169,3 +221,19 @@ export class DomainError extends Error {
     super(message ?? code);
   }
 }
+
+/* ---------- equipe ---------- */
+export type Role = { id: ID; name: string; isAdmin: boolean };
+export type Member = { userId: ID; name: string; email: string; roleId: ID; roleName: string; isAdmin: boolean };
+
+/* ---------- campos personalizados (valores ficam no lead, chave = id do campo) ---------- */
+export type FieldKind = "text" | "textarea" | "number" | "money" | "select" | "date" | "checkbox" | "url" | "phone" | "email";
+export type CustomField = { id: ID; name: string; kind: FieldKind; options: string[]; sort: number };
+export type FieldValue = string | number | boolean | null;
+
+/* ---------- chat interno da equipe ---------- */
+export type TeamMessage = { id: ID; userId: ID; userName: string; body: string; createdAt: ISO };
+
+/* ---------- disparos em massa ---------- */
+export type BroadcastFilter = { pipelineId: ID | null; stageIds: ID[]; tag: string | null; channels: ChannelKind[] };
+export type Broadcast = { id: ID; name: string; body: string; filter: BroadcastFilter; total: number; sent: number; failed: number; createdBy: string; createdAt: ISO };

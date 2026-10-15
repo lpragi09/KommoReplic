@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { adminClient } from "@/lib/supabase/clients";
+import { fireRobotsForMessage } from "@/data";
 
 /* Webhook da Meta (WhatsApp Cloud API).
    GET: handshake de verificação (hub.verify_token).
@@ -44,8 +45,9 @@ export async function POST(req: Request) {
       for (const m of v.messages) {
         const name = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? "";
         const text = m.type === "text" ? (m.text?.body ?? "") : `[${m.type}]`; // mídia: baixar no job (TODO)
-        const { error } = await db.rpc("receive_inbound", { p_channel: ch.id, p_thread: m.from, p_sender_name: name, p_body: text, p_external_id: m.id });
+        const { data: msgId, error } = await db.rpc("receive_inbound", { p_channel: ch.id, p_thread: m.from, p_sender_name: name, p_body: text, p_external_id: m.id });
         if (error) console.error("[meta] receive_inbound", error.message);
+        else if (msgId) await fireRobotsForMessage(msgId as string); // robôs: boas-vindas, palavra-chave...
       }
     }
   }

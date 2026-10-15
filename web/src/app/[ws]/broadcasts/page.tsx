@@ -1,9 +1,20 @@
-import { StubPage } from "@/components/shell/page-header";
+import { listBroadcasts, listPipelines, listTemplates } from "@/data";
+import { requireWorkspace } from "@/data/session";
+import { PageHeader } from "@/components/shell/page-header";
+import { Broadcasts } from "@/components/team/broadcasts";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
-export const metadata = { title: "Transmissões" };
+export const metadata = { title: "Disparos" };
 
-export default function Page() {
-  return <StubPage title="Transmissões" screen="S23" text="Envio em massa para um público filtrado, com agendamento." />;
+export default async function BroadcastsPage({ params }: PageProps<"/[ws]/broadcasts">) {
+  const { ws: slug } = await params;
+  const { ws } = await requireWorkspace(slug);
+  const [pipelines, templates, history] = await Promise.all([listPipelines(ws.id), listTemplates(ws.id), listBroadcasts(ws.id)]);
+  return (
+    <>
+      <PageHeader title="Disparos" crumbs={[{ label: "Automações", href: `/${slug}/automations` }]} />
+      <Broadcasts slug={slug} pipelines={pipelines} templates={templates} history={history} />
+    </>
+  );
 }
