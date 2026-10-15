@@ -97,3 +97,6 @@ export const Funnel = icon(P.Funnel);
 export const UserGear = icon(P.UserGear);
 export const Textbox = icon(P.Textbox);
 export const At = icon(P.At);
+
+export const Minus = icon(P.Minus, "bold");
+export const ArrowsOut = icon(P.CornersOut);
