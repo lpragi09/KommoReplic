@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createWorkspaceAction, signInAction, signUpAction, type FormState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
+import { ArrowLeft } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
@@ -15,9 +16,15 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         vendas
       </span>
       <div className="relative z-10 flex flex-col justify-between gap-10 px-6 pt-8 sm:px-10 lg:py-10">
-        <span className="fx-rise fx-glow grid size-10 place-items-center rounded-md bg-accent text-lg font-bold text-on-accent" aria-hidden>
-          {BRAND.initial}
-        </span>
+        <Link
+          href="/"
+          className="fx-rise group inline-flex w-fit items-center gap-3 rounded-pill py-1 pl-1 pr-4 text-sm text-on-night-muted shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--on-night)_12%,transparent)] transition-colors duration-fast ease-out hover:text-on-night"
+        >
+          <span className="grid size-8 place-items-center rounded-pill bg-[color-mix(in_srgb,var(--on-night)_8%,transparent)] transition-transform duration-fast ease-out group-hover:-translate-x-0.5" aria-hidden>
+            <ArrowLeft className="size-4" />
+          </span>
+          Voltar ao início
+        </Link>
         <div className="hidden max-w-xl lg:block">
           <p className="fx-rise text-caps uppercase text-on-night-muted" style={{ "--d": 1 } as CSSProperties}>
             CRM para quem vende pelo WhatsApp

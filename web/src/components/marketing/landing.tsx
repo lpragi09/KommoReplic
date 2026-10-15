@@ -79,7 +79,7 @@ function Section({ id, eyebrow, title, intro, children, className }: { id: strin
 
 export function Landing() {
   return (
-    <div className="fx-grain relative min-h-dvh overflow-x-clip bg-night text-on-night [color-scheme:dark]">
+    <div className="relative min-h-dvh overflow-x-clip bg-night text-on-night [color-scheme:dark]">
       <IslandNav />
 
       {/* ---------- hero ---------- */}
@@ -138,9 +138,9 @@ export function Landing() {
       <main id="conteudo" className="relative z-10">
         {/* ---------- faixa do que existe ---------- */}
         <div className="overflow-hidden border-y border-night-line py-5" aria-label="O que o Recadi faz">
-          <div className="fx-marquee gap-10 pr-10">
-            {[...ticker, ...ticker].map((t, i) => (
-              <span key={i} aria-hidden={i >= ticker.length} className="flex items-center gap-10 whitespace-nowrap text-sm uppercase tracking-[0.18em] text-on-night-muted">
+          <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-10 gap-y-3 px-4">
+            {ticker.map((t, i) => (
+              <span key={i} className="flex items-center gap-10 whitespace-nowrap text-sm uppercase tracking-[0.18em] text-on-night-muted">
                 {t}
                 <Sparkle className="size-3 text-aurora-2" weight="fill" aria-hidden />
               </span>
