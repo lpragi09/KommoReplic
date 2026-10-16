@@ -22,10 +22,13 @@ import {
   type Task,
   type TaskType,
   type Subscription,
+  type Access,
+  type SignupInfo,
   type User,
   type Workspace,
 } from "../types";
 import type { ConvFilter, LeadFilter } from "../fake/repo";
+import { accessOf } from "../access";
 
 /* Repositório real (Supabase). Mesmas assinaturas do falso.
    Quem decide o que cada usuário vê é o RLS (supabase/migrations). O parâmetro `actor`
@@ -51,6 +54,8 @@ function toDomain(e: PostgrestError | Error): DomainError | Error {
   if (m.includes("slug_taken")) return new DomainError("invalid", "Esse endereço já está em uso.");
   if (m.includes("slug_reserved")) return new DomainError("invalid", "Esse endereço é reservado.");
   if (m.includes("loss_reason_required")) return new DomainError("invalid", "Escolha o motivo da perda.");
+  if (m.includes("invalid_document")) return new DomainError("invalid", "CPF ou CNPJ inválido.");
+  if (m.includes("create_workspace")) return new DomainError("invalid", "Falta rodar a atualização do banco (supabase/atualizacao-cadastro.sql).");
   if (m.includes("invalid")) return new DomainError("invalid");
   return e instanceof Error ? e : new Error(m);
 }
@@ -172,9 +177,11 @@ export async function signIn(email: string, password: string): Promise<string> {
   return "";
 }
 
-export async function signUp(name: string, email: string, password: string): Promise<string> {
+export async function signUp(name: string, email: string, password: string, signup?: SignupInfo): Promise<string> {
   const sb = await userClient();
-  const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: name.trim() } } });
+  // empresa e documento ficam no cadastro até a pessoa confirmar o email e abrir a empresa
+  const meta = { full_name: name.trim(), ...(signup ? { company: signup.company, doc_type: signup.docType, document: signup.document, phone: signup.phone } : {}) };
+  const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: meta } });
   if (error) throw new DomainError("invalid", error.message.includes("registered") ? "Já existe uma conta com esse email." : "Não deu para criar a conta.");
   if (!data.session) throw new DomainError("invalid", "Enviamos um link de confirmação para o seu email. Abra-o para continuar.");
   return "";
@@ -183,6 +190,22 @@ export async function signUp(name: string, email: string, password: string): Pro
 export async function signOut(_token?: string) {
   const sb = await userClient();
   await sb.auth.signOut({ scope: "local" });
+}
+
+export async function getAccess(wsId: ID): Promise<Access> {
+  const sb = await userClient();
+  const { data, error } = await sb.rpc("workspace_access", { p_ws: wsId }).maybeSingle();
+  const r = data as Row | null;
+  if (error || !r) return accessOf("trialing", null); // banco ainda sem a atualização de cadastro: não trava ninguém
+  return accessOf(r.status, iso(r.trial_ends_at));
+}
+
+export async function signupInfo(_userId: ID): Promise<SignupInfo | null> {
+  const sb = await userClient();
+  const { data } = await sb.auth.getUser();
+  const m = (data.user?.user_metadata ?? {}) as Record<string, string | undefined>;
+  if (!m.company && !m.document) return null;
+  return { company: m.company ?? "", docType: m.doc_type === "cpf" || m.doc_type === "cnpj" ? m.doc_type : null, document: m.document ?? "", phone: m.phone ?? "" };
 }
 
 export async function getSubscription(wsId: ID): Promise<Subscription> {
@@ -220,7 +243,10 @@ export async function workspaceForUser(slug: string, _userId: ID): Promise<Works
   return { id: data.id, slug: data.slug, name: data.name, timezone: data.timezone, currency: data.currency };
 }
 
-export async function createWorkspace(_userId: ID, input: { name: string; slug: string; timezone: string; currency: string }) {
+export async function createWorkspace(
+  _userId: ID,
+  input: { name: string; slug: string; timezone: string; currency: string; docType: "cpf" | "cnpj"; document: string; phone?: string },
+) {
   const sb = await userClient();
   // usuário criado no painel do Supabase antes do setup.sql não tem perfil: cria agora
   const { data: me } = await sb.auth.getUser();
@@ -229,7 +255,17 @@ export async function createWorkspace(_userId: ID, input: { name: string; slug: 
       .from("profiles")
       .upsert({ id: me.user.id, email: me.user.email, full_name: (me.user.user_metadata?.full_name as string) ?? "" }, { onConflict: "id", ignoreDuplicates: true });
   }
-  check(await sb.rpc("create_workspace", { p_name: input.name, p_slug: input.slug, p_timezone: input.timezone, p_currency: input.currency }));
+  check(
+    await sb.rpc("create_workspace", {
+      p_name: input.name,
+      p_slug: input.slug,
+      p_timezone: input.timezone,
+      p_currency: input.currency,
+      p_doc_type: input.docType,
+      p_document: input.document.replace(/\D/g, ""),
+      p_phone: input.phone?.replace(/\D/g, "") || null,
+    }),
+  );
   return workspaceForUser(input.slug, _userId);
 }
 

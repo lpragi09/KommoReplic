@@ -4,7 +4,8 @@ import { MobileNav, NavRail } from "@/components/shell/nav-rail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { NavTracker } from "@/components/shell/back-button";
 import { requireWorkspace } from "@/data/session";
-import { getBoard, listConversations } from "@/data";
+import { getAccess, getBoard, listConversations } from "@/data";
+import { AccessGate } from "@/components/shell/access-gate";
 
 // Telas atrás de login leem a sessão a cada pedido: a navegação bloqueia no servidor de propósito.
 // Revisitar com "use cache: private" quando os dados vierem do Supabase.
@@ -24,6 +25,17 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   );
 }
 
+/** Teste grátis / plano: decide se a tela abre ou mostra o aviso para ativar. */
+async function Gate({ params, children }: { params: Promise<{ ws: string }>; children: React.ReactNode }) {
+  const { ws: slug } = await params;
+  const { ws } = await requireWorkspace(slug);
+  return (
+    <AccessGate slug={slug} access={await getAccess(ws.id)}>
+      {children}
+    </AccessGate>
+  );
+}
+
 export default function WorkspaceLayout({ children, params }: LayoutProps<"/[ws]">) {
   const p = params as Promise<{ ws: string }>;
   return (
@@ -32,7 +44,9 @@ export default function WorkspaceLayout({ children, params }: LayoutProps<"/[ws]
         <Nav params={p} />
       </Suspense>
       <main id="conteudo" className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {children}
+        <Suspense fallback={null}>
+          <Gate params={p}>{children}</Gate>
+        </Suspense>
       </main>
       <Suspense fallback={<div className="h-14 bg-nav-bg md:hidden" />}>
         <Nav params={p} mobile />

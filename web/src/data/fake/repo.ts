@@ -1,6 +1,8 @@
 import "server-only";
 import { connection } from "next/server";
 import { db, hash, now, seedWorkspaceBasics, uid } from "./store";
+import { accessOf } from "../access";
+import { validDoc } from "@/lib/document";
 import {
   DomainError,
   type ChannelKind,
@@ -17,6 +19,8 @@ import {
   type Task,
   type User,
   type Subscription,
+  type Access,
+  type SignupInfo,
   type Workspace,
 } from "../types";
 
@@ -57,10 +61,10 @@ export async function signIn(email: string, password: string): Promise<string> {
   return token;
 }
 
-export async function signUp(name: string, email: string, password: string): Promise<string> {
+export async function signUp(name: string, email: string, password: string, signup?: SignupInfo): Promise<string> {
   if (db.users.some((x) => x.email.toLowerCase() === email.trim().toLowerCase()))
     throw new DomainError("invalid", "Já existe uma conta com esse email.");
-  const u = { id: uid(), name: name.trim(), email: email.trim().toLowerCase(), passwordHash: hash(password) };
+  const u = { id: uid(), name: name.trim(), email: email.trim().toLowerCase(), passwordHash: hash(password), signup };
   db.users.push(u);
   const token = uid();
   db.sessions.push({ token, userId: u.id });
@@ -75,7 +79,19 @@ export async function getSubscription(wsId: ID): Promise<Subscription> {
   await live();
   const ws = db.workspaces.find((w) => w.id === wsId);
   if (!ws) throw new DomainError("not_found");
-  return { plan: "trial", status: "trialing", seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString(), currentPeriodEnd: null };
+  // empresas do exemplo (sem registro) ficam sempre em teste
+  const s = db.subs[wsId] ?? { trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString(), status: "trialing" as const };
+  return { plan: "trial", status: s.status, seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: s.trialEndsAt, currentPeriodEnd: null };
+}
+
+export async function getAccess(wsId: ID): Promise<Access> {
+  const s = await getSubscription(wsId);
+  return accessOf(s.status, s.trialEndsAt);
+}
+
+export async function signupInfo(userId: ID): Promise<SignupInfo | null> {
+  await live();
+  return db.users.find((u) => u.id === userId)?.signup ?? null;
 }
 
 export async function deleteAccount(userId: ID) {
@@ -101,10 +117,20 @@ export async function workspaceForUser(slug: string, userId: ID): Promise<Worksp
   return ws;
 }
 
-export async function createWorkspace(userId: ID, input: { name: string; slug: string; timezone: string; currency: string }) {
+export async function createWorkspace(
+  userId: ID,
+  input: { name: string; slug: string; timezone: string; currency: string; docType: "cpf" | "cnpj"; document: string; phone?: string },
+) {
   if (db.workspaces.some((w) => w.slug === input.slug)) throw new DomainError("invalid", "Esse endereço já está em uso.");
-  const ws: Workspace = { id: uid(), ...input };
+  const doc = input.document.replace(/\D/g, "");
+  if (!validDoc(input.docType, doc)) throw new DomainError("invalid", input.docType === "cpf" ? "CPF inválido." : "CNPJ inválido.");
+  const ws: Workspace = { id: uid(), name: input.name, slug: input.slug, timezone: input.timezone, currency: input.currency };
   db.workspaces.push(ws);
+  // teste grátis só no 1º uso do documento e do email (vale mesmo depois de apagar a empresa)
+  const email = db.users.find((u) => u.id === userId)?.email.toLowerCase() ?? userId;
+  const fresh = !db.trialClaims.has(`doc:${doc}`) && !db.trialClaims.has(`email:${email}`);
+  db.trialClaims.add(`doc:${doc}`).add(`email:${email}`);
+  db.subs[ws.id] = { trialEndsAt: new Date(Date.now() + (fresh ? 14 * 864e5 : 0)).toISOString(), status: "trialing" };
   db.memberships.push({ workspaceId: ws.id, userId, role: "admin" });
   seedWorkspaceBasics(db, ws.id);
   return ws;

@@ -8,10 +8,19 @@ import * as data from "@/data";
 import { SESSION_COOKIE, currentUser, requireWorkspace } from "@/data/session";
 import { DomainError } from "@/data/types";
 import { rateLimit } from "@/lib/rate-limit";
+import { digits, isDisposableEmail, validDoc } from "@/lib/document";
 
 async function clientIp() {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+}
+
+/** Como requireWorkspace, mas recusa quando o teste acabou ou o plano está suspenso. */
+async function requireActive(slug: string) {
+  const ctx = await requireWorkspace(slug);
+  const access = await data.getAccess(ctx.ws.id);
+  if (access.state === "locked") throw new DomainError("invalid", "Seu teste grátis terminou. Ative um plano em Configurações → Plano e cobrança para continuar.");
+  return ctx;
 }
 
 export type Result<T = null> = { ok: true; data: T } | { ok: false; error: string };
@@ -68,19 +77,41 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
   return {};
 }
 
-const signUpSchema = z.object({
-  name: z.string().trim().min(2, "Digite seu nome."),
-  email: z.string().trim().email("Digite um email válido."),
-  password: z.string().min(8, "A senha precisa de pelo menos 8 caracteres."),
-});
+const docFields = {
+  docType: z.enum(["cpf", "cnpj"], { message: "Escolha CPF ou CNPJ." }),
+  document: z.string().transform(digits),
+  phone: z
+    .string()
+    .optional()
+    .transform((v) => digits(v ?? ""))
+    .refine((v) => v === "" || (v.length >= 10 && v.length <= 11), "WhatsApp com DDD, ex.: (11) 98888-1234."),
+};
+const validDocument = (d: { docType: "cpf" | "cnpj"; document: string }) => validDoc(d.docType, d.document);
+const docMessage = { message: "Confira o CPF ou CNPJ: os números não batem.", path: ["document"] };
+
+const signUpSchema = z
+  .object({
+    name: z.string().trim().min(2, "Digite seu nome."),
+    email: z
+      .string()
+      .trim()
+      .email("Digite um email válido.")
+      .refine((e) => !isDisposableEmail(e), "Use um email de verdade: endereços temporários não são aceitos."),
+    password: z.string().min(8, "A senha precisa de pelo menos 8 caracteres."),
+    company: z.string().trim().min(2, "Digite o nome da empresa ou do seu negócio.").max(120),
+    ...docFields,
+  })
+  .refine(validDocument, docMessage);
 
 export async function signUpAction(_: FormState, form: FormData): Promise<FormState> {
-  const values = { name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") };
+  const keep = ["name", "email", "company", "docType", "document", "phone"] as const;
+  const values = Object.fromEntries(keep.map((k) => [k, String(form.get(k) ?? "")]));
   const parsed = signUpSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
   if (!rateLimit(`signup:${await clientIp()}`, 5, 10 * 60_000)) return { error: "Muitos cadastros deste endereço. Tente mais tarde.", values };
   try {
-    await setSession(await data.signUp(parsed.data.name, parsed.data.email, parsed.data.password));
+    const { company, docType, document, phone } = parsed.data;
+    await setSession(await data.signUp(parsed.data.name, parsed.data.email, parsed.data.password, { company, docType, document, phone }));
   } catch (e) {
     if (e instanceof DomainError) return { error: e.message, values };
     throw e;
@@ -96,7 +127,8 @@ export async function signOutAction() {
   redirect("/login");
 }
 
-const wsSchema = z.object({
+const wsSchema = z
+  .object({
   name: z.string().trim().min(2, "Dê um nome para a empresa."),
   slug: z
     .string()
@@ -106,7 +138,9 @@ const wsSchema = z.object({
     .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app"].includes(s), "Esse endereço é reservado."),
   timezone: z.string().min(1),
   currency: z.enum(["BRL", "USD", "EUR"]),
-});
+  ...docFields,
+})
+  .refine(validDocument, docMessage);
 
 export async function createWorkspaceAction(_: FormState, form: FormData): Promise<FormState> {
   const user = await currentUser();
@@ -115,13 +149,17 @@ export async function createWorkspaceAction(_: FormState, form: FormData): Promi
   const parsed = wsSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
   let slug: string;
+  let trial = true;
   try {
-    slug = (await data.createWorkspace(user.id, parsed.data)).slug;
+    const ws = await data.createWorkspace(user.id, parsed.data);
+    slug = ws.slug;
+    trial = (await data.getAccess(ws.id)).state !== "locked";
   } catch (e) {
     if (e instanceof DomainError) return { error: e.message, values };
     throw e;
   }
-  redirect(`/${slug}/leads`);
+  // logo depois de criar: a tela de planos. Sem teste (documento ou email já usou), ela já explica.
+  redirect(`/${slug}/settings/billing?${trial ? "bemvindo=1" : "semteste=1"}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +175,7 @@ async function robotsForNewLead(wsId: string, leadId: string, stageId: string) {
 
 export async function moveLeadAction(slug: string, leadId: string, stageId: string, lossReasonId?: string | null) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.moveLead(ws.id, user.id, id.parse(leadId), id.parse(stageId), lossReasonId ? id.parse(lossReasonId) : null);
     // o quadro só chama ao mudar de etapa; "uma vez por lead" evita repetir se voltar e ir de novo
     await data.fireRobots(ws.id, { trigger: "stage_enter", leadId, stageId });
@@ -164,7 +202,7 @@ function parseBRL(s?: string) {
 
 export async function createLeadAction(slug: string, input: z.input<typeof newLead>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     const v = newLead.parse(input);
     const l = await data.createLead(ws.id, user.id, { ...v, priceCents: parseBRL(v.price) });
     await robotsForNewLead(ws.id, l.id, l.stageId);
@@ -181,7 +219,7 @@ const leadPatch = z.object({
 
 export async function updateLeadAction(slug: string, leadId: string, input: z.input<typeof leadPatch>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     const { price, ...rest } = leadPatch.parse(input);
     await data.updateLead(ws.id, user.id, id.parse(leadId), { ...rest, ...(price !== undefined ? { priceCents: parseBRL(price) } : {}) });
     return null;
@@ -190,7 +228,7 @@ export async function updateLeadAction(slug: string, leadId: string, input: z.in
 
 export async function deleteLeadAction(slug: string, leadId: string) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.deleteLead(ws.id, id.parse(leadId));
     return null;
   });
@@ -198,7 +236,7 @@ export async function deleteLeadAction(slug: string, leadId: string) {
 
 export async function addNoteAction(slug: string, leadId: string, body: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.addNote(ws.id, user.id, id.parse(leadId), z.string().max(5000).parse(body));
     return null;
   });
@@ -214,7 +252,7 @@ const newTask = z.object({
 
 export async function createTaskAction(slug: string, input: z.input<typeof newTask>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.createTask(ws.id, user.id, newTask.parse(input));
     return null;
   });
@@ -222,7 +260,7 @@ export async function createTaskAction(slug: string, input: z.input<typeof newTa
 
 export async function completeTaskAction(slug: string, taskId: string, result: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.completeTask(ws.id, user.id, id.parse(taskId), z.string().max(1000).parse(result));
     return null;
   });
@@ -233,7 +271,7 @@ export async function completeTaskAction(slug: string, taskId: string, result: s
 // ---------------------------------------------------------------------------
 export async function acceptIncomingAction(slug: string, incomingId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     const l = await data.acceptIncoming(ws.id, user.id, id.parse(incomingId));
     await robotsForNewLead(ws.id, l.id, l.stageId);
     return { leadId: l.id };
@@ -242,7 +280,7 @@ export async function acceptIncomingAction(slug: string, incomingId: string) {
 
 export async function declineIncomingAction(slug: string, incomingId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.declineIncoming(ws.id, user.id, id.parse(incomingId));
     return null;
   });
@@ -250,7 +288,7 @@ export async function declineIncomingAction(slug: string, incomingId: string) {
 
 export async function linkIncomingAction(slug: string, incomingId: string, leadId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.linkIncoming(ws.id, user.id, id.parse(incomingId), id.parse(leadId));
     return null;
   });
@@ -261,7 +299,7 @@ export async function linkIncomingAction(slug: string, incomingId: string, leadI
 // ---------------------------------------------------------------------------
 export async function sendMessageAction(slug: string, conversationId: string, body: string, clientId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.sendMessage(ws.id, user.id, id.parse(conversationId), z.string().max(4000).parse(body), id.parse(clientId));
     return null;
   });
@@ -269,7 +307,7 @@ export async function sendMessageAction(slug: string, conversationId: string, bo
 
 export async function markReadAction(slug: string, conversationId: string) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.markConversationRead(ws.id, id.parse(conversationId));
     return null;
   });
@@ -277,7 +315,7 @@ export async function markReadAction(slug: string, conversationId: string) {
 
 export async function createContactAction(slug: string, input: { name: string; phone?: string; email?: string }) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     const v = z
       .object({ name: z.string().trim().min(1, "Digite o nome.").max(120), phone: z.string().max(30).optional(), email: z.string().max(200).optional() })
       .parse(input);
@@ -305,7 +343,7 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
       throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     const { channelId, workspaceId: ws } = await data.getWebchat(v.publicKey);
     const got = await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
-    if (got) {
+    if (got && (await data.getAccess(ws).catch(() => null))?.state !== "locked") {
       if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
       await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: v.body });
     }
@@ -404,7 +442,7 @@ const robotInput = z
 
 export async function saveRobotAction(slug: string, robotId: string | null, input: z.input<typeof robotInput>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     const r = await data.saveRobot(ws.id, user.id, robotId ? id.parse(robotId) : null, robotInput.parse(input));
     return { id: r.id };
   });
@@ -412,7 +450,7 @@ export async function saveRobotAction(slug: string, robotId: string | null, inpu
 
 export async function setRobotActiveAction(slug: string, robotId: string, active: boolean) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.setRobotActive(ws.id, id.parse(robotId), z.boolean().parse(active));
     return null;
   });
@@ -420,7 +458,7 @@ export async function setRobotActiveAction(slug: string, robotId: string, active
 
 export async function deleteRobotAction(slug: string, robotId: string) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.deleteRobot(ws.id, id.parse(robotId));
     return null;
   });
@@ -429,6 +467,7 @@ export async function deleteRobotAction(slug: string, robotId: string) {
 /** Chamado pela tela aberta a cada ~30s: continua robôs que estavam em "Esperar". */
 export async function tickRobotsAction(slug: string) {
   const { ws } = await requireWorkspace(slug);
+  if ((await data.getAccess(ws.id)).state === "locked") return 0;
   const n = await data.tickRobots(ws.id);
   if (n > 0) refresh();
   return n;
@@ -448,7 +487,7 @@ const templateInput = z.object({
 
 export async function saveTemplateAction(slug: string, templateId: string | null, input: z.input<typeof templateInput>) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     const t = await data.saveTemplate(ws.id, templateId ? id.parse(templateId) : null, templateInput.parse(input));
     return { id: t.id };
   });
@@ -456,7 +495,7 @@ export async function saveTemplateAction(slug: string, templateId: string | null
 
 export async function deleteTemplateAction(slug: string, templateId: string) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.deleteTemplate(ws.id, id.parse(templateId));
     return null;
   });
@@ -474,7 +513,7 @@ const newMember = z.object({
 
 export async function addMemberAction(slug: string, input: z.input<typeof newMember>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.addMember(ws.id, user.id, newMember.parse(input));
     return null;
   });
@@ -482,7 +521,7 @@ export async function addMemberAction(slug: string, input: z.input<typeof newMem
 
 export async function setMemberRoleAction(slug: string, userId: string, roleId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.setMemberRole(ws.id, user.id, id.parse(userId), id.parse(roleId));
     return null;
   });
@@ -490,7 +529,7 @@ export async function setMemberRoleAction(slug: string, userId: string, roleId: 
 
 export async function removeMemberAction(slug: string, userId: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     if (userId === user.id) throw new DomainError("invalid", "Você não pode remover a si mesmo.");
     await data.removeMember(ws.id, user.id, id.parse(userId));
     return null;
@@ -510,7 +549,7 @@ const fieldInput = z
 
 export async function saveFieldAction(slug: string, fieldId: string | null, input: z.input<typeof fieldInput>) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     const f = fieldInput.parse(input);
     await data.saveField(ws.id, fieldId ? id.parse(fieldId) : null, { ...f, options: f.kind === "select" ? [...new Set(f.options)] : [] });
     return null;
@@ -519,7 +558,7 @@ export async function saveFieldAction(slug: string, fieldId: string | null, inpu
 
 export async function deleteFieldAction(slug: string, fieldId: string) {
   return run(async () => {
-    const { ws } = await requireWorkspace(slug);
+    const { ws } = await requireActive(slug);
     await data.deleteField(ws.id, id.parse(fieldId));
     return null;
   });
@@ -529,7 +568,7 @@ const fieldValue = z.union([z.string().max(2000), z.number().finite(), z.boolean
 
 export async function setLeadFieldAction(slug: string, leadId: string, fieldId: string, value: z.input<typeof fieldValue>) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     await data.setLeadCustom(ws.id, user.id, id.parse(leadId), id.parse(fieldId), fieldValue.parse(value));
     return null;
   });
@@ -540,7 +579,7 @@ export async function setLeadFieldAction(slug: string, leadId: string, fieldId: 
 // ---------------------------------------------------------------------------
 export async function sendTeamMessageAction(slug: string, body: string) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     if (!rateLimit(`team:${user.id}`, 30, 60_000)) throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     await data.sendTeamMessage(ws.id, user.id, z.string().trim().min(1, "Escreva uma mensagem.").max(4000).parse(body));
     return null;
@@ -564,7 +603,7 @@ export async function previewBroadcastAction(slug: string, filter: z.input<typeo
 
 export async function sendBroadcastAction(slug: string, input: { name: string; body: string; filter: z.input<typeof bcFilter> }) {
   return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
+    const { user, ws } = await requireActive(slug);
     if (!rateLimit(`bc:${ws.id}`, 5, 60 * 60_000)) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
     const v = z
       .object({ name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80), body: z.string().trim().min(1, "Escreva a mensagem.").max(2000), filter: bcFilter })

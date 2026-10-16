@@ -237,3 +237,13 @@ export type TeamMessage = { id: ID; userId: ID; userName: string; body: string; 
 /* ---------- disparos em massa ---------- */
 export type BroadcastFilter = { pipelineId: ID | null; stageIds: ID[]; tag: string | null; channels: ChannelKind[] };
 export type Broadcast = { id: ID; name: string; body: string; filter: BroadcastFilter; total: number; sent: number; failed: number; createdBy: string; createdAt: ISO };
+
+/* ---------- cadastro e acesso (teste grátis / plano) ---------- */
+export type SignupInfo = { company: string; docType: "cpf" | "cnpj" | null; document: string; phone: string };
+export type Access = {
+  state: "trial" | "active" | "locked";
+  /** por que travou ou avisa: teste acabou, pagamento falhou, plano cancelado */
+  reason: "trial_over" | "unpaid" | "canceled" | null;
+  trialEndsAt: ISO | null;
+  daysLeft: number | null;
+};
