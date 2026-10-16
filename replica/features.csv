@@ -83,3 +83,30 @@ Conexão do WhatsApp guiada com checagem de pré-requisitos,canais,should,no,no,
 Suporte dentro do app com contexto do caso anexado,shell,could,no,no,fix 6
 Notificações push confiáveis com botão de teste,shell,should,no,no,fix 7
 Página honesta do que o produto faz e não faz,marketing,could,no,no,fix 8 (replica-launch)
+Robô: botões de resposta rápida na mensagem,automação,must,yes,no,Salesbot passo Mensagem
+Robô: condição se/senão por resposta ou campo,automação,must,yes,no,Salesbot passo Condição
+Robô: validação da resposta com repetição da pergunta,automação,should,yes,no,Salesbot passo Validação
+Robô: pausa até o cliente responder,automação,must,yes,no,Salesbot passo Pausa
+Robô: mensagem interna para a equipe,automação,should,yes,no,
+Robô: ir para outro passo e iniciar outro robô,automação,should,yes,no,
+Rodízio de leads entre vendedores,automação,must,yes,no,reclamação: distribuição não funciona
+Gatilho: X horas sem resposta do cliente,automação,should,yes,no,
+Gatilho: conversa fechada,automação,could,yes,no,
+Gatilho: responsável mudou,automação,could,yes,no,
+Gatilho agendado por campo de data e recorrente,automação,should,yes,no,
+Condições do gatilho por responsável tag e campo,automação,should,yes,no,
+Aplicar gatilho aos leads que já estão na etapa,automação,could,yes,no,
+Ação: definir campo concluir tarefas criar lead,automação,should,yes,no,
+Webhook de saída e de entrada,integrações,should,yes,no,base para Zapier/Make
+Compositor com / para modelos,inbox,must,yes,no,reclamação: / não funciona no Kommo
+Fechar e atribuir conversa à mão,inbox,should,yes,no,
+Menção @ de colega na conversa,inbox,should,yes,no,
+Disparo agendado,automação,should,yes,no,
+Estatística de disparo (entregue lida respondida),automação,should,yes,no,
+Segmentos salvos,automação,could,yes,no,
+Ações em massa no funil,funil,should,yes,no,
+Importar e exportar CSV,listas,should,yes,no,
+Mesclar duplicados,listas,could,yes,no,
+Agendamento online com link de reserva,calendário,could,yes,no,
+Tempo de resposta e metas nos relatórios,insights,should,yes,no,
+Log de atividade da conta,equipe,could,yes,no,

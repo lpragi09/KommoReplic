@@ -1,18 +1,43 @@
 "use client";
 
-import { useActionState, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useActionState,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
-import { createWorkspaceAction, signInAction, signUpAction, type FormState } from "@/app/actions";
+import {
+  createWorkspaceAction,
+  signInAction,
+  signUpAction,
+  type FormState,
+} from "@/app/actions";
+import type { SignupInfo } from "@/data/types";
+import { CompanyFields } from "./company-fields";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { ArrowLeft } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 
-export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
     <div className="fx-aurora grid min-h-dvh lg:grid-cols-[1fr_480px]">
       {/* palavra gigante ao fundo, quase da cor do fundo */}
-      <span aria-hidden className="fx-backword -bottom-4 -left-6 hidden sm:block">
+      <span
+        aria-hidden
+        className="fx-backword -bottom-4 -left-6 hidden sm:block"
+      >
         vendas
       </span>
       <div className="relative z-10 flex flex-col justify-between gap-10 px-6 pt-8 sm:px-10 lg:py-10">
@@ -20,28 +45,50 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
           href="/"
           className="fx-rise group inline-flex w-fit items-center gap-3 rounded-pill py-1 pl-1 pr-4 text-sm text-on-night-muted shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--on-night)_12%,transparent)] transition-colors duration-fast ease-out hover:text-on-night"
         >
-          <span className="grid size-8 place-items-center rounded-pill bg-[color-mix(in_srgb,var(--on-night)_8%,transparent)] transition-transform duration-fast ease-out group-hover:-translate-x-0.5" aria-hidden>
+          <span
+            className="grid size-8 place-items-center rounded-pill bg-[color-mix(in_srgb,var(--on-night)_8%,transparent)] transition-transform duration-fast ease-out group-hover:-translate-x-0.5"
+            aria-hidden
+          >
             <ArrowLeft className="size-4" />
           </span>
           Voltar ao início
         </Link>
         <div className="hidden max-w-xl lg:block">
-          <p className="fx-rise text-caps uppercase text-on-night-muted" style={{ "--d": 1 } as CSSProperties}>
+          <p
+            className="fx-rise text-caps uppercase text-on-night-muted"
+            style={{ "--d": 1 } as CSSProperties}
+          >
             CRM para quem vende pelo WhatsApp
           </p>
-          <p className="fx-rise fx-gradient-text mt-3 text-hero" style={{ "--d": 2 } as CSSProperties}>
+          <p
+            className="fx-rise fx-gradient-text mt-3 text-hero"
+            style={{ "--d": 2 } as CSSProperties}
+          >
             Toda conversa vira venda organizada.
           </p>
-          <p className="fx-rise mt-4 text-md text-on-night-muted" style={{ "--d": 3 } as CSSProperties}>
-            Chat do site, WhatsApp e Instagram caindo direto no seu funil — com histórico, tarefas e equipe no mesmo lugar.
+          <p
+            className="fx-rise mt-4 text-md text-on-night-muted"
+            style={{ "--d": 3 } as CSSProperties}
+          >
+            Chat do site, WhatsApp e Instagram caindo direto no seu funil — com
+            histórico, tarefas e equipe no mesmo lugar.
           </p>
         </div>
-        <p className="fx-rise hidden text-xs text-on-night-muted lg:block" style={{ "--d": 4 } as CSSProperties}>
+        <p
+          className="fx-rise hidden text-xs text-on-night-muted lg:block"
+          style={{ "--d": 4 } as CSSProperties}
+        >
           {BRAND.name} · versão de desenvolvimento
         </p>
       </div>
-      <main id="conteudo" className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10">
-        <div className="fx-rise fx-glow mx-auto w-full max-w-sm rounded-lg bg-bg p-6 text-fg sm:p-8" style={{ "--d": 2 } as CSSProperties}>
+      <main
+        id="conteudo"
+        className="relative z-10 flex flex-col justify-center px-4 py-10 sm:px-10"
+      >
+        <div
+          className="fx-rise fx-glow mx-auto w-full max-w-sm rounded-lg bg-bg p-6 text-fg sm:p-8"
+          style={{ "--d": 2 } as CSSProperties}
+        >
           <h1 className="text-xl text-fg">{title}</h1>
           <p className="mt-1 text-base text-muted">{subtitle}</p>
           <div className="mt-6">{children}</div>
@@ -54,7 +101,10 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
 
 function FormError({ state }: { state: FormState }) {
   return state.error ? (
-    <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+    <p
+      role="alert"
+      className="rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger"
+    >
       {state.error}
     </p>
   ) : null;
@@ -69,7 +119,10 @@ export function SignInForm() {
       footer={
         <>
           Ainda não tem conta?{" "}
-          <Link href="/signup" className="font-medium text-accent-text underline">
+          <Link
+            href="/signup"
+            className="font-medium text-accent-text underline"
+          >
             Criar conta grátis
           </Link>
         </>
@@ -77,8 +130,23 @@ export function SignInForm() {
     >
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
-        <Field label="Email" name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={state.values?.email} required autoFocus />
-        <Field label="Senha" name="password" type="password" autoComplete="current-password" required />
+        <Field
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          defaultValue={state.values?.email}
+          required
+          autoFocus
+        />
+        <Field
+          label="Senha"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Entrar
         </Button>
@@ -96,7 +164,10 @@ export function SignUpForm() {
       footer={
         <>
           Já tem conta?{" "}
-          <Link href="/login" className="font-medium text-accent-text underline">
+          <Link
+            href="/login"
+            className="font-medium text-accent-text underline"
+          >
             Entrar
           </Link>
         </>
@@ -104,9 +175,35 @@ export function SignUpForm() {
     >
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
-        <Field label="Seu nome" name="name" autoComplete="name" defaultValue={state.values?.name} required autoFocus />
-        <Field label="Email de trabalho" name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={state.values?.email} required />
-        <Field label="Senha" name="password" type="password" autoComplete="new-password" hint="Pelo menos 8 caracteres" required minLength={8} />
+        <Field
+          label="Seu nome"
+          name="name"
+          autoComplete="name"
+          defaultValue={state.values?.name}
+          required
+          autoFocus
+        />
+        <Field
+          label="Email de trabalho"
+          name="email"
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          defaultValue={state.values?.email}
+          required
+        />
+        <Field
+          label="Senha"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          hint="Pelo menos 8 caracteres"
+          required
+          minLength={8}
+        />
+        <div className="mt-1 flex flex-col gap-4 border-t border-border pt-4">
+          <CompanyFields defaults={state.values} />
+        </div>
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Criar conta
         </Button>
@@ -124,13 +221,18 @@ const slugify = (s: string) =>
     .replace(/^-|-$/g, "")
     .slice(0, 40);
 
-export function OnboardingForm() {
+export function OnboardingForm({ info }: { info: SignupInfo | null }) {
   const [state, action, pending] = useActionState(createWorkspaceAction, {});
-  const [name, setName] = useState(state.values?.name ?? "");
-  const [slug, setSlug] = useState(state.values?.slug ?? "");
+  const [name, setName] = useState(state.values?.name ?? info?.company ?? "");
+  const [slug, setSlug] = useState(
+    state.values?.slug ?? slugify(info?.company ?? ""),
+  );
   const [touched, setTouched] = useState(false);
   return (
-    <AuthShell title="Sua empresa" subtitle="Passo 1 de 1 · dá para mudar tudo depois.">
+    <AuthShell
+      title="Sua empresa"
+      subtitle="Passo 1 de 1 · dá para mudar tudo depois."
+    >
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
         <Field
@@ -152,15 +254,26 @@ export function OnboardingForm() {
             setTouched(true);
             setSlug(slugify(e.target.value));
           }}
-          hint={slug ? `Seu funil fica em /${slug}` : "Letras minúsculas, números e hífen"}
+          hint={
+            slug
+              ? `Seu funil fica em /${slug}`
+              : "Letras minúsculas, números e hífen"
+          }
           required
         />
+        {/* documento: já vem do cadastro; quem entrou por convite ou criou o login antes preenche aqui */}
+        <CompanyOnboarding info={info} values={state.values} />
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="tz" className="text-sm font-medium text-fg">
               Fuso horário
             </label>
-            <select id="tz" name="timezone" defaultValue="America/Sao_Paulo" className="h-9 rounded-sm border border-border-input bg-bg px-2 text-base">
+            <select
+              id="tz"
+              name="timezone"
+              defaultValue="America/Sao_Paulo"
+              className="h-9 rounded-sm border border-border-input bg-bg px-2 text-base"
+            >
               <option value="America/Sao_Paulo">Brasília</option>
               <option value="America/Manaus">Manaus</option>
               <option value="America/Fortaleza">Fortaleza</option>
@@ -172,18 +285,49 @@ export function OnboardingForm() {
             <label htmlFor="cur" className="text-sm font-medium text-fg">
               Moeda
             </label>
-            <select id="cur" name="currency" defaultValue="BRL" className="h-9 rounded-sm border border-border-input bg-bg px-2 text-base">
+            <select
+              id="cur"
+              name="currency"
+              defaultValue="BRL"
+              className="h-9 rounded-sm border border-border-input bg-bg px-2 text-base"
+            >
               <option value="BRL">Real (R$)</option>
               <option value="USD">Dólar (US$)</option>
               <option value="EUR">Euro (€)</option>
             </select>
           </div>
         </div>
-        <p className="text-sm text-muted">Criamos um funil “Vendas” com 4 etapas, Ganho e Perdido, e o chat do site pronto para instalar.</p>
+        <p className="text-sm text-muted">
+          Criamos um funil “Vendas” com 4 etapas, Ganho e Perdido, e o chat do
+          site pronto para instalar.
+        </p>
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
-          Abrir meu funil
+          Continuar para os planos
         </Button>
       </form>
     </AuthShell>
+  );
+}
+
+/** Na criação da empresa o nome já está no campo de cima: aqui só documento e WhatsApp. */
+function CompanyOnboarding({
+  info,
+  values,
+}: {
+  info: SignupInfo | null;
+  values?: Record<string, string>;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <CompanyFields
+        withCompany={false}
+        defaults={{
+          company: info?.company,
+          docType: values?.docType ?? info?.docType,
+          document: values?.document ?? info?.document,
+          phone: values?.phone ?? info?.phone,
+        }}
+      />
+    </div>
   );
 }

@@ -27,21 +27,46 @@ export { expect };
 let n = 0;
 export const unique = (p = "t") => `${p}${Date.now().toString(36)}${(n++).toString(36)}`;
 
-/** Cria conta + empresa nova. Cada teste tem seus próprios dados. */
-export async function signUp(page: Page, name = "Tester Silva") {
+/** CPF válido e diferente a cada chamada: cada conta de teste ganha o próprio teste grátis. */
+export function newCPF() {
+  const d = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  if (d.every((x) => x === d[0])) d[8] = (d[0] + 1) % 10;
+  const dv = (len: number) => {
+    const s = d.slice(0, len).reduce((acc, x, i) => acc + x * (len + 1 - i), 0);
+    const r = (s * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  d.push(dv(9));
+  d.push(dv(10));
+  return d.join("");
+}
+
+/** Preenche o formulário de cadastro (empresa e CPF inclusos) e envia. */
+export async function fillSignUp(page: Page, o: { name?: string; email: string; password?: string; company?: string; cpf?: string }) {
+  await page.getByLabel("Seu nome").fill(o.name ?? "Tester Silva");
+  await page.getByLabel("Email de trabalho").fill(o.email);
+  await page.getByLabel("Senha").fill(o.password ?? "senha-teste-123");
+  await page.getByLabel("Nome do seu negócio").fill(o.company ?? "Negócio de Teste");
+  await page.getByLabel("CPF", { exact: true }).fill(o.cpf ?? newCPF());
+  await page.getByRole("button", { name: "Criar conta" }).click();
+}
+
+/** Cria conta + empresa nova. Cada teste tem seus próprios dados. Cai na tela de planos e segue para o funil. */
+export async function signUp(page: Page, name = "Tester Silva", cpf = newCPF()) {
   const id = unique();
   const email = `${id}@exemplo.test`;
   await page.goto("/signup");
-  await page.getByLabel("Seu nome").fill(name);
-  await page.getByLabel("Email de trabalho").fill(email);
-  await page.getByLabel("Senha").fill("senha-teste-123");
-  await page.getByRole("button", { name: "Criar conta" }).click();
+  await fillSignUp(page, { name, email, company: `Empresa ${id}`, cpf });
   await expect(page).toHaveURL(/\/onboarding/);
-  await page.getByLabel("Nome da empresa").fill(`Empresa ${id}`);
-  await page.getByRole("button", { name: "Abrir meu funil" }).click();
-  await expect(page).toHaveURL(/\/leads/);
+  await expect(page.getByLabel("Nome da empresa")).toHaveValue(`Empresa ${id}`);
+  await page.getByRole("button", { name: "Continuar para os planos" }).click();
+  await expect(page).toHaveURL(/\/settings\/billing\?(bemvindo|semteste)=1/);
   const slug = new URL(page.url()).pathname.split("/")[1];
-  return { email, password: "senha-teste-123", slug };
+  if (page.url().includes("bemvindo")) {
+    await page.getByRole("link", { name: /Continuar no teste grátis/ }).click();
+    await expect(page).toHaveURL(/\/leads/);
+  }
+  return { email, password: "senha-teste-123", slug, cpf };
 }
 
 export async function webchatKey(page: Page, slug: string) {

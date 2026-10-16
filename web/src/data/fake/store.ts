@@ -16,6 +16,7 @@ import type {
   CustomField,
   FieldValue,
   Robot,
+  SignupInfo,
   RobotRun,
   TeamMessage,
   Task,
@@ -33,7 +34,7 @@ export type Membership = { workspaceId: string; userId: string; role: "admin" | 
 export type Session = { token: string; userId: string };
 
 export type DB = {
-  users: (User & { passwordHash: string })[];
+  users: (User & { passwordHash: string; signup?: SignupInfo })[];
   sessions: Session[];
   workspaces: Workspace[];
   memberships: Membership[];
@@ -59,6 +60,8 @@ export type DB = {
   teamMessages: (Omit<TeamMessage, "userName"> & { workspaceId: string })[];
   broadcasts: (Broadcast & { workspaceId: string })[];
   leadSeq: number;
+  subs: Record<string, { trialEndsAt: string | null; status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" }>;
+  trialClaims: Set<string>;
 };
 
 export const hash = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -130,6 +133,8 @@ function seed(): DB {
     teamMessages: [],
     broadcasts: [],
     leadSeq: 1000,
+    subs: {},
+    trialClaims: new Set(),
   };
 
   const ana = { id: uid(), name: "Ana Souza", email: SEED_LOGIN.email, passwordHash: hash(SEED_LOGIN.password) };
