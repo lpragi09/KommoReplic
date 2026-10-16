@@ -107,7 +107,52 @@ export type Preset = {
   robot: Omit<RobotInput, "pipelineId" | "stageId">;
 };
 
+/** cópia do modelo com ids novos, mantendo as ligações entre os passos */
+export function clonePresetSteps(steps: RobotStep[]): RobotStep[] {
+  const map = new Map(steps.map((x) => [x.id, sid()]));
+  const m = (v: string | null | undefined) => (v === undefined ? undefined : v === null ? null : (map.get(v) ?? null));
+  return steps.map((x) => {
+    const c = structuredClone(x) as RobotStep & Record<string, unknown>;
+    c.id = map.get(x.id)!;
+    if (x.next !== undefined) c.next = m(x.next);
+    for (const k of ["elseNext", "timeoutNext", "failNext"]) if (k in c) c[k] = m(c[k] as string | null);
+    if ("buttons" in c && Array.isArray(c.buttons)) c.buttons = c.buttons.map((b) => ({ ...b, id: sid(), next: m(b.next) ?? null }));
+    if ("rules" in c && Array.isArray(c.rules)) c.rules = c.rules.map((b) => ({ ...b, id: sid(), next: m(b.next) ?? null }));
+    return c as RobotStep;
+  });
+}
+
 export const PRESETS: Preset[] = [
+  {
+    key: "menu",
+    title: "Menu de atendimento",
+    text: "Primeira mensagem nas redes: oferece opções em botões, cada uma segue um caminho; vendas vai para o rodízio de vendedores.",
+    robot: {
+      name: "Menu de atendimento",
+      active: true,
+      trigger: "new_contact",
+      channels: [],
+      keywords: [],
+      once: true,
+      steps: [
+        {
+          id: "m1",
+          type: "message",
+          text: "Oi, {{nome}}! Bem-vindo à {{empresa}} 👋 Como posso te ajudar?",
+          buttons: [
+            { id: "b1", label: "Quero um orçamento", next: "m2" },
+            { id: "b2", label: "Já sou cliente", next: "m3" },
+          ],
+          elseNext: "m4",
+        },
+        { id: "m2", type: "message", text: "Ótimo! Já vou te passar os valores. Me conta rapidinho o que você precisa?", next: "t1" },
+        { id: "t1", type: "tag", tag: "orçamento", next: null },
+        { id: "m3", type: "message", text: "Que bom te ver de novo! Já chamei alguém da equipe para te atender.", next: "i1" },
+        { id: "i1", type: "internal", text: "Cliente {{nome}} pediu atendimento no menu.", next: null },
+        { id: "m4", type: "message", text: "Sem problema! Em instantes alguém da equipe te responde por aqui.", next: null },
+      ],
+    },
+  },
   {
     key: "boas-vindas",
     title: "Boas-vindas",

@@ -18,10 +18,10 @@ const plans = [
     who: "o time de vendas",
     m: 99,
     a: 82,
-    items: ["Funis ilimitados", "3 canais", "Papéis: todos, equipe ou só os meus", "Robôs ilimitados e disparos"],
+    items: ["Funis ilimitados", "3 canais", "Papéis: todos, equipe ou só os meus", "Robôs ilimitados e disparos", "Agente de IA no atendimento"],
     hot: true,
   },
-  { key: "operacao", name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Canais ilimitados", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
+  { key: "operacao", name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Canais ilimitados", "Agente de IA no atendimento", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
 ] as const;
 const planOf = { trial: "Teste grátis", basic: "Autônomo", advanced: "Equipe", pro: "Operação" };
 const statusOf = { trialing: "em teste", active: "ativo", past_due: "pagamento pendente", canceled: "cancelado", unpaid: "não pago" };

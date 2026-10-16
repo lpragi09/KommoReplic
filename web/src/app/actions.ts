@@ -11,6 +11,10 @@ import { rateLimit } from "@/lib/rate-limit";
 import { digits, isDisposableEmail, validDoc } from "@/lib/document";
 import { cleanAttribution } from "@/lib/utm";
 import { checkTemplate } from "@/lib/template-rules";
+import { limitsOf, upgradeFor, type Limits } from "@/lib/plans";
+import { MetaError, verifyAccount } from "@/lib/meta";
+import { aiAvailable, aiErrorText, askAgent } from "@/lib/ai-agent";
+import { after } from "next/server";
 
 async function clientIp() {
   const h = await headers();
@@ -23,6 +27,15 @@ async function requireActive(slug: string) {
   const access = await data.getAccess(ctx.ws.id);
   if (access.state === "locked") throw new DomainError("invalid", "Seu teste grátis terminou. Ative um plano em Configurações → Plano e cobrança para continuar.");
   return ctx;
+}
+
+/** limites do plano da empresa; estoura com a mensagem de upgrade quando passar */
+async function planLimits(wsId: string) {
+  const a = await data.getAccess(wsId);
+  const l = limitsOf(a.plan);
+  const over = (what: string, max: number, check: (x: Limits) => boolean) =>
+    new DomainError("invalid", `Seu plano ${l.name} permite até ${max} ${what}. Para mais, passe para o ${upgradeFor(check)} em Configurações → Plano e cobrança.`);
+  return { l, over };
 }
 
 export type Result<T = null> = { ok: true; data: T } | { ok: false; error: string };
@@ -305,6 +318,7 @@ export async function sendMessageAction(slug: string, conversationId: string, bo
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     await data.sendMessage(ws.id, user.id, id.parse(conversationId), z.string().max(4000).parse(body), id.parse(clientId));
+    await data.deliverQueued(ws.id).catch(() => 0); // WhatsApp/Instagram/Messenger: sai pela Meta na hora
     return null;
   });
 }
@@ -353,6 +367,7 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
       // primeiro a mensagem (pode ser a resposta de um robô que esperava), depois "primeiro contato"
       await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: v.body });
       if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
+      after(() => data.answerWithAgent(got.conversationId)); // agente de IA, se ligado (depois dos robôs, sem segurar o visitante)
     }
     return null;
   });
@@ -489,7 +504,13 @@ const robotInput = z
 export async function saveRobotAction(slug: string, robotId: string | null, input: z.input<typeof robotInput>) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
-    const r = await data.saveRobot(ws.id, user.id, robotId ? id.parse(robotId) : null, robotInput.parse(input));
+    const v = robotInput.parse(input);
+    if (v.active) {
+      const { l, over } = await planLimits(ws.id);
+      const on = (await data.listRobots(ws.id)).filter((x) => x.active && x.id !== robotId).length;
+      if (on + 1 > l.activeRobots) throw over("robôs ligados", l.activeRobots, (x) => x.activeRobots > on);
+    }
+    const r = await data.saveRobot(ws.id, user.id, robotId ? id.parse(robotId) : null, v);
     return { id: r.id };
   });
 }
@@ -497,6 +518,11 @@ export async function saveRobotAction(slug: string, robotId: string | null, inpu
 export async function setRobotActiveAction(slug: string, robotId: string, active: boolean) {
   return run(async () => {
     const { ws } = await requireActive(slug);
+    if (active) {
+      const { l, over } = await planLimits(ws.id);
+      const on = (await data.listRobots(ws.id)).filter((x) => x.active && x.id !== robotId).length;
+      if (on + 1 > l.activeRobots) throw over("robôs ligados", l.activeRobots, (x) => x.activeRobots > on);
+    }
     await data.setRobotActive(ws.id, id.parse(robotId), z.boolean().parse(active));
     return null;
   });
@@ -572,6 +598,9 @@ const newMember = z.object({
 export async function addMemberAction(slug: string, input: z.input<typeof newMember>) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
+    const { l, over } = await planLimits(ws.id);
+    const n = (await data.listMembers(ws.id)).members.length;
+    if (n + 1 > l.users) throw over("pessoas na equipe", l.users, (x) => x.users > n);
     await data.addMember(ws.id, user.id, newMember.parse(input));
     return null;
   });
@@ -662,11 +691,13 @@ export async function previewBroadcastAction(slug: string, filter: z.input<typeo
 export async function sendBroadcastAction(slug: string, input: { name: string; body: string; filter: z.input<typeof bcFilter> }) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
+    if (!(await planLimits(ws.id)).l.broadcasts) throw new DomainError("invalid", `Disparos fazem parte do plano ${upgradeFor((x) => x.broadcasts)} em diante. Mude em Configurações → Plano e cobrança.`);
     if (!rateLimit(`bc:${ws.id}`, 5, 60 * 60_000)) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
     const v = z
       .object({ name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80), body: z.string().trim().min(1, "Escreva a mensagem.").max(2000), filter: bcFilter })
       .parse(input);
     const b = await data.sendBroadcast(ws.id, user.id, v);
+    await data.deliverQueued(ws.id).catch(() => 0);
     return { sent: b.sent, failed: b.failed, total: b.total };
   });
 }
@@ -701,6 +732,11 @@ export async function saveTrackingLinkAction(slug: string, linkId: string | null
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     const v = linkInput.parse(input);
+    if (!linkId) {
+      const { l: lim, over } = await planLimits(ws.id);
+      const n = (await data.listTrackingLinks(ws.id)).length;
+      if (n + 1 > lim.trackingLinks) throw over("links rastreáveis", lim.trackingLinks, (x) => x.trackingLinks > n);
+    }
     const l = await data.saveTrackingLink(ws.id, user.id, linkId ? id.parse(linkId) : null, { ...v, defaults: cleanAttribution(v.defaults) ?? {} });
     return { id: l.id, code: l.code };
   });
@@ -741,6 +777,106 @@ export async function deleteMarkAction(slug: string, markId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);
     await data.deleteMark(ws.id, id.parse(markId));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// canais da Meta (WhatsApp Cloud API, Instagram, Messenger)
+// ---------------------------------------------------------------------------
+const connectInput = z.object({
+  kind: z.enum(["whatsapp", "instagram", "messenger"]),
+  externalId: z.string().trim().regex(/^\d{5,25}$/, "O ID tem só números (copie do painel da Meta)."),
+  pageId: z
+    .string()
+    .trim()
+    .regex(/^\d{5,25}$/, "O ID da página tem só números.")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => v || undefined),
+  token: z.string().trim().min(20, "Cole o token de acesso permanente.").max(1000),
+  pipelineId: id.nullable(),
+});
+
+export async function connectChannelAction(slug: string, input: z.input<typeof connectInput>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const v = connectInput.parse(input);
+    const { l, over } = await planLimits(ws.id);
+    const social = (await data.listChannels(ws.id)).filter((c) => c.kind !== "webchat" && c.status === "connected");
+    const isReconnect = social.some((c) => c.kind === v.kind && c.name);
+    if (!isReconnect && social.length + 1 > l.socialChannels) throw over("canais de rede social", l.socialChannels, (x) => x.socialChannels > social.length);
+    let name: string;
+    try {
+      name = await verifyAccount(v.kind, v.externalId, v.token); // a Meta confirma que o ID e o token batem
+    } catch (e) {
+      throw new DomainError("invalid", e instanceof MetaError ? e.message : "Não deu para falar com a Meta agora. Tente de novo.");
+    }
+    const ch = await data.connectChannel(ws.id, user.id, { ...v, name });
+    return { id: ch.id, name };
+  });
+}
+
+export async function disconnectChannelAction(slug: string, channelId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.disconnectChannel(ws.id, id.parse(channelId));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// agente de IA (Claude) que responde os clientes
+// ---------------------------------------------------------------------------
+const agentInput = z.object({
+  enabled: z.boolean(),
+  name: z.string().trim().min(1, "Dê um nome ao agente.").max(40),
+  tone: z.enum(["amigavel", "formal", "direto"]),
+  instructions: z.string().max(4000, "Instruções com no máximo 4.000 caracteres."),
+  knowledge: z.string().max(30000, "A base de conhecimento passa de 30.000 caracteres. Resuma as partes longas."),
+  channels: z.array(z.enum(["webchat", "whatsapp", "instagram", "messenger"])).max(4),
+  handoffMessage: z.string().trim().min(1, "Escreva a mensagem de quando passa para a equipe.").max(300),
+});
+
+export async function saveAgentAction(slug: string, input: z.input<typeof agentInput>) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    const v = agentInput.parse(input);
+    if (v.enabled) {
+      const { l } = await planLimits(ws.id);
+      if (!l.aiAgent) throw new DomainError("invalid", `O agente de IA está no plano ${upgradeFor((x) => x.aiAgent)}. Mude em Configurações → Plano e cobrança.`);
+      if (!aiAvailable()) throw new DomainError("invalid", "Falta a chave da Anthropic (ANTHROPIC_API_KEY) nas variáveis da Vercel. Salve desligado por enquanto.");
+      if (!v.channels.length) throw new DomainError("invalid", "Marque pelo menos um canal para o agente atender.");
+    }
+    await data.saveAgent(ws.id, v);
+    return null;
+  });
+}
+
+const testTurn = z.object({ role: z.enum(["cliente", "empresa"]), text: z.string().max(2000) });
+
+/** conversa de teste na tela do agente: usa a configuração ainda não salva */
+export async function testAgentAction(slug: string, input: z.input<typeof agentInput>, turns: z.input<typeof testTurn>[]) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    if (!rateLimit(`ai-test:${user.id}`, 20, 60_000)) throw new DomainError("invalid", "Muitos testes seguidos. Espere um minuto.");
+    if (!aiAvailable()) throw new DomainError("invalid", "Falta a chave da Anthropic (ANTHROPIC_API_KEY) nas variáveis da Vercel.");
+    const v = agentInput.parse(input);
+    const t = z.array(testTurn).min(1).max(30).parse(turns);
+    try {
+      const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
+      return await askAgent({ ...v, updatedAt: null }, { company: ws.name, channel: "webchat", contactName: "Cliente de teste", today }, t);
+    } catch (e) {
+      throw new DomainError("invalid", aiErrorText(e));
+    }
+  });
+}
+
+export async function setConversationAiAction(slug: string, conversationId: string, paused: boolean) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.setConversationAi(ws.id, id.parse(conversationId), paused);
+    if (!paused) after(() => data.answerWithAgent(conversationId)); // devolveu para a IA: ela responde o que ficou pendente
     return null;
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, CircleCheck, Clock, StickyNote } from "@/components/ui/icons";
+import { AlertTriangle, ArrowRightLeft, Check, CheckCheck, CircleCheck, Clock, Sparkle, StickyNote } from "@/components/ui/icons";
 import type { FeedItem, MessageStatus } from "@/data/types";
 import { completeTaskAction } from "@/app/actions";
 import { dayLabel, timeOnly, when } from "@/lib/format";
@@ -123,6 +123,11 @@ function Item({ slug, it, contactName }: { slug: string; it: FeedItem; contactNa
     <div className={cn("flex", out ? "justify-end" : "justify-start")}>
       <div className={cn("max-w-[85%] rounded-lg px-3 py-2 sm:max-w-[72%]", out ? "rounded-br-xs bg-bubble-out" : "rounded-bl-xs border border-border bg-bubble-in")}>
         {!out && <p className="mb-0.5 text-xs font-semibold text-accent-text">{contactName}</p>}
+        {m.byAi && (
+          <p className="mb-0.5 inline-flex items-center gap-1 text-xs font-semibold text-accent-text">
+            <Sparkle className="size-3" weight="fill" aria-hidden /> Agente de IA
+          </p>
+        )}
         <p className="whitespace-pre-wrap break-words text-base text-fg">{m.body}</p>
         <p className="mt-1 flex items-center justify-end gap-1 text-xs text-muted">
           <time suppressHydrationWarning>{timeOnly(m.sentAt)}</time>

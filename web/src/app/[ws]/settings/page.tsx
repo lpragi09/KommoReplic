@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
-import { getAccess, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
+import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { cn } from "@/lib/cn";
@@ -21,13 +21,14 @@ const curLabel: Record<string, string> = { BRL: "Real (R$)", USD: "Dólar (US$)"
 export default async function SettingsPage({ params }: PageProps<"/[ws]/settings">) {
   const { ws: slug } = await params;
   const { ws } = await requireWorkspace(slug);
-  const [channels, team, fields, links, pipelines, access] = await Promise.all([
+  const [channels, team, fields, links, pipelines, access, agent] = await Promise.all([
     listChannels(ws.id),
     listMembers(ws.id),
     listFields(ws.id),
     listTrackingLinks(ws.id),
     listPipelines(ws.id),
     getAccess(ws.id),
+    getAgent(ws.id),
   ]);
   const connected = channels.filter((c) => c.status === "connected").length;
   const plan =
@@ -35,6 +36,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
 
   const items: { href: string; icon: LucideIcon; title: string; text: string; stat: string; tone: string }[] = [
     { href: "channels", icon: MessageSquare, title: "Canais", text: "Chat do site, WhatsApp, Instagram e Messenger", stat: `${connected} ${connected === 1 ? "conectado" : "conectados"}`, tone: "from-[#25d366] to-[#128c4a]" },
+    { href: "ai", icon: Sparkle, title: "Agente de IA", text: "Responde os clientes com a sua base de conhecimento e chama a equipe", stat: agent.enabled ? "Ligado" : "Desligado", tone: "from-[#38bdf8] to-[var(--accent)]" },
     { href: "pipelines", icon: Columns3, title: "Funis e etapas", text: "Nomes, ordem e cores das etapas", stat: `${pipelines.length} ${pipelines.length === 1 ? "funil" : "funis"}`, tone: "from-[var(--stage-4)] to-[var(--stage-7)]" },
     { href: "users", icon: Users, title: "Equipe e permissões", text: "Pessoas, papéis e o que cada uma vê", stat: `${team.members.length} ${team.members.length === 1 ? "pessoa" : "pessoas"}`, tone: "from-[var(--aurora-2)] to-[var(--aurora-1)]" },
     { href: "fields", icon: ListPlus, title: "Campos personalizados", text: "Dados extras no cartão de cada lead", stat: `${fields.length} ${fields.length === 1 ? "campo" : "campos"}`, tone: "from-[#a78bfa] to-[#6d28d9]" },

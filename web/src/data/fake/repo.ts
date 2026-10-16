@@ -81,12 +81,12 @@ export async function getSubscription(wsId: ID): Promise<Subscription> {
   if (!ws) throw new DomainError("not_found");
   // empresas do exemplo (sem registro) ficam sempre em teste
   const s = db.subs[wsId] ?? { trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString(), status: "trialing" as const };
-  return { plan: "trial", status: s.status, seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: s.trialEndsAt, currentPeriodEnd: null };
+  return { plan: db.subs[wsId]?.plan ?? "trial", status: s.status, seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: s.trialEndsAt, currentPeriodEnd: null };
 }
 
 export async function getAccess(wsId: ID): Promise<Access> {
   const s = await getSubscription(wsId);
-  return accessOf(s.status, s.trialEndsAt);
+  return accessOf(s.status, s.trialEndsAt, s.plan);
 }
 
 export async function signupInfo(userId: ID): Promise<SignupInfo | null> {
@@ -564,6 +564,7 @@ export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body:
   c.lastMessagePreview = m.body;
   c.isUnanswered = false;
   c.unreadCount = 0;
+  c.aiPaused = true; // vendedor assumiu: a IA para
   c.assignedUserId ??= actor;
   if (c.leadId) {
     const l = db.leads.find((x) => x.id === c.leadId);
@@ -787,3 +788,5 @@ export async function getDashboard(wsId: ID, f: { from: string; owner?: ID }) {
 export * from "./robots";
 export * from "./extras";
 export * from "./attribution";
+export * from "./channels";
+export * from "./agent";
