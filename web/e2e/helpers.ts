@@ -72,7 +72,7 @@ export async function signUp(page: Page, name = "Tester Silva", cpf = newCPF()) 
 export async function webchatKey(page: Page, slug: string) {
   await page.goto(`/${slug}/settings/channels`);
   const code = await page.locator("code").first().textContent();
-  return code!.replace("/chat/", "").trim();
+  return code!.trim().split("/chat/").pop()!.trim();
 }
 
 export async function axe(page: Page) {

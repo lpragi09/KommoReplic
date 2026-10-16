@@ -111,4 +111,36 @@ test.describe("F20 robôs e telas novas", () => {
     await expect(page.getByText(/leads têm conversa para receber/)).toBeVisible({ timeout: 15_000 });
     await axe(page);
   });
+
+  test("F20-H4 menu com botões: cada resposta segue seu caminho no quadro", async ({ page, browser }) => {
+    test.setTimeout(150_000);
+    const { slug } = await signUp(page);
+    await page.goto(`/${slug}/automations/new?preset=menu`);
+    // quadro: passos ligados por fios
+    await expect(page.locator("[data-node]")).toHaveCount(7);
+    await expect(page.locator("svg path[stroke-width='2.5']").first()).toBeAttached();
+    await page.getByRole("button", { name: "Criar robô" }).click();
+    await expect(page).toHaveURL(new RegExp(`/${slug}/automations/[0-9a-f-]{36}`));
+
+    const key = await webchatKey(page, slug);
+    // caminho do botão 1
+    const v1 = await visitorPage(browser);
+    await v1.goto(`/chat/${key}`);
+    await v1.getByLabel("Mensagem", { exact: true }).fill("oi");
+    await v1.getByRole("button", { name: "Enviar mensagem" }).click();
+    await expect(v1.getByText(/1 - Quero um orçamento/)).toBeVisible({ timeout: 15_000 });
+    await v1.getByLabel("Mensagem", { exact: true }).fill("1");
+    await v1.getByRole("button", { name: "Enviar mensagem" }).click();
+    await expect(v1.getByText(/Já vou te passar os valores/)).toBeVisible({ timeout: 15_000 });
+
+    // resposta fora das opções vai pelo "senão"
+    const v2 = await visitorPage(browser);
+    await v2.goto(`/chat/${key}`);
+    await v2.getByLabel("Mensagem", { exact: true }).fill("bom dia");
+    await v2.getByRole("button", { name: "Enviar mensagem" }).click();
+    await expect(v2.getByText(/2 - Já sou cliente/)).toBeVisible({ timeout: 15_000 });
+    await v2.getByLabel("Mensagem", { exact: true }).fill("quero falar sobre outra coisa");
+    await v2.getByRole("button", { name: "Enviar mensagem" }).click();
+    await expect(v2.getByText(/Sem problema! Em instantes/)).toBeVisible({ timeout: 15_000 });
+  });
 });

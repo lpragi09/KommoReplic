@@ -3,7 +3,7 @@ import type { RobotInput, RobotTrigger } from "@/data/types";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { RobotEditor } from "@/components/robots/editor";
-import { PRESETS, newStep } from "@/lib/robot-meta";
+import { PRESETS, clonePresetSteps, newStep } from "@/lib/robot-meta";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
@@ -26,7 +26,7 @@ export default async function NewRobotPage({ params, searchParams }: PageProps<"
     const ordered = p0 ? [...p0.stages].sort((a, b) => a.sort - b.sort) : [];
     const st = preset.stage === "won" ? ordered.find((s) => s.kind === "won") : typeof preset.stage === "number" ? ordered.filter((s) => s.kind === "open")[preset.stage] : undefined;
     // passos com ids novos: o mesmo modelo pode ser usado várias vezes
-    initial = { ...structuredClone(preset.robot), steps: preset.robot.steps.map((s) => ({ ...structuredClone(s), id: newStep(s.type).id })), pipelineId: st?.pipelineId ?? null, stageId: st?.id ?? null };
+    initial = { ...structuredClone(preset.robot), steps: clonePresetSteps(preset.robot.steps), pipelineId: st?.pipelineId ?? null, stageId: st?.id ?? null };
   } else {
     const trigger = TRIGGERS.includes(sp.trigger as RobotTrigger) ? (sp.trigger as RobotTrigger) : "stage_enter";
     const st = stages.find((s) => s.id === sp.stage) ?? (trigger === "stage_enter" ? stages[0] : undefined);

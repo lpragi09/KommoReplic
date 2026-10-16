@@ -118,6 +118,8 @@ export type Conversation = {
   lastInboundAt: ISO | null;
   lastMessagePreview: string;
   attribution?: Attribution | null;
+  /** a IA parou de responder nesta conversa (um vendedor assumiu ou ela passou para humano) */
+  aiPaused?: boolean;
 };
 
 export type MessageStatus = "queued" | "sent" | "delivered" | "read" | "failed" | "received";
@@ -130,6 +132,8 @@ export type Message = {
   clientId: string | null;
   status: MessageStatus;
   sentAt: ISO;
+  /** escrita pelo agente de IA */
+  byAi?: boolean;
 };
 
 export type IncomingLead = {
@@ -287,6 +291,8 @@ export type Broadcast = { id: ID; name: string; body: string; filter: BroadcastF
 export type SignupInfo = { company: string; docType: "cpf" | "cnpj" | null; document: string; phone: string };
 export type Access = {
   state: "trial" | "active" | "locked";
+  /** plano contratado (no teste, "trial": tudo liberado) */
+  plan: "trial" | "basic" | "advanced" | "pro";
   /** por que travou ou avisa: teste acabou, pagamento falhou, plano cancelado */
   reason: "trial_over" | "unpaid" | "canceled" | null;
   trialEndsAt: ISO | null;
@@ -319,3 +325,28 @@ export type TrackingLink = { id: ID; name: string; code: string; phone: string; 
 /* ---------- marcações no calendário (etiqueta num dia: promoção, folga, feriado municipal) ---------- */
 export type MarkColor = "blue" | "green" | "amber" | "red" | "purple" | "gray";
 export type CalendarMark = { id: ID; date: string; label: string; color: MarkColor; note: string | null; createdBy: string };
+
+// ---------------------------------------------------------------------------
+// agente de IA
+// ---------------------------------------------------------------------------
+export type AgentTone = "amigavel" | "formal" | "direto";
+export type AgentConfig = {
+  enabled: boolean;
+  name: string;
+  tone: AgentTone;
+  instructions: string;
+  knowledge: string;
+  channels: ChannelKind[];
+  handoffMessage: string;
+  updatedAt: ISO | null;
+};
+export const AGENT_DEFAULT: AgentConfig = {
+  enabled: false,
+  name: "Assistente",
+  tone: "amigavel",
+  instructions: "",
+  knowledge: "",
+  channels: ["webchat", "whatsapp", "instagram", "messenger"],
+  handoffMessage: "Vou chamar alguém da equipe para continuar com você. Só um instante!",
+  updatedAt: null,
+};

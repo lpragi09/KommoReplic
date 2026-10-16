@@ -1,4 +1,5 @@
 import "server-only";
+import { deliverQueued } from "./channels";
 import { connection } from "next/server";
 import { db, now, uid } from "./store";
 import { fireRobots as fire, tickRobots as tick, type RobotPort } from "../robots/engine";
@@ -127,9 +128,12 @@ const port: RobotPort = {
 export async function fireRobots(wsId: ID, ev: RobotEvent) {
   await fire(port, wsId, ev);
   await tick(port, wsId);
+  await deliverQueued(wsId).catch(() => 0); // mensagens dos robôs saem pela Meta na hora
 }
 export async function tickRobots(wsId: ID | null) {
-  return tick(port, wsId);
+  const n = await tick(port, wsId);
+  await deliverQueued(wsId).catch(() => 0);
+  return n;
 }
 /** Mesmo papel do webhook da Meta no Supabase: dispara os robôs de uma mensagem recebida. */
 export async function fireRobotsForMessage(messageId: ID) {

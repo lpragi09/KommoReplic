@@ -109,6 +109,7 @@ const toConversation = (r: Row): Conversation => ({
   lastInboundAt: iso(r.last_inbound_at),
   lastMessagePreview: r.last_message_preview ?? "",
   attribution: r.attribution ?? null,
+  aiPaused: r.ai_paused ?? false,
 });
 const toMessage = (r: Row): Message => ({
   id: r.id,
@@ -119,6 +120,7 @@ const toMessage = (r: Row): Message => ({
   clientId: r.client_id,
   status: r.status,
   sentAt: isoReq(r.sent_at),
+  byAi: r.by_ai ?? false,
 });
 const toChannel = (r: Row): Channel => ({
   id: r.id,
@@ -199,7 +201,7 @@ export async function getAccess(wsId: ID): Promise<Access> {
   const { data, error } = await sb.rpc("workspace_access", { p_ws: wsId }).maybeSingle();
   const r = data as Row | null;
   if (error || !r) return accessOf("trialing", null); // banco ainda sem a atualização de cadastro: não trava ninguém
-  return accessOf(r.status, iso(r.trial_ends_at));
+  return accessOf(r.status, iso(r.trial_ends_at), r.plan);
 }
 
 export async function signupInfo(_userId: ID): Promise<SignupInfo | null> {
@@ -623,6 +625,7 @@ export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body:
       .select("*")
       .single(),
   );
+  if (!conversation.aiPaused) await sb.from("conversations").update({ ai_paused: true }).eq("id", conversationId); // vendedor assumiu: a IA para
   return toMessage(r);
 }
 
@@ -776,3 +779,5 @@ export async function getDashboard(wsId: ID, f: { from: string; owner?: ID }) {
 export * from "./robots";
 export * from "./extras";
 export * from "./attribution";
+export * from "./channels";
+export * from "./agent";

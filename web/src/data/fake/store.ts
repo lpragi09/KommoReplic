@@ -60,7 +60,7 @@ export type DB = {
   teamMessages: (Omit<TeamMessage, "userName"> & { workspaceId: string })[];
   broadcasts: (Broadcast & { workspaceId: string })[];
   leadSeq: number;
-  subs: Record<string, { trialEndsAt: string | null; status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" }>;
+  subs: Record<string, { trialEndsAt: string | null; status: "trialing" | "active" | "past_due" | "canceled" | "unpaid"; plan?: "trial" | "basic" | "advanced" | "pro" }>;
   trialClaims: Set<string>;
 };
 

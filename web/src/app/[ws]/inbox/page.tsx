@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Inbox, MessageSquare, Users } from "@/components/ui/icons";
-import { getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
+import { getAgent, getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -9,6 +9,7 @@ import { Avatar, Badge, EmptyState } from "@/components/ui/bits";
 import { Feed } from "@/components/lead/feed";
 import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
+import { AiSwitch } from "@/components/lead/ai-switch";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
@@ -25,7 +26,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
   const sp = (await searchParams) as { c?: string; f?: ConvFilter };
   const f = filters.some((x) => x.v === sp.f) ? sp.f! : "all";
   const { user, ws } = await requireWorkspace(slug);
-  const [convs, users, taskTypes] = await Promise.all([listConversations(ws.id, user.id, f), listUsers(ws.id), listTaskTypes(ws.id)]);
+  const [convs, users, taskTypes, agent] = await Promise.all([listConversations(ws.id, user.id, f), listUsers(ws.id), listTaskTypes(ws.id), getAgent(ws.id)]);
   const activeId = sp.c ?? null;
   const active = activeId ? await getConversation(ws.id, activeId).catch(() => null) : null;
   const leadData = active?.lead ? await getLead(ws.id, active.lead.id) : null;
@@ -121,6 +122,9 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
                 <p className="truncate font-medium text-fg">{active.contact.name}</p>
                 <p className="text-xs text-muted">{channelName[active.channel.kind]}</p>
               </div>
+              {agent.enabled && agent.channels.includes(active.channel.kind) && (
+                <AiSwitch key={active.conversation.id} slug={slug} conversationId={active.conversation.id} paused={!!active.conversation.aiPaused} />
+              )}
               {active.lead ? (
                 <Link href={`/${slug}/leads/${active.lead.id}`} className="rounded-sm border border-border px-3 py-1.5 text-sm hover:border-border-input">
                   <span className="text-muted">Lead:</span> <span className="font-medium text-fg">{leadTitle(active.lead)}</span>{" "}
