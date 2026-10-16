@@ -16,6 +16,31 @@ const port: RobotPort = {
   async hasRun(robotId, key) {
     return db.robotRuns.some((x) => x.robotId === robotId && (key.leadId ? x.leadId === key.leadId : x.conversationId === key.conversationId));
   },
+  async countRuns(robotId, before) {
+    return db.robotRuns.filter((x) => x.robotId === robotId && x.createdAt < before).length;
+  },
+  async waitingReply(wsId, conversationId) {
+    return db.robotRuns
+      .filter((x) => x.workspaceId === wsId && x.conversationId === conversationId && x.status === "waiting" && x.state?.wait === "reply")
+      .map((x) => ({ ...x, log: [...x.log], state: { ...x.state } }));
+  },
+  async closeConversation(_wsId, c) {
+    const row = db.conversations.find((x) => x.id === c.id);
+    if (row) row.status = "closed";
+  },
+  async removeTag(_wsId, lead, tag) {
+    const row = db.leads.find((l) => l.id === lead.id);
+    if (row) row.tags = row.tags.filter((t) => t !== tag);
+  },
+  async setField(_wsId, lead, fieldId, value) {
+    const cur = (db.leadCustom[lead.id] ??= {});
+    if (value) cur[fieldId] = value;
+    else delete cur[fieldId];
+  },
+  async notifyTeam(wsId, text) {
+    const admin = db.memberships.find((m) => m.workspaceId === wsId && m.role === "admin");
+    if (admin) db.teamMessages.push({ id: uid(), workspaceId: wsId, userId: admin.userId, body: text, createdAt: now() });
+  },
   async context(wsId, leadId, conversationId) {
     const ws = db.workspaces.find((w) => w.id === wsId)!;
     let conversation = conversationId ? (db.conversations.find((c) => c.id === conversationId) ?? null) : null;
@@ -75,8 +100,8 @@ const port: RobotPort = {
   },
   async saveRun(run) {
     const i = db.robotRuns.findIndex((x) => x.id === run.id);
-    if (i >= 0) db.robotRuns[i] = { ...run, log: [...run.log] };
-    else db.robotRuns.push({ ...run, log: [...run.log] });
+    if (i >= 0) db.robotRuns[i] = { ...run, log: [...run.log], state: { ...run.state } };
+    else db.robotRuns.push({ ...run, log: [...run.log], state: { ...run.state } });
   },
   async claim(run) {
     const row = db.robotRuns.find((x) => x.id === run.id);
@@ -88,7 +113,7 @@ const port: RobotPort = {
     return db.robotRuns
       .filter((x) => x.status === "waiting" && x.runAt <= at && (!wsId || x.workspaceId === wsId))
       .slice(0, limit)
-      .map((x) => ({ ...x, log: [...x.log] }));
+      .map((x) => ({ ...x, log: [...x.log], state: { ...x.state } }));
   },
   async bump(robotId, at) {
     const r = db.robots.find((x) => x.id === robotId);
@@ -111,9 +136,9 @@ export async function fireRobotsForMessage(messageId: ID) {
   const m = db.messages.find((x) => x.id === messageId);
   const c = m && db.conversations.find((x) => x.id === m.conversationId);
   if (!m || !c) return;
+  await fireRobots(c.workspaceId, { trigger: "message_in", conversationId: c.id, text: m.body });
   if (db.messages.filter((x) => x.conversationId === c.id && x.direction === "in").length === 1)
     await fire(port, c.workspaceId, { trigger: "new_contact", conversationId: c.id, text: m.body });
-  await fireRobots(c.workspaceId, { trigger: "message_in", conversationId: c.id, text: m.body });
 }
 
 // ---------------------------------------------------------------------------

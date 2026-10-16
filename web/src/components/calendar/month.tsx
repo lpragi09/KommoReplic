@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { Task, Lead } from "@/data/types";
+import type { CalendarMark, Task, Lead } from "@/data/types";
+import { DayMarks } from "./day-marks";
 import { holidayMap } from "@/lib/holidays";
 import { leadTitle } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -30,7 +31,7 @@ export function shiftMonth(month: string, delta: number) {
 
 type T = Task & { lead: Lead | null; owner: string };
 
-export function MonthCalendar({ slug, month, tasks, showOwner }: { slug: string; month: string; tasks: T[]; showOwner: boolean }) {
+export function MonthCalendar({ slug, month, tasks, marks = [], showOwner }: { slug: string; month: string; tasks: T[]; marks?: CalendarMark[]; showOwner: boolean }) {
   const { days } = monthGrid(month);
   const today = localDay(new Date().toISOString());
   const nowIso = new Date().toISOString();
@@ -70,7 +71,7 @@ export function MonthCalendar({ slug, month, tasks, showOwner }: { slug: string;
                       key={d}
                       aria-label={`${label}${h ? `, ${h.name}` : ""}${items.length ? `, ${items.length} ${items.length === 1 ? "tarefa" : "tarefas"}` : ""}`}
                       className={cn(
-                        "h-[120px] border-b border-r border-border p-1.5 align-top last:border-r-0",
+                        "group relative h-[120px] border-b border-r border-border p-1.5 align-top last:border-r-0",
                         !inMonth && "bg-surface/70",
                         inMonth && (i === 0 || i === 6) && "bg-[color-mix(in_srgb,var(--surface)_45%,var(--bg))]",
                         h && inMonth && (h.kind === "nacional" ? "bg-[color-mix(in_srgb,var(--danger)_5%,var(--bg))]" : "bg-[color-mix(in_srgb,var(--warning)_6%,var(--bg))]"),
@@ -86,13 +87,14 @@ export function MonthCalendar({ slug, month, tasks, showOwner }: { slug: string;
                         >
                           {Number(d.slice(8))}
                         </span>
-                        {items.length > 0 && <span className="mt-1 rounded-pill bg-accent-soft px-1.5 text-[11px] font-medium tabular-nums text-accent-text">{items.length}</span>}
+                        {items.length > 0 && <span className="mr-7 mt-1 rounded-pill bg-accent-soft px-1.5 text-[11px] font-medium tabular-nums text-accent-text">{items.length}</span>}
                       </div>
                       {h && (
                         <p className={cn("mt-1 truncate rounded-xs px-1.5 py-0.5 text-[11px] font-medium", h.kind === "nacional" ? "bg-danger-soft text-danger" : "bg-[color-mix(in_srgb,var(--warning)_15%,var(--bg))] text-warning")} title={h.kind === "facultativo" ? `${h.name} (ponto facultativo)` : h.name}>
                           {h.name}
                         </p>
                       )}
+                      <DayMarks slug={slug} date={d} dayLabel={label} marks={marks.filter((m) => m.date === d)} />
                       <ul className="mt-1 flex flex-col gap-0.5">
                         {items.slice(0, 3).map((t) => {
                           const late = !t.completedAt && t.dueAt < nowIso;
@@ -155,5 +157,55 @@ export function MonthCalendar({ slug, month, tasks, showOwner }: { slug: string;
         </p>
       </div>
     </div>
+  );
+}
+
+/** Agenda dos próximos dias (aba Lista): cada dia com feriado e quantas tarefas tem — nunca fica em branco. */
+export function UpcomingDays({ slug, tasks, days = 14 }: { slug: string; tasks: T[]; days?: number }) {
+  const today = localDay(new Date().toISOString());
+  const start = new Date(`${today}T12:00:00Z`).getTime();
+  const list = Array.from({ length: days }, (_, i) => new Date(start + i * 864e5).toISOString().slice(0, 10));
+  const hol = holidayMap(list.map((d) => Number(d.slice(0, 4))));
+  const count = new Map<string, number>();
+  for (const t of tasks) if (!t.completedAt) count.set(localDay(t.dueAt), (count.get(localDay(t.dueAt)) ?? 0) + 1);
+  return (
+    <section aria-labelledby="agenda-t" className="rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+      <h2 id="agenda-t" className="mb-3 text-sm font-semibold text-fg">
+        Próximos {days} dias
+      </h2>
+      <ol className="grid gap-1.5 sm:grid-cols-2">
+        {list.map((d, i) => {
+          const h = hol.get(d);
+          const n = count.get(d) ?? 0;
+          const dt = new Date(`${d}T12:00:00Z`);
+          const wd = dt.getUTCDay();
+          return (
+            <li key={d}>
+              <Link
+                href={`/${slug}/calendar?view=mes&m=${d.slice(0, 7)}`}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface",
+                  i === 0 && "bg-accent-soft hover:bg-accent-soft",
+                  h && i !== 0 && (h.kind === "nacional" ? "bg-danger-soft/60" : "bg-[color-mix(in_srgb,var(--warning)_8%,var(--bg))]"),
+                )}
+              >
+                <span className={cn("grid size-10 shrink-0 place-items-center rounded-md text-center leading-none", i === 0 ? "bg-accent text-on-accent" : "bg-surface text-fg")}>
+                  <span>
+                    <span className="block text-[10px] uppercase">{dt.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" }).replace(".", "")}</span>
+                    <span className="block text-base font-semibold tabular-nums">{dt.getUTCDate()}</span>
+                  </span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block truncate", h ? (h.kind === "nacional" ? "font-medium text-danger" : "font-medium text-warning") : wd === 0 || wd === 6 ? "text-muted" : "text-fg")}>
+                    {h ? `${h.name}${h.kind === "facultativo" ? " (facultativo)" : ""}` : i === 0 ? "Hoje" : i === 1 ? "Amanhã" : dt.toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "UTC" })}
+                  </span>
+                  <span className="block text-xs text-muted">{n ? `${n} ${n === 1 ? "tarefa" : "tarefas"}` : "Nada marcado"}</span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

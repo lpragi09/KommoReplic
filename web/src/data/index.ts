@@ -12,7 +12,7 @@ export const {
   MANAGES_OWN_SESSION, getSubscription, userBySessionToken, signIn, signUp, signOut, deleteAccount, workspacesOf, workspaceForUser, createWorkspace, listUsers, listPipelines, listLossReasons, listTaskTypes, getBoard, listLeads, createLead, updateLead, moveLead, deleteLead, getLead, addNote, createTask, completeTask, listTasks, acceptIncoming, declineIncoming, linkIncoming, listConversations, getConversation, markConversationRead, windowClosed, sendMessage, getWebchat, visitorThread, receiveInbound, listContacts, getContact, createContact, listCompanies, getCompany, listChannels, search, getDashboard,
   fireRobots, tickRobots, fireRobotsForMessage, listRobots, getRobot, saveRobot, setRobotActive, deleteRobot, listTemplates, saveTemplate, deleteTemplate,
   listMembers, addMember, setMemberRole, removeMember, listFields, saveField, deleteField, getLeadCustom, setLeadCustom, listTeamMessages, sendTeamMessage, previewBroadcast, sendBroadcast, listBroadcasts,
-  getAccess, signupInfo,
+  getAccess, signupInfo, listMarks, saveMark, deleteMark,
   attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink,
 } = impl;
 export type { ConvFilter, LeadFilter } from "./fake/repo";

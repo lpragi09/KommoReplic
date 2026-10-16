@@ -350,8 +350,9 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
     const got = await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
     if (got) await data.attributeInbound(got.conversationId, v.body, cleanAttribution(v.attribution, v.attribution?.via === "site" ? "site" : "webchat"));
     if (got && (await data.getAccess(ws).catch(() => null))?.state !== "locked") {
-      if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
+      // primeiro a mensagem (pode ser a resposta de um robô que esperava), depois "primeiro contato"
       await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: v.body });
+      if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
     }
     return null;
   });
@@ -423,14 +424,49 @@ export async function openBillingPortalAction(slug: string, customerId: string) 
 // ---------------------------------------------------------------------------
 const channelKind = z.enum(["whatsapp", "instagram", "messenger", "webchat"]);
 const stepId = z.string().min(1).max(40);
+const nextRef = z.string().min(1).max(40).nullable().optional();
+const pos = { x: z.number().finite().min(-20000).max(20000).optional(), y: z.number().finite().min(-20000).max(20000).optional(), next: nextRef };
+const base = { id: stepId, ...pos };
+const branch = z.object({ id: stepId, label: z.string().trim().max(60), next: nextRef.transform((v) => v ?? null) });
 const robotStep = z.discriminatedUnion("type", [
-  z.object({ id: stepId, type: z.literal("message"), text: z.string().trim().min(1, "Escreva a mensagem do robô.").max(2000, "Mensagem longa demais.") }),
-  z.object({ id: stepId, type: z.literal("wait"), minutes: z.number().int().min(1, "Espera mínima de 1 minuto.").max(43200, "Espera máxima de 30 dias.") }),
-  z.object({ id: stepId, type: z.literal("task"), text: z.string().trim().min(1, "Escreva o texto da tarefa.").max(500), dueMinutes: z.number().int().min(0).max(43200) }),
-  z.object({ id: stepId, type: z.literal("tag"), tag: z.string().trim().min(1, "Escreva a etiqueta.").max(40) }),
-  z.object({ id: stepId, type: z.literal("responsible"), userId: z.string().uuid("Escolha quem vai ser o responsável.") }),
-  z.object({ id: stepId, type: z.literal("stage"), stageId: z.string().uuid("Escolha a etapa de destino.") }),
-  z.object({ id: stepId, type: z.literal("note"), text: z.string().trim().min(1, "Escreva a nota.").max(2000) }),
+  z.object({
+    ...base,
+    type: z.literal("message"),
+    text: z.string().trim().min(1, "Escreva a mensagem do robô.").max(2000, "Mensagem longa demais."),
+    buttons: z.array(branch.refine((b) => b.label.length > 0, "Dê um texto para cada botão.")).max(10, "No máximo 10 botões.").optional(),
+    elseNext: nextRef,
+  }),
+  z.object({ ...base, type: z.literal("wait"), minutes: z.number().int().min(1, "Espera mínima de 1 minuto.").max(43200, "Espera máxima de 30 dias.") }),
+  z.object({ ...base, type: z.literal("wait_reply"), minutes: z.number().int().min(1).max(43200, "Espera máxima de 30 dias."), timeoutNext: nextRef }),
+  z.object({
+    ...base,
+    type: z.literal("condition"),
+    source: z.enum(["message", "utm_source", "utm_campaign", "tag", "channel"]),
+    rules: z.array(branch.extend({ op: z.enum(["contains", "equals", "not_contains"]) }).refine((b) => b.label.length > 0, "Preencha o valor de cada regra.")).min(1, "A condição precisa de pelo menos uma regra.").max(10),
+    elseNext: nextRef,
+  }),
+  z.object({
+    ...base,
+    type: z.literal("validate"),
+    kind: z.enum(["any", "email", "phone", "number", "cpf"]),
+    question: z.string().trim().min(1, "Escreva a pergunta.").max(1000),
+    retryText: z.string().trim().max(1000),
+    tries: z.number().int().min(1).max(5),
+    failNext: nextRef,
+    saveFieldId: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
+  }),
+  z.object({ ...base, type: z.literal("round_robin"), userIds: z.array(z.string().uuid()).min(1, "Escolha pelo menos uma pessoa para o rodízio.").max(50) }),
+  z.object({ ...base, type: z.literal("internal"), text: z.string().trim().min(1, "Escreva o aviso para a equipe.").max(1000) }),
+  z.object({ ...base, type: z.literal("task"), text: z.string().trim().min(1, "Escreva o texto da tarefa.").max(500), dueMinutes: z.number().int().min(0).max(43200) }),
+  z.object({ ...base, type: z.literal("tag"), tag: z.string().trim().min(1, "Escreva a etiqueta.").max(40), remove: z.boolean().optional() }),
+  z.object({ ...base, type: z.literal("responsible"), userId: z.string().uuid("Escolha quem vai ser o responsável.") }),
+  z.object({ ...base, type: z.literal("stage"), stageId: z.string().uuid("Escolha a etapa de destino.") }),
+  z.object({ ...base, type: z.literal("note"), text: z.string().trim().min(1, "Escreva a nota.").max(2000) }),
+  z.object({ ...base, type: z.literal("set_field"), fieldId: z.string().uuid("Escolha o campo."), value: z.string().trim().max(500) }),
+  z.object({ ...base, type: z.literal("close") }),
+  z.object({ ...base, type: z.literal("webhook"), url: z.string().trim().regex(/^https:\/\/[^\s/]+\.[^\s]+$/, "O webhook precisa de um endereço https:// válido.").max(500) }),
+  z.object({ ...base, type: z.literal("start_robot"), robotId: z.string().uuid("Escolha o robô.") }),
+  z.object({ ...base, type: z.literal("stop") }),
 ]);
 const robotInput = z
   .object({
@@ -442,7 +478,8 @@ const robotInput = z
     channels: z.array(channelKind).max(4),
     keywords: z.array(z.string().trim().min(1).max(40)).max(20),
     once: z.boolean(),
-    steps: z.array(robotStep).min(1, "Adicione pelo menos um passo.").max(30, "No máximo 30 passos."),
+    steps: z.array(robotStep).min(1, "Adicione pelo menos um passo.").max(60, "No máximo 60 passos."),
+    start: z.object({ x: z.number().finite(), y: z.number().finite(), next: nextRef }).optional(),
     conditions: z
       .object({ utmField: z.enum(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]).optional(), utmContains: z.string().trim().max(80).optional() })
       .optional(),
@@ -673,6 +710,37 @@ export async function deleteTrackingLinkAction(slug: string, linkId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);
     await data.deleteTrackingLink(ws.id, id.parse(linkId));
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// marcações do calendário
+// ---------------------------------------------------------------------------
+const markInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
+  label: z.string().trim().min(1, "Escreva a marcação (ex.: Promoção, Folga).").max(60),
+  color: z.enum(["blue", "green", "amber", "red", "purple", "gray"]),
+  note: z
+    .string()
+    .trim()
+    .max(500)
+    .nullable()
+    .transform((v) => v || null),
+});
+
+export async function saveMarkAction(slug: string, markId: string | null, input: z.input<typeof markInput>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    await data.saveMark(ws.id, user.id, markId ? id.parse(markId) : null, markInput.parse(input));
+    return null;
+  });
+}
+
+export async function deleteMarkAction(slug: string, markId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.deleteMark(ws.id, id.parse(markId));
     return null;
   });
 }

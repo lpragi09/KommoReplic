@@ -7,7 +7,9 @@ import {
   type Broadcast,
   type BroadcastFilter,
   type ChannelKind,
+  type CalendarMark,
   type CustomField,
+  type MarkColor,
   type FieldValue,
   type ID,
   type Lead,
@@ -246,4 +248,30 @@ export async function listBroadcasts(wsId: ID): Promise<Broadcast[]> {
     createdBy: b.profiles?.full_name ?? "",
     createdAt: new Date(b.created_at).toISOString(),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// marcações do calendário
+// ---------------------------------------------------------------------------
+const toMark = (r: Row): CalendarMark => ({ id: r.id, date: r.date, label: r.label, color: r.color, note: r.note ?? null, createdBy: r.profiles?.full_name ?? "" });
+
+export async function listMarks(wsId: ID, from: string, to: string): Promise<CalendarMark[]> {
+  const sb = await userClient();
+  const { data, error } = await sb.from("calendar_marks").select("*, profiles:created_by(full_name)").eq("workspace_id", wsId).gte("date", from).lte("date", to).order("date");
+  if (error) return []; // banco sem a atualização: calendário abre sem marcações
+  return (data ?? []).map(toMark);
+}
+
+export async function saveMark(wsId: ID, _actor: ID, id: ID | null, input: { date: string; label: string; color: MarkColor; note: string | null }): Promise<CalendarMark> {
+  const { sb, uid } = await me();
+  const r = id
+    ? check(await sb.from("calendar_marks").update(input).eq("workspace_id", wsId).eq("id", id).select("*").maybeSingle())
+    : check(await sb.from("calendar_marks").insert({ ...input, workspace_id: wsId, created_by: uid }).select("*").single());
+  if (!r) throw new DomainError("not_found");
+  return toMark(r);
+}
+
+export async function deleteMark(wsId: ID, id: ID) {
+  const sb = await userClient();
+  check(await sb.from("calendar_marks").delete().eq("workspace_id", wsId).eq("id", id));
 }
