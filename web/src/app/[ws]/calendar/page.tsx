@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarCheck } from "@/components/ui/icons";
-import { listTasks } from "@/data";
+import { listMarks, listTasks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/bits";
 import { TaskItem } from "@/components/lead/feed";
 import {
   MonthCalendar,
+  UpcomingDays,
   localDay,
   monthGrid,
   shiftMonth,
@@ -45,6 +46,7 @@ export default async function CalendarPage({
   const thisMonth = localDay(new Date().toISOString()).slice(0, 7);
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.m ?? "") ? sp.m! : thisMonth;
   const grid = monthGrid(month);
+  const marks = view === "mes" ? await listMarks(ws.id, grid.days[0], grid.days[grid.days.length - 1]) : [];
   const tasks =
     view === "mes"
       ? await listTasks(ws.id, {
@@ -203,6 +205,7 @@ export default async function CalendarPage({
               slug={slug}
               month={month}
               tasks={tasks}
+              marks={marks}
               showOwner={who === "all"}
             />
           </div>
@@ -211,12 +214,11 @@ export default async function CalendarPage({
         <div className="flex-1 overflow-y-auto bg-surface">
           <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
             {groups.length === 0 && (
-              <EmptyState
-                icon={CalendarCheck}
-                title="Tudo em dia"
-                text="Nenhuma tarefa aberta. Crie tarefas pelo cartão de cada lead."
-              />
+              <p className="flex items-center gap-2 rounded-lg bg-bg px-4 py-3 text-sm text-muted shadow-[0_0_0_1px_var(--border)]">
+                <CalendarCheck className="size-4 text-success" aria-hidden /> Tudo em dia: nenhuma tarefa aberta. Crie tarefas pelo cartão de cada lead.
+              </p>
             )}
+            <UpcomingDays slug={slug} tasks={tasks} />
             {groups.map((g) => (
               <section key={g.key} aria-labelledby={`g-${g.key}`}>
                 <h2

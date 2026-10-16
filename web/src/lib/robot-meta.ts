@@ -1,4 +1,4 @@
-import type { ChannelKind, RobotInput, RobotStep, RobotStepType, RobotTrigger } from "@/data/types";
+import type { ChannelKind, RobotInput, RobotStep, RobotStepType, RobotTrigger, StepBranch } from "@/data/types";
 
 /* Textos e modelos prontos dos robôs. Sem nada de servidor: usado pelas telas e pelo motor. */
 
@@ -33,14 +33,25 @@ export const CHANNELS: { kind: ChannelKind; label: string }[] = [
 ];
 export const channelLabel = (k: ChannelKind) => CHANNELS.find((c) => c.kind === k)?.label ?? k;
 
-export const STEP_TYPES: Record<RobotStepType, { label: string; hint: string }> = {
-  message: { label: "Enviar mensagem", hint: "Responde na conversa do lead, no canal por onde ele falou." },
-  wait: { label: "Esperar", hint: "Pausa o robô antes do próximo passo." },
-  task: { label: "Criar tarefa", hint: "Lembrete para o responsável do lead." },
-  tag: { label: "Adicionar etiqueta", hint: "Marca o lead para filtrar depois." },
-  responsible: { label: "Trocar responsável", hint: "Passa o lead para outra pessoa da equipe." },
-  stage: { label: "Mover de etapa", hint: "Leva o lead para outra etapa do funil." },
-  note: { label: "Adicionar nota", hint: "Registro interno no histórico do lead." },
+/** Passos agrupados como no menu do editor. `branches`: o passo abre caminhos (botões, regras). */
+export const STEP_TYPES: Record<RobotStepType, { label: string; hint: string; group: "Conversa" | "Fluxo" | "Lead" | "Equipe" | "Integração" }> = {
+  message: { label: "Enviar mensagem", hint: "Texto no canal do cliente. Com botões, cada resposta segue um caminho.", group: "Conversa" },
+  wait_reply: { label: "Esperar resposta", hint: "Pausa até o cliente responder (ou o tempo acabar).", group: "Conversa" },
+  validate: { label: "Pergunta com validação", hint: "Pergunta e confere a resposta: email, telefone, CPF, número.", group: "Conversa" },
+  close: { label: "Fechar conversa", hint: "Marca a conversa como encerrada.", group: "Conversa" },
+  condition: { label: "Condição (se / senão)", hint: "Segue por caminhos diferentes conforme a mensagem, a campanha ou a etiqueta.", group: "Fluxo" },
+  wait: { label: "Esperar tempo", hint: "Pausa o robô antes do próximo passo.", group: "Fluxo" },
+  start_robot: { label: "Iniciar outro robô", hint: "Passa o lead para outro robô.", group: "Fluxo" },
+  stop: { label: "Parar", hint: "Termina o robô aqui.", group: "Fluxo" },
+  task: { label: "Criar tarefa", hint: "Lembrete para o responsável do lead.", group: "Lead" },
+  tag: { label: "Etiqueta", hint: "Adiciona ou remove uma etiqueta do lead.", group: "Lead" },
+  stage: { label: "Mover de etapa", hint: "Leva o lead para outra etapa do funil.", group: "Lead" },
+  set_field: { label: "Preencher campo", hint: "Grava um valor num campo personalizado do lead.", group: "Lead" },
+  note: { label: "Adicionar nota", hint: "Registro interno no histórico do lead.", group: "Lead" },
+  responsible: { label: "Trocar responsável", hint: "Passa o lead para uma pessoa da equipe.", group: "Equipe" },
+  round_robin: { label: "Rodízio entre vendedores", hint: "Distribui os leads um para cada, em sequência.", group: "Equipe" },
+  internal: { label: "Mensagem interna", hint: "Avisa a equipe no chat interno (o cliente não vê).", group: "Equipe" },
+  webhook: { label: "Webhook", hint: "Envia os dados do lead para outro sistema (Zapier, Make, seu site).", group: "Integração" },
 };
 
 const sid = () => Math.random().toString(36).slice(2, 10);
@@ -52,6 +63,16 @@ export function newStep(type: RobotStepType): RobotStep {
       return { id, type, text: "" };
     case "wait":
       return { id, type, minutes: 60 };
+    case "wait_reply":
+      return { id, type, minutes: 1440, timeoutNext: null };
+    case "validate":
+      return { id, type, kind: "email", question: "Qual o seu melhor email?", retryText: "Hmm, não parece um email válido. Pode mandar de novo?", tries: 2, failNext: null };
+    case "condition":
+      return { id, type, source: "message", rules: [{ id: sid(), label: "", op: "contains", next: null }], elseNext: null };
+    case "round_robin":
+      return { id, type, userIds: [] };
+    case "internal":
+      return { id, type, text: "Lead {{lead}} precisa de atenção." };
     case "task":
       return { id, type, text: "Retornar {{nome}}", dueMinutes: 60 };
     case "tag":
@@ -62,8 +83,20 @@ export function newStep(type: RobotStepType): RobotStep {
       return { id, type, stageId: "" };
     case "note":
       return { id, type, text: "" };
+    case "set_field":
+      return { id, type, fieldId: "", value: "" };
+    case "close":
+      return { id, type };
+    case "webhook":
+      return { id, type, url: "https://" };
+    case "start_robot":
+      return { id, type, robotId: "" };
+    case "stop":
+      return { id, type };
   }
 }
+
+export const newBranch = (label = ""): StepBranch => ({ id: sid(), label, next: null });
 
 /** Robôs prontos para começar com um clique. `stage` é a posição da etapa no funil (0 = primeira; "won" = ganho). */
 export type Preset = {

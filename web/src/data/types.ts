@@ -156,14 +156,31 @@ export type FeedItem =
 
 /* ---------- robôs (automações em passos, estilo Salesbot + funil digital) ---------- */
 export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact";
-export type RobotStep =
-  | { id: string; type: "message"; text: string }
-  | { id: string; type: "wait"; minutes: number }
-  | { id: string; type: "task"; text: string; dueMinutes: number }
-  | { id: string; type: "tag"; tag: string }
-  | { id: string; type: "responsible"; userId: string }
-  | { id: string; type: "stage"; stageId: string }
-  | { id: string; type: "note"; text: string };
+/** posição no quadro e ligação para o próximo passo (null = termina; ausente = o seguinte da lista) */
+type StepBase = { id: string; x?: number; y?: number; next?: string | null };
+/** saída com rótulo (botão, regra de condição) que leva a um passo */
+export type StepBranch = { id: string; label: string; next: string | null };
+export type ConditionSource = "message" | "utm_source" | "utm_campaign" | "tag" | "channel";
+export type RobotStep = StepBase &
+  (
+    | { type: "message"; text: string; buttons?: StepBranch[]; elseNext?: string | null }
+    | { type: "wait"; minutes: number }
+    | { type: "wait_reply"; minutes: number; timeoutNext?: string | null }
+    | { type: "condition"; source: ConditionSource; rules: (StepBranch & { op: "contains" | "equals" | "not_contains" })[]; elseNext?: string | null }
+    | { type: "validate"; kind: "any" | "email" | "phone" | "number" | "cpf"; question: string; retryText: string; tries: number; failNext?: string | null; saveFieldId?: string }
+    | { type: "round_robin"; userIds: string[] }
+    | { type: "internal"; text: string }
+    | { type: "task"; text: string; dueMinutes: number }
+    | { type: "tag"; tag: string; remove?: boolean }
+    | { type: "responsible"; userId: string }
+    | { type: "stage"; stageId: string }
+    | { type: "note"; text: string }
+    | { type: "set_field"; fieldId: string; value: string }
+    | { type: "close" }
+    | { type: "webhook"; url: string }
+    | { type: "start_robot"; robotId: string }
+    | { type: "stop" }
+  );
 export type RobotStepType = RobotStep["type"];
 export type Robot = {
   id: ID;
@@ -180,6 +197,8 @@ export type Robot = {
   /** roda uma vez só por lead/conversa */
   once: boolean;
   steps: RobotStep[];
+  /** quadro: posição do bloco de início */
+  start?: { x: number; y: number; next?: string | null };
   /** filtro opcional: só roda para leads cuja UTM contém o texto */
   conditions?: { utmField?: (typeof UTM_KEYS)[number]; utmContains?: string };
   runCount: number;
@@ -195,6 +214,10 @@ export type RobotRun = {
   leadId: ID | null;
   conversationId: ID | null;
   step: number;
+  /** passo atual (robôs com caminhos); null = começo */
+  cursor?: string | null;
+  /** esperando resposta do cliente, tentativas da validação etc. */
+  state?: { wait?: "time" | "reply"; tries?: number };
   depth: number;
   status: "waiting" | "running" | "done" | "failed";
   runAt: ISO;
@@ -292,3 +315,7 @@ export type Attribution = {
   at?: ISO;
 };
 export type TrackingLink = { id: ID; name: string; code: string; phone: string; message: string; defaults: Attribution; clicks: number; matched: number; createdAt: ISO };
+
+/* ---------- marcações no calendário (etiqueta num dia: promoção, folga, feriado municipal) ---------- */
+export type MarkColor = "blue" | "green" | "amber" | "red" | "purple" | "gray";
+export type CalendarMark = { id: ID; date: string; label: string; color: MarkColor; note: string | null; createdBy: string };

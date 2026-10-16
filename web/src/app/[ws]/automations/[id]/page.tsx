@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRobot, listChannels, listPipelines, listTemplates, listUsers } from "@/data";
+import { getRobot, listChannels, listFields, listPipelines, listRobots, listTemplates, listUsers } from "@/data";
 import { DomainError } from "@/data/types";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
@@ -20,7 +20,7 @@ export default async function RobotPage({ params }: PageProps<"/[ws]/automations
     throw e;
   });
   if (!found) notFound();
-  const [pipelines, users, templates, channels] = await Promise.all([listPipelines(ws.id), listUsers(ws.id), listTemplates(ws.id), listChannels(ws.id)]);
+  const [pipelines, users, templates, channels, fields, robots] = await Promise.all([listPipelines(ws.id), listUsers(ws.id), listTemplates(ws.id), listChannels(ws.id), listFields(ws.id), listRobots(ws.id)]);
   const { robot, runs } = found;
   const { id: _id, workspaceId: _w, runCount: _c, lastRunAt: _l, createdAt: _a, ...initial } = robot;
   return (
@@ -36,6 +36,8 @@ export default async function RobotPage({ params }: PageProps<"/[ws]/automations
         templates={templates}
         runs={runs}
         connected={channels.filter((c) => c.status === "connected").map((c) => c.kind)}
+        fields={fields}
+        robots={robots.map((x) => ({ id: x.id, name: x.name }))}
       />
     </>
   );

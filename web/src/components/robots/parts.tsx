@@ -1,6 +1,16 @@
 import type { ChannelKind, RobotStepType } from "@/data/types";
 import {
   ArrowRightLeft,
+  Bot,
+  ChatText,
+  CheckCheck,
+  Link2,
+  MessageSquare,
+  Textbox,
+  Users,
+  Workflow,
+  X,
+  XCircle,
   Globe,
   Hourglass,
   InstagramLogo,
@@ -32,6 +42,16 @@ export const stepIcon: Record<RobotStepType, LucideIcon> = {
   responsible: UserPlus,
   stage: ArrowRightLeft,
   note: StickyNote,
+  wait_reply: ChatText,
+  validate: CheckCheck,
+  condition: Workflow,
+  round_robin: Users,
+  internal: MessageSquare,
+  set_field: Textbox,
+  close: XCircle,
+  webhook: Link2,
+  start_robot: Bot,
+  stop: X,
 };
 
 /* cada tipo de passo com um tom próprio (todos dentro da paleta azul/preto + verde/âmbar de estado) */
@@ -43,6 +63,16 @@ export const stepTone: Record<RobotStepType, string> = {
   responsible: "bg-accent-soft text-accent-text",
   stage: "bg-inverse-bg text-on-inverse",
   note: "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)]",
+  wait_reply: "bg-accent text-on-accent",
+  validate: "bg-accent text-on-accent",
+  condition: "bg-[linear-gradient(140deg,var(--stage-4),var(--stage-7))] text-white",
+  round_robin: "bg-[color-mix(in_srgb,var(--success)_15%,var(--bg))] text-success",
+  internal: "bg-accent-soft text-accent-text",
+  set_field: "bg-accent-soft text-accent-text",
+  close: "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)]",
+  webhook: "bg-inverse-bg text-on-inverse",
+  start_robot: "bg-inverse-bg text-on-inverse",
+  stop: "bg-danger-soft text-danger",
 };
 
 export function StepBadge({ type, size = "md" }: { type: RobotStepType; size?: "sm" | "md" }) {

@@ -35,6 +35,7 @@ const toRobot = (r: Row): Robot => ({
   once: r.once,
   steps: Array.isArray(r.steps) ? r.steps : [],
   conditions: r.conditions ?? {},
+  start: r.conditions?.start ?? undefined,
   runCount: r.run_count ?? 0,
   lastRunAt: iso(r.last_run_at),
   createdAt: new Date(r.created_at).toISOString(),
@@ -49,7 +50,7 @@ const fromRobot = (i: RobotInput) => ({
   keywords: i.keywords,
   once: i.once,
   steps: i.steps,
-  conditions: i.conditions ?? {},
+  conditions: { ...(i.conditions ?? {}), ...(i.start ? { start: i.start } : {}) },
 });
 const toRun = (r: Row): RobotRun => ({
   id: r.id,
@@ -58,6 +59,8 @@ const toRun = (r: Row): RobotRun => ({
   leadId: r.lead_id,
   conversationId: r.conversation_id,
   step: r.step,
+  cursor: r.cursor === undefined ? undefined : r.cursor,
+  state: r.state ?? {},
   depth: r.depth,
   status: r.status,
   runAt: new Date(r.run_at).toISOString(),
@@ -113,6 +116,37 @@ const port: RobotPort = {
     let q = adminClient().from("robot_runs").select("id").eq("robot_id", robotId).limit(1);
     q = key.leadId ? q.eq("lead_id", key.leadId) : q.eq("conversation_id", key.conversationId ?? "00000000-0000-0000-0000-000000000000");
     return check(await q).length > 0;
+  },
+  async countRuns(robotId, before) {
+    const { count } = await adminClient().from("robot_runs").select("id", { count: "exact", head: true }).eq("robot_id", robotId).lt("created_at", before);
+    return count ?? 0;
+  },
+  async waitingReply(wsId, conversationId) {
+    return check(
+      await adminClient().from("robot_runs").select("*").eq("workspace_id", wsId).eq("conversation_id", conversationId).eq("status", "waiting").eq("state->>wait", "reply"),
+    ).map(toRun);
+  },
+  async closeConversation(wsId, c) {
+    check(await adminClient().from("conversations").update({ status: "closed" }).eq("workspace_id", wsId).eq("id", c.id));
+  },
+  async removeTag(wsId, lead, tag) {
+    const a = adminClient();
+    const t = check(await a.from("tags").select("id").eq("workspace_id", wsId).eq("name", tag).maybeSingle());
+    if (t) check(await a.from("lead_tags").delete().eq("lead_id", lead.id).eq("tag_id", t.id));
+  },
+  async setField(wsId, lead, fieldId, value) {
+    const a = adminClient();
+    const row = check(await a.from("leads").select("custom").eq("workspace_id", wsId).eq("id", lead.id).maybeSingle());
+    const custom = { ...(row?.custom ?? {}) };
+    if (value) custom[fieldId] = value;
+    else delete custom[fieldId];
+    check(await a.from("leads").update({ custom }).eq("workspace_id", wsId).eq("id", lead.id));
+  },
+  async notifyTeam(wsId, text) {
+    const a = adminClient();
+    // o aviso entra no chat da equipe em nome do 1º administrador (o robô não tem login próprio)
+    const admins = check(await a.from("memberships").select("user_id, roles!inner(is_admin)").eq("workspace_id", wsId).eq("status", "active").eq("roles.is_admin", true).order("created_at").limit(1));
+    if (admins[0]) check(await a.from("team_messages").insert({ workspace_id: wsId, user_id: admins[0].user_id, body: text.slice(0, 4000) }));
   },
   async context(wsId, leadId, conversationId) {
     const a = adminClient();
@@ -187,7 +221,21 @@ const port: RobotPort = {
     check(
       await adminClient()
         .from("robot_runs")
-        .upsert({ id: run.id, workspace_id: run.workspaceId, robot_id: run.robotId, lead_id: run.leadId, conversation_id: run.conversationId, step: run.step, depth: run.depth, status: run.status, run_at: run.runAt, log: run.log }),
+        .upsert({
+          id: run.id,
+          workspace_id: run.workspaceId,
+          robot_id: run.robotId,
+          lead_id: run.leadId,
+          conversation_id: run.conversationId,
+          step: run.step,
+          cursor: run.cursor ?? null,
+          state: run.state ?? {},
+          depth: run.depth,
+          status: run.status,
+          run_at: run.runAt,
+          log: run.log,
+          created_at: run.createdAt,
+        }),
     );
   },
   async claim(run) {
@@ -219,8 +267,8 @@ export async function fireRobotsForMessage(messageId: ID) {
   const m = check(await adminClient().from("messages").select("workspace_id, conversation_id, body").eq("id", messageId).maybeSingle());
   if (!m) return;
   const { count } = await adminClient().from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).eq("direction", "in");
-  if (count === 1) await fire(port, m.workspace_id, { trigger: "new_contact", conversationId: m.conversation_id, text: m.body });
   await fireRobots(m.workspace_id, { trigger: "message_in", conversationId: m.conversation_id, text: m.body });
+  if (count === 1) await fire(port, m.workspace_id, { trigger: "new_contact", conversationId: m.conversation_id, text: m.body });
 }
 
 // ---------------------------------------------------------------------------

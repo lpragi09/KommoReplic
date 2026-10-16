@@ -1,4 +1,4 @@
-import { listChannels, listPipelines, listTemplates, listUsers } from "@/data";
+import { listChannels, listFields, listPipelines, listRobots, listTemplates, listUsers } from "@/data";
 import type { RobotInput, RobotTrigger } from "@/data/types";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
@@ -16,7 +16,7 @@ export default async function NewRobotPage({ params, searchParams }: PageProps<"
   const { ws: slug } = await params;
   const sp = (await searchParams) as SP;
   const { ws } = await requireWorkspace(slug);
-  const [pipelines, users, templates, channels] = await Promise.all([listPipelines(ws.id), listUsers(ws.id), listTemplates(ws.id), listChannels(ws.id)]);
+  const [pipelines, users, templates, channels, fields, robots] = await Promise.all([listPipelines(ws.id), listUsers(ws.id), listTemplates(ws.id), listChannels(ws.id), listFields(ws.id), listRobots(ws.id)]);
   const stages = pipelines.flatMap((p) => [...p.stages].sort((a, b) => a.sort - b.sort));
 
   let initial: RobotInput;
@@ -55,6 +55,8 @@ export default async function NewRobotPage({ params, searchParams }: PageProps<"
         templates={templates}
         runs={[]}
         connected={channels.filter((c) => c.status === "connected").map((c) => c.kind)}
+        fields={fields}
+        robots={robots.map((x) => ({ id: x.id, name: x.name }))}
       />
     </>
   );

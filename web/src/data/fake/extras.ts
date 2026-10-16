@@ -6,7 +6,9 @@ import {
   DomainError,
   type Broadcast,
   type BroadcastFilter,
+  type CalendarMark,
   type CustomField,
+  type MarkColor,
   type FieldValue,
   type ID,
   type Member,
@@ -194,4 +196,33 @@ export async function listBroadcasts(wsId: ID): Promise<Broadcast[]> {
     .filter((b) => b.workspaceId === wsId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(({ workspaceId: _w, ...b }) => ({ ...b, createdBy: db.users.find((u) => u.id === b.createdBy)?.name ?? "" }));
+}
+
+// ---------------------------------------------------------------------------
+// marcações do calendário
+// ---------------------------------------------------------------------------
+type MarkRow = CalendarMark & { workspaceId: string };
+const gm = globalThis as unknown as { __crmMarks?: MarkRow[] };
+const marks = (gm.__crmMarks ??= []);
+
+export async function listMarks(wsId: ID, from: string, to: string): Promise<CalendarMark[]> {
+  await connection();
+  return marks.filter((m) => m.workspaceId === wsId && m.date >= from && m.date <= to).map(({ workspaceId: _w, ...m }) => m);
+}
+
+export async function saveMark(wsId: ID, actor: ID, id: ID | null, input: { date: string; label: string; color: MarkColor; note: string | null }): Promise<CalendarMark> {
+  if (id) {
+    const m = marks.find((x) => x.id === id && x.workspaceId === wsId);
+    if (!m) throw new DomainError("not_found");
+    Object.assign(m, input);
+    return m;
+  }
+  const m: MarkRow = { ...input, id: uid(), workspaceId: wsId, createdBy: db.users.find((u) => u.id === actor)?.name ?? "" };
+  marks.push(m);
+  return m;
+}
+
+export async function deleteMark(wsId: ID, id: ID) {
+  const i = marks.findIndex((x) => x.id === id && x.workspaceId === wsId);
+  if (i >= 0) marks.splice(i, 1);
 }
