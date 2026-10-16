@@ -9,6 +9,8 @@ import { SESSION_COOKIE, currentUser, requireWorkspace } from "@/data/session";
 import { DomainError } from "@/data/types";
 import { rateLimit } from "@/lib/rate-limit";
 import { digits, isDisposableEmail, validDoc } from "@/lib/document";
+import { cleanAttribution } from "@/lib/utm";
+import { checkTemplate } from "@/lib/template-rules";
 
 async function clientIp() {
   const h = await headers();
@@ -169,6 +171,7 @@ const id = z.string().uuid();
 
 /** Lead novo: robôs de "lead novo no funil" e de "entrou na etapa" (a etapa onde ele nasceu). */
 async function robotsForNewLead(wsId: string, leadId: string, stageId: string) {
+  await data.syncLeadAttribution(wsId, leadId); // origem (UTM) da conversa passa para o lead antes dos robôs lerem
   await data.fireRobots(wsId, { trigger: "lead_created", leadId });
   await data.fireRobots(wsId, { trigger: "stage_enter", leadId, stageId });
 }
@@ -290,6 +293,7 @@ export async function linkIncomingAction(slug: string, incomingId: string, leadI
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     await data.linkIncoming(ws.id, user.id, id.parse(incomingId), id.parse(leadId));
+    await data.syncLeadAttribution(ws.id, id.parse(leadId));
     return null;
   });
 }
@@ -333,6 +337,7 @@ const visitorMsg = z.object({
   name: z.string().trim().max(80),
   body: z.string().trim().min(1, "Escreva uma mensagem.").max(2000, "Mensagem longa demais."),
   messageId: z.string().uuid(),
+  attribution: z.record(z.string(), z.string().max(400)).optional(),
 });
 
 export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
@@ -343,6 +348,7 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
       throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     const { channelId, workspaceId: ws } = await data.getWebchat(v.publicKey);
     const got = await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
+    if (got) await data.attributeInbound(got.conversationId, v.body, cleanAttribution(v.attribution, v.attribution?.via === "site" ? "site" : "webchat"));
     if (got && (await data.getAccess(ws).catch(() => null))?.state !== "locked") {
       if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: v.body });
       await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: v.body });
@@ -437,6 +443,9 @@ const robotInput = z
     keywords: z.array(z.string().trim().min(1).max(40)).max(20),
     once: z.boolean(),
     steps: z.array(robotStep).min(1, "Adicione pelo menos um passo.").max(30, "No máximo 30 passos."),
+    conditions: z
+      .object({ utmField: z.enum(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]).optional(), utmContains: z.string().trim().max(80).optional() })
+      .optional(),
   })
   .refine((r) => r.trigger !== "stage_enter" || !!r.stageId, "Escolha a etapa que dispara o robô.");
 
@@ -482,7 +491,19 @@ const templateInput = z.object({
     .transform((s) => s.replace(/^\//, ""))
     .refine((s) => s === "" || /^[a-z0-9-]{2,30}$/.test(s), "Atalho: 2 a 30 letras minúsculas, números ou hífen.")
     .transform((s) => s || null),
-  body: z.string().trim().min(1, "Escreva o texto do modelo.").max(2000, "Texto longo demais."),
+  body: z.string().trim().min(1, "Escreva o texto do modelo.").max(6000, "Texto longo demais."),
+  network: z.enum(["whatsapp", "instagram", "messenger", "tiktok", "webchat"]).default("webchat"),
+  category: z.enum(["marketing", "utility", "authentication"]).nullable().default(null),
+  header: z.string().trim().max(60).nullable().default(null).transform((v) => v || null),
+  footer: z.string().trim().max(60).nullable().default(null).transform((v) => v || null),
+  buttons: z
+    .array(z.object({ kind: z.enum(["reply", "url"]), text: z.string().trim().max(40), url: z.string().trim().max(500).optional() }))
+    .max(13)
+    .default([]),
+}).superRefine((t, ctx) => {
+  // as mesmas regras da tela, conferidas no servidor
+  const problems = checkTemplate(t.network, { body: t.body, header: t.header ?? undefined, footer: t.footer ?? undefined, buttons: t.buttons, category: t.category });
+  if (problems.length) ctx.addIssue({ code: "custom", message: problems[0] });
 });
 
 export async function saveTemplateAction(slug: string, templateId: string | null, input: z.input<typeof templateInput>) {
@@ -610,5 +631,48 @@ export async function sendBroadcastAction(slug: string, input: { name: string; b
       .parse(input);
     const b = await data.sendBroadcast(ws.id, user.id, v);
     return { sent: b.sent, failed: b.failed, total: b.total };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// origem do lead (UTMs) e links rastreáveis
+// ---------------------------------------------------------------------------
+const attrInput = z.record(z.string(), z.string().max(400));
+
+export async function setLeadAttributionAction(slug: string, leadId: string, input: z.input<typeof attrInput>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    await data.setLeadAttribution(ws.id, user.id, id.parse(leadId), cleanAttribution(attrInput.parse(input), "manual"));
+    return null;
+  });
+}
+
+const linkInput = z.object({
+  name: z.string().trim().min(1, "Dê um nome ao link (ex.: Anúncio Instagram outubro).").max(80),
+  phone: z
+    .string()
+    .transform((v) => {
+      const d = digits(v);
+      return d.length === 10 || d.length === 11 ? `55${d}` : d; // número brasileiro sem o 55
+    })
+    .refine((v) => v.length >= 12 && v.length <= 15, "WhatsApp com DDD, ex.: (11) 98888-1234."),
+  message: z.string().trim().max(500, "Mensagem longa demais."),
+  defaults: attrInput,
+});
+
+export async function saveTrackingLinkAction(slug: string, linkId: string | null, input: z.input<typeof linkInput>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const v = linkInput.parse(input);
+    const l = await data.saveTrackingLink(ws.id, user.id, linkId ? id.parse(linkId) : null, { ...v, defaults: cleanAttribution(v.defaults) ?? {} });
+    return { id: l.id, code: l.code };
+  });
+}
+
+export async function deleteTrackingLinkAction(slug: string, linkId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.deleteTrackingLink(ws.id, id.parse(linkId));
+    return null;
   });
 }

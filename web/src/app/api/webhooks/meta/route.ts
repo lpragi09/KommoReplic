@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { adminClient } from "@/lib/supabase/clients";
-import { fireRobotsForMessage } from "@/data";
+import { attributeInbound, fireRobotsForMessage } from "@/data";
+import { cleanAttribution } from "@/lib/utm";
 
 /* Webhook da Meta (WhatsApp Cloud API).
    GET: handshake de verificação (hub.verify_token).
@@ -25,7 +26,14 @@ type WaChange = {
   value?: {
     metadata?: { phone_number_id?: string };
     contacts?: { wa_id: string; profile?: { name?: string } }[];
-    messages?: { id: string; from: string; type: string; text?: { body: string } }[];
+    messages?: {
+      id: string;
+      from: string;
+      type: string;
+      text?: { body: string };
+      /** anúncio "clique para WhatsApp": a Meta manda de qual anúncio veio */
+      referral?: { source_url?: string; source_id?: string; source_type?: string; headline?: string; body?: string; ctwa_clid?: string };
+    }[];
   };
 };
 
@@ -47,7 +55,20 @@ export async function POST(req: Request) {
         const text = m.type === "text" ? (m.text?.body ?? "") : `[${m.type}]`; // mídia: baixar no job (TODO)
         const { data: msgId, error } = await db.rpc("receive_inbound", { p_channel: ch.id, p_thread: m.from, p_sender_name: name, p_body: text, p_external_id: m.id });
         if (error) console.error("[meta] receive_inbound", error.message);
-        else if (msgId) await fireRobotsForMessage(msgId as string); // robôs: boas-vindas, palavra-chave...
+        else if (msgId) {
+          // origem: anúncio da Meta (referral) ou código de link rastreável na mensagem
+          const { data: row } = await db.from("messages").select("conversation_id").eq("id", msgId).maybeSingle();
+          if (row) {
+            const ad = m.referral
+              ? cleanAttribution(
+                  { utm_source: "meta", utm_medium: "ctwa", ad_id: m.referral.source_id, ad_headline: m.referral.headline, ctwa_clid: m.referral.ctwa_clid, landing: m.referral.source_url },
+                  "meta_ad",
+                )
+              : null;
+            await attributeInbound(row.conversation_id as string, text, ad);
+          }
+          await fireRobotsForMessage(msgId as string); // robôs: boas-vindas, palavra-chave...
+        }
       }
     }
   }

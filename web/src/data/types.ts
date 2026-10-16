@@ -44,6 +44,8 @@ export type Lead = {
   closedAt: ISO | null;
   closestTaskAt: ISO | null;
   lastActivityAt: ISO;
+  /** de onde o lead veio (UTMs, anúncio); null quando não se sabe */
+  attribution?: Attribution | null;
   createdAt: ISO;
 };
 
@@ -115,6 +117,7 @@ export type Conversation = {
   lastMessageAt: ISO | null;
   lastInboundAt: ISO | null;
   lastMessagePreview: string;
+  attribution?: Attribution | null;
 };
 
 export type MessageStatus = "queued" | "sent" | "delivered" | "read" | "failed" | "received";
@@ -177,6 +180,8 @@ export type Robot = {
   /** roda uma vez só por lead/conversa */
   once: boolean;
   steps: RobotStep[];
+  /** filtro opcional: só roda para leads cuja UTM contém o texto */
+  conditions?: { utmField?: (typeof UTM_KEYS)[number]; utmContains?: string };
   runCount: number;
   lastRunAt: ISO | null;
   createdAt: ISO;
@@ -201,7 +206,24 @@ export type RobotEvent =
   | { trigger: "lead_created"; leadId: ID; depth?: number }
   | { trigger: "message_in" | "new_contact"; conversationId: ID; text: string };
 
-export type Template = { id: ID; workspaceId: ID; name: string; shortcut: string | null; body: string; createdAt: ISO };
+export type Template = {
+  id: ID;
+  workspaceId: ID;
+  name: string;
+  shortcut: string | null;
+  body: string;
+  /** rede para a qual o modelo foi escrito (regras e prévia mudam por rede) */
+  network: "whatsapp" | "instagram" | "messenger" | "tiktok" | "webchat";
+  /** só WhatsApp: categoria cobrada pela Meta */
+  category: "marketing" | "utility" | "authentication" | null;
+  header: string | null;
+  footer: string | null;
+  buttons: { kind: "reply" | "url"; text: string; url?: string }[];
+  /** só WhatsApp: situação na Meta */
+  waStatus: "draft" | "pending" | "approved" | "rejected" | null;
+  createdAt: ISO;
+};
+export type TemplateInput = Pick<Template, "name" | "shortcut" | "body" | "network" | "category" | "header" | "footer" | "buttons">;
 
 export type Subscription = {
   plan: "trial" | "basic" | "advanced" | "pro";
@@ -247,3 +269,26 @@ export type Access = {
   trialEndsAt: ISO | null;
   daysLeft: number | null;
 };
+
+/* ---------- origem do lead (UTMs e anúncios) ---------- */
+export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
+export type Attribution = {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  gclid?: string;
+  fbclid?: string;
+  /** id do clique do anúncio "clique para WhatsApp" da Meta */
+  ctwa_clid?: string;
+  ad_id?: string;
+  ad_headline?: string;
+  landing?: string;
+  referrer?: string;
+  /** por onde a origem chegou */
+  via?: "link" | "site" | "webchat" | "meta_ad" | "manual";
+  link_name?: string;
+  at?: ISO;
+};
+export type TrackingLink = { id: ID; name: string; code: string; phone: string; message: string; defaults: Attribution; clicks: number; matched: number; createdAt: ISO };

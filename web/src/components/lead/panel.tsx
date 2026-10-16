@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "@/components/ui/icons";
 import type {
+  Attribution,
   Company,
   Contact,
   CustomField,
@@ -24,6 +25,7 @@ import type {
   Stage,
 } from "@/data/types";
 import { CustomFieldInput } from "./custom-field";
+import { LeadOrigin } from "./origin";
 import {
   deleteLeadAction,
   moveLeadAction,
@@ -50,6 +52,7 @@ type Props = {
   lossReasonName: string | null;
   fields?: CustomField[];
   custom?: Record<string, FieldValue>;
+  attribution?: Attribution | null;
 };
 
 export function LeadPanel({
@@ -63,6 +66,7 @@ export function LeadPanel({
   lossReasonName,
   fields = [],
   custom = {},
+  attribution = null,
 }: Props) {
   const toast = useToast();
   const router = useRouter();
@@ -292,6 +296,17 @@ export function LeadPanel({
                       : "+ Criar campos personalizados"}
                   </Link>
                 </>
+              ),
+            },
+            {
+              value: "origin",
+              label: "Origem",
+              content: (
+                <LeadOrigin
+                  slug={slug}
+                  leadId={lead.id}
+                  attribution={attribution}
+                />
               ),
             },
             {

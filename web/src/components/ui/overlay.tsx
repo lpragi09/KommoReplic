@@ -20,7 +20,7 @@ export function Dialog({
   description?: string;
   children?: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
 }) {
@@ -32,7 +32,7 @@ export function Dialog({
         <D.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-lg bg-bg shadow-pop",
-            { sm: "max-w-[400px]", md: "max-w-[560px]", lg: "max-w-[720px]" }[size],
+            { sm: "max-w-[400px]", md: "max-w-[560px]", lg: "max-w-[720px]", xl: "max-w-[1040px]" }[size],
           )}
         >
           <div className="flex items-start justify-between gap-4 px-6 pt-5">
