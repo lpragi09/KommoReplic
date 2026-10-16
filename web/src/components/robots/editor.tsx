@@ -8,12 +8,12 @@ import {
   useState,
   useTransition,
   type CSSProperties,
+  type KeyboardEventHandler,
   type ReactNode,
 } from "react";
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -27,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CardPointerSensor, CardTouchSensor } from "@/components/ui/dnd";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
 import type {
@@ -158,7 +159,11 @@ export function RobotEditor({
     c.scrollTo({ top: 0 });
   };
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    // arrasta o cartão de qualquer ponto, menos de dentro dos campos e botões
+    useSensor(CardPointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(CardTouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -510,7 +515,7 @@ export function RobotEditor({
               <ol className="flex w-full flex-col items-center">
                 {r.steps.map((s, i) => (
                   <SortableStep key={s.id} id={s.id} index={i} zoom={zoom}>
-                    {(grip, dragging) => (
+                    {(grip, dragging, drag) => (
                       <>
                         <Connector>
                           <AddStep
@@ -531,6 +536,7 @@ export function RobotEditor({
                           templates={templates}
                           stageOptions={stageOptions((k) => k !== "lost")}
                           grip={grip}
+                          drag={drag}
                           dragging={dragging}
                         />
                       </>
@@ -611,7 +617,9 @@ export function RobotEditor({
   );
 }
 
-/** Item da lista que pode ser arrastado pela alça; o resto do cartão continua editável.
+type DragProps = Record<string, unknown>;
+
+/** Item da lista que se arrasta pelo cartão inteiro (mouse/toque) ou pela alça (teclado). Campos continuam editáveis.
     Com zoom, o deslocamento vem em pixels da tela: divide pelo zoom para acompanhar o mouse. */
 function SortableStep({
   id,
@@ -622,7 +630,7 @@ function SortableStep({
   id: string;
   index: number;
   zoom: number;
-  children: (grip: ReactNode, dragging: boolean) => ReactNode;
+  children: (grip: ReactNode, dragging: boolean, drag: DragProps) => ReactNode;
 }) {
   const {
     attributes,
@@ -646,7 +654,8 @@ function SortableStep({
       type="button"
       ref={setActivatorNodeRef}
       {...attributes}
-      {...listeners}
+      onKeyDown={listeners?.onKeyDown as KeyboardEventHandler<HTMLButtonElement> | undefined}
+      data-drag-handle=""
       aria-label={`Arrastar passo ${index + 1}`}
       title="Arraste para mudar a ordem"
       className="-ml-1.5 grid h-9 w-6 shrink-0 cursor-grab touch-none place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg active:cursor-grabbing"
@@ -663,7 +672,10 @@ function SortableStep({
         isDragging && "z-20",
       )}
     >
-      {children(grip, isDragging)}
+      {children(grip, isDragging, {
+        onPointerDown: listeners?.onPointerDown,
+        onTouchStart: listeners?.onTouchStart,
+      })}
     </li>
   );
 }
@@ -748,7 +760,9 @@ function StepCard({
   stageOptions,
   grip,
   dragging,
+  drag,
 }: {
+  drag: DragProps;
   grip: ReactNode;
   dragging: boolean;
   index: number;
@@ -765,8 +779,9 @@ function StepCard({
   return (
     <section
       aria-label={title}
+      {...drag}
       className={cn(
-        "w-full rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_10px_30px_-18px_rgba(14,26,58,.45)] transition-shadow duration-fast",
+        "w-full cursor-grab rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_10px_30px_-18px_rgba(14,26,58,.45)] transition-shadow duration-fast active:cursor-grabbing",
         step.type === "wait" && "max-w-sm",
         dragging &&
           "shadow-[0_0_0_2px_var(--accent),0_24px_48px_-16px_rgba(29,78,216,.55)]",
