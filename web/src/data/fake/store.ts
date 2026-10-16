@@ -304,7 +304,7 @@ function seed(): DB {
     ["Endereço", "endereco", "Estamos na Rua Exemplo, 123 — Centro. Tem estacionamento na frente."],
     ["Pedir dados para orçamento", "orcamento", "Para te mandar o orçamento certinho, me passa: nome completo, cidade e o que você precisa?"],
   ])
-    db.templates.push({ id: uid(), workspaceId: ws.id, name, shortcut, body, createdAt: ago(9000) });
+    db.templates.push({ id: uid(), workspaceId: ws.id, name, shortcut, body, network: "webchat", category: null, header: null, footer: null, buttons: [], waStatus: null, createdAt: ago(9000) });
 
   db.fields.push(
     { id: uid(), workspaceId: ws.id, name: "Como conheceu", kind: "select", options: ["Instagram", "Indicação", "Google", "Passou na frente"], sort: 0 },

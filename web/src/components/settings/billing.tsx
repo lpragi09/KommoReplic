@@ -8,6 +8,7 @@ import { deleteAccountAction, openBillingPortalAction, startCheckoutAction } fro
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
+import { Switch } from "@/components/robots/parts";
 
 const plans = [
   { key: "autonomo", name: "Autônomo", who: "1 a 2 pessoas", m: 59, a: 49, items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel", "Robôs de boas-vindas"] },
@@ -101,15 +102,7 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
             Planos
           </h2>
           <span className="text-sm text-fg">Mensal</span>
-          <button
-            role="switch"
-            aria-checked={annual}
-            aria-label="Cobrança anual (2 meses grátis)"
-            onClick={() => setAnnual((v) => !v)}
-            className={cn("relative h-6 w-11 rounded-pill transition-colors duration-fast", annual ? "bg-accent" : "bg-border-input")}
-          >
-            <span className={cn("absolute top-0.5 size-5 rounded-pill bg-bg shadow-[0_1px_3px_rgba(14,26,58,.3)] transition-transform duration-fast", annual ? "translate-x-5" : "translate-x-0.5")} />
-          </button>
+          <Switch checked={annual} onChange={setAnnual} label="Cobrança anual (2 meses grátis)" />
           <span className="text-sm text-fg">
             Anual <span className="rounded-pill bg-success-soft px-1.5 py-0.5 text-xs font-medium text-success">2 meses grátis</span>
           </span>

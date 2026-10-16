@@ -2,7 +2,7 @@ import "server-only";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { fireRobots as fire, tickRobots as tick, type RobotPort } from "../robots/engine";
-import { DomainError, type Conversation, type ID, type Lead, type Robot, type RobotEvent, type RobotInput, type RobotRun, type Template } from "../types";
+import { DomainError, type Conversation, type ID, type Lead, type Robot, type RobotEvent, type RobotInput, type RobotRun, type Template, type TemplateInput } from "../types";
 
 /* Robôs e modelos no Supabase.
    - Execução: chave secreta (adminClient), sempre filtrando por workspace_id — o robô age como "sistema".
@@ -34,6 +34,7 @@ const toRobot = (r: Row): Robot => ({
   keywords: r.keywords ?? [],
   once: r.once,
   steps: Array.isArray(r.steps) ? r.steps : [],
+  conditions: r.conditions ?? {},
   runCount: r.run_count ?? 0,
   lastRunAt: iso(r.last_run_at),
   createdAt: new Date(r.created_at).toISOString(),
@@ -48,6 +49,7 @@ const fromRobot = (i: RobotInput) => ({
   keywords: i.keywords,
   once: i.once,
   steps: i.steps,
+  conditions: i.conditions ?? {},
 });
 const toRun = (r: Row): RobotRun => ({
   id: r.id,
@@ -80,6 +82,7 @@ const toLead = (r: Row): Lead => ({
   closestTaskAt: iso(r.closest_task_at),
   lastActivityAt: new Date(r.last_activity_at).toISOString(),
   createdAt: new Date(r.created_at).toISOString(),
+  attribution: r.attribution ?? null,
 });
 const toConversation = (r: Row): Conversation => ({
   id: r.id,
@@ -95,6 +98,7 @@ const toConversation = (r: Row): Conversation => ({
   lastMessageAt: iso(r.last_message_at),
   lastInboundAt: iso(r.last_inbound_at),
   lastMessagePreview: r.last_message_preview ?? "",
+  attribution: r.attribution ?? null,
 });
 
 const port: RobotPort = {
@@ -262,18 +266,42 @@ export async function deleteRobot(wsId: ID, id: ID) {
   if (!r.length) throw new DomainError("forbidden", "Só administradores podem apagar robôs.");
 }
 
-const toTemplate = (r: Row): Template => ({ id: r.id, workspaceId: r.workspace_id, name: r.name, shortcut: r.shortcut, body: r.body, createdAt: new Date(r.created_at).toISOString() });
+const toTemplate = (r: Row): Template => ({
+  id: r.id,
+  workspaceId: r.workspace_id,
+  name: r.name,
+  shortcut: r.shortcut,
+  body: r.body,
+  network: r.network ?? "webchat",
+  category: r.category ?? null,
+  header: r.header ?? null,
+  footer: r.footer ?? null,
+  buttons: Array.isArray(r.buttons) ? r.buttons : [],
+  waStatus: r.wa_status ?? null,
+  createdAt: new Date(r.created_at).toISOString(),
+});
+const fromTemplate = (i: TemplateInput) => ({
+  name: i.name,
+  shortcut: i.shortcut,
+  body: i.body,
+  network: i.network,
+  category: i.network === "whatsapp" ? i.category : null,
+  header: i.header,
+  footer: i.footer,
+  buttons: i.buttons,
+  wa_status: i.network === "whatsapp" ? "draft" : null,
+});
 
 export async function listTemplates(wsId: ID): Promise<Template[]> {
   const sb = await userClient();
   return check(await sb.from("templates").select("*").eq("workspace_id", wsId).eq("kind", "chat").order("name")).map(toTemplate);
 }
 
-export async function saveTemplate(wsId: ID, id: ID | null, input: { name: string; shortcut: string | null; body: string }): Promise<Template> {
+export async function saveTemplate(wsId: ID, id: ID | null, input: TemplateInput): Promise<Template> {
   const sb = await userClient();
   const r = id
-    ? check(await sb.from("templates").update(input).eq("workspace_id", wsId).eq("id", id).select("*").maybeSingle())
-    : check(await sb.from("templates").insert({ ...input, workspace_id: wsId, kind: "chat" }).select("*").single());
+    ? check(await sb.from("templates").update(fromTemplate(input)).eq("workspace_id", wsId).eq("id", id).select("*").maybeSingle())
+    : check(await sb.from("templates").insert({ ...fromTemplate(input), workspace_id: wsId, kind: "chat" }).select("*").single());
   if (!r) throw new DomainError("forbidden", "Só administradores podem alterar modelos.");
   return toTemplate(r);
 }

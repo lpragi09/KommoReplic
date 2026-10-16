@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Columns3, CreditCard, ListPlus, MessageSquare, Users } from "@/components/ui/icons";
+import { ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Users } from "@/components/ui/icons";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 
@@ -13,6 +13,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
     { href: "pipelines", icon: Columns3, title: "Funis e etapas", text: "Nomes, ordem e cores das etapas" },
     { href: "users", icon: Users, title: "Equipe e permissões", text: "Convites e papéis" },
     { href: "fields", icon: ListPlus, title: "Campos personalizados", text: "Dados extras de leads e contatos" },
+    { href: "tracking", icon: Link2, title: "Rastreamento e UTMs", text: "Links de WhatsApp rastreáveis, script do site e origem dos leads" },
     { href: "billing", icon: CreditCard, title: "Plano e cobrança", text: "Assinatura e usuários" },
   ];
   return (

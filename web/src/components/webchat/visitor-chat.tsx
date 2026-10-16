@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { Send } from "@/components/ui/icons";
 import { visitorSendAction, visitorThreadAction } from "@/app/actions";
+import { fromSearch } from "@/lib/utm";
 import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,19 @@ import { Button } from "@/components/ui/button";
 type M = { id: string; direction: "in" | "out"; body: string; sentAt: string };
 
 let cachedVisitor: string | null = null;
+/** UTMs da URL do chat (vindas do anúncio ou do script do site), lidas uma vez no navegador */
+function pageOrigin(): Record<string, string> | undefined {
+  if (typeof window === "undefined") return undefined;
+  const q = new URLSearchParams(window.location.search);
+  const o: Record<string, string> = { ...fromSearch(q) };
+  const landing = q.get("landing");
+  const ref = q.get("ref") || document.referrer;
+  if (landing) o.landing = landing.slice(0, 300);
+  if (ref) o.referrer = ref.slice(0, 300);
+  if (q.get("via") === "site") o.via = "site";
+  return Object.keys(o).length ? o : undefined;
+}
+
 function visitorId() {
   if (cachedVisitor) return cachedVisitor;
   try {
@@ -55,7 +69,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
     setError(undefined);
     const body = text;
     start(async () => {
-      const r = await visitorSendAction({ publicKey, visitorId: vid, name, body, messageId: crypto.randomUUID() });
+      const r = await visitorSendAction({ publicKey, visitorId: vid, name, body, messageId: crypto.randomUUID(), attribution: pageOrigin() });
       if (!r.ok) return setError(r.error);
       setText("");
       setMsgs((await visitorThreadAction(publicKey, vid)) as M[]);

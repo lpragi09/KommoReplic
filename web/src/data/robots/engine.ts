@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { humanMinutes } from "@/lib/robot-meta";
+import { UTM_KEYS } from "../types";
 import type { ChannelKind, Conversation, ID, Lead, Robot, RobotEvent, RobotRun, RobotStep } from "../types";
 
 /* Motor dos robôs. Um só para os dois bancos: cada repositório entrega um "Port"
@@ -52,13 +53,21 @@ export function renderText(text: string, ctx: RobotCtx) {
     empresa: ctx.wsName,
     responsavel: ctx.responsibleName,
     lead: ctx.lead?.name || (ctx.lead ? `#${ctx.lead.number}` : ""),
+    ...Object.fromEntries(UTM_KEYS.map((k) => [k, attrOf(ctx)?.[k] ?? ""])),
   };
   return text.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k: string) => vars[k.toLowerCase()] ?? m).trim();
 }
 
 
+const attrOf = (ctx: RobotCtx) => ctx.lead?.attribution ?? ctx.conversation?.attribution ?? null;
+
 function matches(r: Robot, ev: RobotEvent, ctx: RobotCtx) {
   if (r.trigger !== ev.trigger) return false;
+  const c = r.conditions;
+  if (c?.utmField && c.utmContains?.trim()) {
+    const v = attrOf(ctx)?.[c.utmField];
+    if (!v || !v.toLowerCase().includes(c.utmContains.trim().toLowerCase())) return false;
+  }
   if (r.channels.length && !(ctx.channelKind && r.channels.includes(ctx.channelKind))) return false;
   switch (ev.trigger) {
     case "stage_enter":

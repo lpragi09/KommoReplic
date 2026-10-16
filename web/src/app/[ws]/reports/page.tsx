@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getDashboard, listLeads, listLossReasons, listPipelines, listRobots, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { money } from "@/lib/format";
+import { VIA_LABEL } from "@/lib/utm";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
 import { Bot, TrendingDown, TrendingUp, Trophy, Users, type LucideIcon } from "@/components/ui/icons";
@@ -64,6 +65,20 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
     .sort((a, b) => b.count - a.count);
   const sources = new Map<string, number>();
   for (const l of created) sources.set(l.source, (sources.get(l.source) ?? 0) + 1);
+  // campanhas: leads criados no período por fonte/campanha, com o que já virou venda (o Kommo não liga UTM a venda)
+  const camp = new Map<string, { leads: number; won: number; cents: number }>();
+  for (const l of created) {
+    const a = l.attribution;
+    const key = a ? [a.utm_source ?? (a.via === "meta_ad" ? "meta" : a.via ? VIA_LABEL[a.via] : "—"), a.utm_campaign ?? a.ad_headline ?? a.link_name].filter(Boolean).join(" · ") : "Sem origem";
+    const c = camp.get(key) ?? { leads: 0, won: 0, cents: 0 };
+    c.leads += 1;
+    if (l.stage.kind === "won") {
+      c.won += 1;
+      c.cents += l.priceCents;
+    }
+    camp.set(key, c);
+  }
+  const byCampaign = [...camp.entries()].map(([name, c]) => ({ name, ...c })).sort((a, b) => b.cents - a.cents || b.leads - a.leads).slice(0, 12);
   const bySource = [...sources.entries()].map(([k, count]) => ({ name: sourceLabel[k] ?? k, count })).sort((a, b) => b.count - a.count);
 
   const href = (p: Partial<{ p: string; pipeline: string }>) => `/${slug}/reports?${new URLSearchParams({ p: period.v, ...(pipeline ? { pipeline: pipeline.id } : {}), ...p })}`;
@@ -126,6 +141,38 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
                         <td className="py-2 text-right tabular-nums text-muted">{o.active}</td>
                         <td className="py-2 text-right tabular-nums text-fg">{o.won}</td>
                         <td className="py-2 text-right font-medium tabular-nums text-fg">{money(o.cents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+            <Card title="Campanhas" sub={`Leads criados nos últimos ${period.label}, por fonte e campanha (UTM)`}>
+              {byCampaign.length === 0 || (byCampaign.length === 1 && byCampaign[0].name === "Sem origem") ? (
+                <p className="text-sm text-muted">
+                  Nenhum lead com origem ainda. Crie links rastreáveis em{" "}
+                  <Link href={`/${slug}/settings/tracking`} className="text-accent-text underline">
+                    Configurações → Rastreamento e UTMs
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted">
+                      <th className="pb-2 font-medium">Origem</th>
+                      <th className="pb-2 text-right font-medium">Leads</th>
+                      <th className="pb-2 text-right font-medium">Vendas</th>
+                      <th className="pb-2 text-right font-medium">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byCampaign.map((c) => (
+                      <tr key={c.name} className="border-t border-border">
+                        <td className="max-w-48 truncate py-2 text-fg">{c.name}</td>
+                        <td className="py-2 text-right tabular-nums text-muted">{c.leads}</td>
+                        <td className="py-2 text-right tabular-nums text-fg">{c.won}</td>
+                        <td className="py-2 text-right font-medium tabular-nums text-fg">{money(c.cents)}</td>
                       </tr>
                     ))}
                   </tbody>

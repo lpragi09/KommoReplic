@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getLead, getLeadCustom, listFields, listLossReasons, listTaskTypes, listUsers, windowClosed } from "@/data";
+import { getLead, getLeadAttribution, getLeadCustom, listFields, listLossReasons, listTaskTypes, listUsers, windowClosed } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle } from "@/lib/format";
 import { LeadPanel } from "@/components/lead/panel";
@@ -14,13 +14,14 @@ const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "
 export default async function LeadPage({ params }: PageProps<"/[ws]/leads/[id]">) {
   const { ws: slug, id } = await params;
   const { user, ws } = await requireWorkspace(slug);
-  const [d, users, lossReasons, taskTypes, fields, custom] = await Promise.all([
+  const [d, users, lossReasons, taskTypes, fields, custom, attribution] = await Promise.all([
     getLead(ws.id, id).catch(() => null),
     listUsers(ws.id),
     listLossReasons(ws.id),
     listTaskTypes(ws.id),
     listFields(ws.id),
     getLeadCustom(ws.id, id).catch(() => ({})),
+    getLeadAttribution(ws.id, id).catch(() => null),
   ]);
   if (!d) notFound();
   const { lead, pipeline, contacts, company, conversation, channel, feed } = d;
@@ -39,6 +40,7 @@ export default async function LeadPage({ params }: PageProps<"/[ws]/leads/[id]">
         lossReasonName={lossReasons.find((r) => r.id === lead.lossReasonId)?.name ?? null}
         fields={fields}
         custom={custom}
+        attribution={attribution}
       />
       <section aria-label="Histórico e conversa" className="flex min-h-[70dvh] min-w-0 flex-1 flex-col lg:min-h-0">
         <Feed slug={slug} items={feed} contactName={contacts[0]?.name ?? "Cliente"} />

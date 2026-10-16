@@ -1,7 +1,7 @@
 -- Recadi: confere se o setup.sql já foi aplicado por completo.
 -- Se as 4 linhas mostrarem "ok", está tudo certo e NÃO precisa rodar o setup de novo.
-select 'tabelas (esperado 41)' as item, count(*)::text as valor,
-       case when count(*) = 41 then 'ok' else 'faltando' end as status
+select 'tabelas (esperado 43)' as item, count(*)::text as valor,
+       case when count(*) = 43 then 'ok' else 'faltando' end as status
   from pg_tables where schemaname = 'public'
 union all
 select 'tabelas sem RLS (esperado 0)', count(*)::text, case when count(*) = 0 then 'ok' else 'ATENÇÃO' end
@@ -19,4 +19,7 @@ select 'atualização 0004 (robôs, chat da equipe, disparos)', count(*)::text, 
   from information_schema.tables where table_schema = 'public' and table_name in ('robots','robot_runs','team_messages','broadcasts')
 union all
 select 'atualização 0005 (cadastro com CPF/CNPJ e trava do teste)', count(*)::text, case when count(*) = 1 then 'ok' else 'faltando' end
-  from information_schema.tables where table_schema = 'public' and table_name = 'trial_claims';
+  from information_schema.tables where table_schema = 'public' and table_name = 'trial_claims'
+union all
+select 'atualização 0006 (UTMs e links rastreáveis)', count(*)::text, case when count(*) = 2 then 'ok' else 'faltando' end
+  from information_schema.tables where table_schema = 'public' and table_name in ('tracking_links','link_clicks');

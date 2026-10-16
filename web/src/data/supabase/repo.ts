@@ -92,6 +92,7 @@ const toLead = (r: Row): Lead => ({
   closestTaskAt: iso(r.closest_task_at),
   lastActivityAt: isoReq(r.last_activity_at),
   createdAt: isoReq(r.created_at),
+  attribution: r.attribution ?? null,
 });
 const toConversation = (r: Row): Conversation => ({
   id: r.id,
@@ -107,6 +108,7 @@ const toConversation = (r: Row): Conversation => ({
   lastMessageAt: iso(r.last_message_at),
   lastInboundAt: iso(r.last_inbound_at),
   lastMessagePreview: r.last_message_preview ?? "",
+  attribution: r.attribution ?? null,
 });
 const toMessage = (r: Row): Message => ({
   id: r.id,
@@ -773,3 +775,4 @@ export async function getDashboard(wsId: ID, f: { from: string; owner?: ID }) {
 
 export * from "./robots";
 export * from "./extras";
+export * from "./attribution";

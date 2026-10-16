@@ -8,6 +8,8 @@ export const VARIABLES = [
   { key: "empresa", label: "Sua empresa" },
   { key: "responsavel", label: "Responsável" },
   { key: "lead", label: "Nome do lead" },
+  { key: "utm_campaign", label: "Campanha (UTM)" },
+  { key: "utm_source", label: "Fonte (UTM)" },
 ] as const;
 
 export function humanMinutes(min: number) {

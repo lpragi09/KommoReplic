@@ -2,7 +2,7 @@ import "server-only";
 import { connection } from "next/server";
 import { db, now, uid } from "./store";
 import { fireRobots as fire, tickRobots as tick, type RobotPort } from "../robots/engine";
-import { DomainError, type ID, type Message, type Robot, type RobotEvent, type RobotInput, type RobotRun, type Template } from "../types";
+import { DomainError, type ID, type Message, type Robot, type RobotEvent, type RobotInput, type RobotRun, type Template, type TemplateInput } from "../types";
 
 /* Robôs e modelos no banco em memória. */
 
@@ -171,7 +171,7 @@ export async function listTemplates(wsId: ID): Promise<Template[]> {
   return db.templates.filter((t) => t.workspaceId === wsId).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 }
 
-export async function saveTemplate(wsId: ID, id: ID | null, input: { name: string; shortcut: string | null; body: string }): Promise<Template> {
+export async function saveTemplate(wsId: ID, id: ID | null, input: TemplateInput): Promise<Template> {
   if (input.shortcut && db.templates.some((t) => t.workspaceId === wsId && t.id !== id && t.shortcut === input.shortcut))
     throw new DomainError("invalid", "Já existe um modelo com esse atalho.");
   if (id) {
@@ -180,7 +180,7 @@ export async function saveTemplate(wsId: ID, id: ID | null, input: { name: strin
     Object.assign(t, input);
     return t;
   }
-  const t: Template = { ...input, id: uid(), workspaceId: wsId, createdAt: now() };
+  const t: Template = { ...input, id: uid(), workspaceId: wsId, waStatus: input.network === "whatsapp" ? "draft" : null, createdAt: now() };
   db.templates.push(t);
   return t;
 }

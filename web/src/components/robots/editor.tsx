@@ -407,6 +407,33 @@ export function RobotEditor({
           )}
         </fieldset>
 
+        <fieldset>
+          <legend className="mb-1 text-sm font-medium text-fg">Só para uma campanha (opcional)</legend>
+          <p className="mb-2 text-xs text-muted">Roda só para leads cuja origem (UTM) tenha o texto. Ex.: Campanha contém “black”.</p>
+          <div className="grid grid-cols-[1fr_1.2fr] gap-2">
+            <select
+              aria-label="Campo da UTM"
+              value={r.conditions?.utmField ?? ""}
+              onChange={(e) => set({ conditions: { ...r.conditions, utmField: (e.target.value || undefined) as NonNullable<RobotInput["conditions"]>["utmField"] } })}
+              className={selectCls}
+            >
+              <option value="">Qualquer origem</option>
+              <option value="utm_campaign">Campanha</option>
+              <option value="utm_source">Fonte</option>
+              <option value="utm_medium">Mídia</option>
+              <option value="utm_content">Conteúdo</option>
+              <option value="utm_term">Termo</option>
+            </select>
+            <Field
+              label="Contém"
+              hideLabel
+              placeholder="contém…"
+              disabled={!r.conditions?.utmField}
+              value={r.conditions?.utmContains ?? ""}
+              onChange={(e) => set({ conditions: { ...r.conditions, utmContains: e.target.value } })}
+            />
+          </div>
+        </fieldset>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
           <input
             type="checkbox"

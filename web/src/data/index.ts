@@ -13,5 +13,6 @@ export const {
   fireRobots, tickRobots, fireRobotsForMessage, listRobots, getRobot, saveRobot, setRobotActive, deleteRobot, listTemplates, saveTemplate, deleteTemplate,
   listMembers, addMember, setMemberRole, removeMember, listFields, saveField, deleteField, getLeadCustom, setLeadCustom, listTeamMessages, sendTeamMessage, previewBroadcast, sendBroadcast, listBroadcasts,
   getAccess, signupInfo,
+  attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink,
 } = impl;
 export type { ConvFilter, LeadFilter } from "./fake/repo";

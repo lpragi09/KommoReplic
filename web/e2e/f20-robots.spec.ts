@@ -73,9 +73,10 @@ test.describe("F20 robôs e telas novas", () => {
     // modelo de mensagem
     await page.goto(`/${slug}/templates`);
     await page.getByRole("button", { name: "Novo modelo" }).click();
-    await page.getByLabel("Nome", { exact: true }).fill("Horário");
+    await page.getByRole("radio", { name: "Chat do site" }).click();
+    await page.getByLabel("Nome do modelo").fill("Horário");
     await page.getByLabel("Atalho (opcional)").fill("horario");
-    await page.getByLabel("Texto").fill("Atendemos das 9h às 18h.");
+    await page.getByLabel("Mensagem", { exact: true }).fill("Atendemos das 9h às 18h.");
     await page.getByRole("button", { name: "Salvar modelo" }).click();
     await expect(page.getByText("/horario")).toBeVisible();
     await axe(page);
