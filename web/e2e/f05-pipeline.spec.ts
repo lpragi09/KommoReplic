@@ -73,6 +73,11 @@ test.describe("F05/F06/F07/F12 funil, leads e tarefas", () => {
     await page.getByRole("button", { name: "Criar tarefa" }).click();
     await expect(page.getByText("Ligar amanhã")).toBeVisible();
     await page.goto(`/${slug}/calendar`);
+    // visão do mês: a tarefa aparece no dia, com os feriados do mês listados embaixo
+    await expect(page.getByRole("table").getByText("Ligar amanhã")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Feriados do mês" })).toBeVisible();
+    await axe(page);
+    await page.getByRole("link", { name: "Lista" }).click();
     await expect(page.getByRole("heading", { name: /Amanhã \(1\)/ })).toBeVisible();
     await axe(page);
     await page.getByRole("button", { name: "Concluir", exact: true }).click();
