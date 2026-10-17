@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Sparkle } from "@/components/ui/icons";
+import { Check, Sparkle, Trash2 } from "@/components/ui/icons";
 import type { Access, Subscription } from "@/data/types";
 import { deleteAccountAction, openBillingPortalAction, startCheckoutAction } from "@/app/actions";
 import { cn } from "@/lib/cn";
@@ -176,6 +176,8 @@ export function DeleteAccount() {
         open={open}
         onOpenChange={setOpen}
         size="sm"
+        icon={<Trash2 className="size-5" />}
+        tone="danger"
         title="Excluir a conta para sempre?"
         description="Não dá para desfazer. Digite EXCLUIR para confirmar."
         trigger={

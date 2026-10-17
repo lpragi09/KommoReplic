@@ -405,6 +405,8 @@ export function LeadPanel({
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         size="sm"
+        icon={<Trash2 className="size-5" />}
+        tone="danger"
         title="Excluir este lead?"
         description={`“${leadTitle(lead)}” sai do funil com notas e tarefas. Contatos e conversas ficam.`}
         footer={

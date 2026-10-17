@@ -14,6 +14,8 @@ export function Dialog({
   size = "md",
   open,
   onOpenChange,
+  icon,
+  tone = "accent",
 }: {
   trigger?: ReactNode;
   title: string;
@@ -23,28 +25,38 @@ export function Dialog({
   size?: "sm" | "md" | "lg" | "xl";
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
+  /** ícone do assunto, num quadrado colorido ao lado do título */
+  icon?: ReactNode;
+  /** danger: quadrado vermelho (janelas de excluir) */
+  tone?: "accent" | "danger";
 }) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <D.Trigger asChild>{trigger}</D.Trigger>}
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--inverse-bg)_55%,transparent)]" />
+        <D.Overlay className="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--inverse-bg)_55%,transparent)] data-[state=open]:animate-[fx-fade_.16s_ease-out]" />
         <D.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--border)_80%,transparent),0_30px_70px_-20px_rgba(14,26,58,.45)]",
+            "fixed left-1/2 top-1/2 z-50 flex data-[state=open]:animate-[fx-dialog_.18s_cubic-bezier(.2,.8,.2,1)] max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--border)_80%,transparent),0_30px_70px_-20px_rgba(14,26,58,.45)]",
             { sm: "max-w-[400px]", md: "max-w-[560px]", lg: "max-w-[720px]", xl: "max-w-[1040px]" }[size],
           )}
         >
-          {/* cabeçalho com luz azul suave e filete de cor no topo */}
-          <div className="relative flex shrink-0 items-start justify-between gap-4 bg-[radial-gradient(120%_140%_at_0%_0%,color-mix(in_srgb,var(--accent)_9%,var(--bg)),var(--bg)_60%)] px-6 pb-4 pt-6">
-            <span className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--accent),var(--stage-4),transparent)]" aria-hidden />
-            <div>
-              <D.Title className="text-xl font-semibold tracking-tight text-fg">{title}</D.Title>
-              {description ? (
-                <D.Description className="mt-1 text-sm text-muted">{description}</D.Description>
-              ) : (
-                <D.Description className="sr-only">{title}</D.Description>
+          {/* cabeçalho: faixa clara com brilho azul, ícone do assunto e título */}
+          <div className="relative flex shrink-0 items-start justify-between gap-4 border-b border-border bg-[radial-gradient(90%_160%_at_0%_0%,color-mix(in_srgb,var(--accent)_12%,var(--bg)),color-mix(in_srgb,var(--surface)_60%,var(--bg))_70%)] px-6 py-5">
+            <div className="flex min-w-0 items-center gap-3.5">
+              {icon && (
+                <span className={cn("grid size-11 shrink-0 place-items-center rounded-lg text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_10px_20px_-10px_rgba(14,26,58,.7)]", tone === "danger" ? "bg-[linear-gradient(145deg,#ef4444,var(--danger))]" : "bg-[linear-gradient(145deg,#3b82f6,var(--accent))]")} aria-hidden>
+                  {icon}
+                </span>
               )}
+              <div className="min-w-0">
+                <D.Title className="text-xl font-semibold tracking-tight text-fg">{title}</D.Title>
+                {description ? (
+                  <D.Description className="mt-0.5 text-sm text-muted">{description}</D.Description>
+                ) : (
+                  <D.Description className="sr-only">{title}</D.Description>
+                )}
+              </div>
             </div>
             <D.Close aria-label="Fechar" className="rounded-pill p-1.5 text-muted transition-colors hover:bg-surface hover:text-fg">
               <X className="size-5" />

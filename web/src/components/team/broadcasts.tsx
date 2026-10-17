@@ -160,6 +160,7 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
               )}
             </p>
             <Dialog
+              icon={<Megaphone className="size-5" />}
               title="Enviar disparo?"
               description={`A mensagem vai para ${count?.reachable ?? 0} conversas. Não dá para desfazer.`}
               size="sm"

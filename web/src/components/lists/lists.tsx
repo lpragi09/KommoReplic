@@ -3,7 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus } from "@/components/ui/icons";
+import { Plus, UserPlus } from "@/components/ui/icons";
 import { createContactAction } from "@/app/actions";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export function NewContactButton({ slug }: { slug: string }) {
     });
   }
   return (
-    <Dialog open={open} onOpenChange={setOpen} title="Novo contato" size="sm" trigger={<Button icon={<Plus className="size-4" aria-hidden />}>Novo contato</Button>}>
+    <Dialog open={open} onOpenChange={setOpen} icon={<UserPlus className="size-5" />} title="Novo contato" size="sm" trigger={<Button icon={<Plus className="size-4" aria-hidden />}>Novo contato</Button>}>
       <form onSubmit={submit} className="flex flex-col gap-3" data-editing>
         <Field label="Nome" name="name" required autoFocus maxLength={120} />
         <Field label="Telefone" name="phone" type="tel" placeholder="+55 11 90000-0000" maxLength={30} />

@@ -101,6 +101,7 @@ export function FieldsManager({ slug, fields }: { slug: string; fields: CustomFi
       <Dialog
         open={!!draft}
         onOpenChange={(o) => !o && setDraft(null)}
+        icon={<ListPlus className="size-5" />}
         title={draft?.id ? "Editar campo" : "Novo campo"}
         footer={
           <>

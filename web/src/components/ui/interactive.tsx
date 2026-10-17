@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { X } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
@@ -11,12 +11,12 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: {
   label: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; icon?: ReactNode }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex items-center gap-4">
+    <div role="radiogroup" aria-label={label} className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -34,10 +34,11 @@ export function SegmentedControl<T extends string>({
             }}
             tabIndex={on ? 0 : -1}
             className={cn(
-              "h-14 border-b-2 text-caps uppercase transition-colors duration-fast",
-              on ? "border-accent text-accent-text" : "border-transparent text-muted hover:text-fg",
+              "inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-fast ease-out",
+              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(14,26,58,.25)]" : "text-muted hover:text-fg",
             )}
           >
+            {o.icon && <span className={cn("grid place-items-center", on && "text-accent")}>{o.icon}</span>}
             {o.label}
           </button>
         );
