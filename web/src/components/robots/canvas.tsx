@@ -300,6 +300,8 @@ export function FlowCanvas({
   const [sizes, setSizes] = useState<Record<string, { w: number; h: number }>>({});
   const [menu, setMenu] = useState<{ at: Pt; screen: Pt; from?: string; handle?: string } | null>(null);
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
+  /* fio selecionado com um clique: fica vermelho e mostra "Desligar" onde foi clicado (Delete também apaga) */
+  const [selEdge, setSelEdge] = useState<{ key: string; at: Pt } | null>(null);
   const [tick, setTick] = useState(0);
   const view = useRef({ pan, zoom });
   view.current = { pan, zoom };
@@ -471,6 +473,7 @@ export function FlowCanvas({
     const t = e.target as HTMLElement;
     // menus em portal (ex.: escolher o passo) também mandam o clique para cá pelo React: não é clique no fundo
     if (!box.current?.contains(t)) return;
+    setSelEdge(null);
     if (t.closest("[data-node], [data-port], button, input, textarea, select, a")) return;
     setMenu(null);
     setDrag({ kind: "pan", from: { x: e.clientX, y: e.clientY }, pan });
@@ -538,16 +541,23 @@ export function FlowCanvas({
     const pts = routeEdge(e.from, e.to, rects);
     return { ...e, d: pts ? roundedPath(pts) : curve(e.from, e.to), mid: pts ? midpoint(pts) : { x: (e.from.x + e.to.x) / 2, y: (e.from.y + e.to.y) / 2 } };
   });
-  /* o botão de desligar fica um pouco depois de sair da linha, para dar tempo de clicar */
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hoverOn = (k: string) => {
-    if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    setHoverEdge(k);
+  const cut = (key: string) => {
+    const w = wires.find((x) => x.key === key);
+    if (w) link(w.fromId, w.handle, null);
+    setSelEdge(null);
   };
-  const hoverOff = (k: string) => {
-    if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    leaveTimer.current = setTimeout(() => setHoverEdge((h) => (h === k ? null : h)), 700);
-  };
+  useEffect(() => {
+    if (!selEdge) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        cut(selEdge.key);
+      } else if (e.key === "Escape") setSelEdge(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   /* curva (fio sendo puxado, ou quando não há caminho livre): sai para baixo ou para o lado e entra por cima */
   function curve(a: PortPt, b: Pt) {
@@ -599,43 +609,55 @@ export function FlowCanvas({
         </button>
       </div>
       <p className="pointer-events-none absolute bottom-3 left-3 z-20 hidden rounded-pill bg-bg/90 px-3 py-1 text-xs text-muted shadow-[0_0_0_1px_var(--border)] md:block">
-        Arraste o fundo para navegar · Ctrl + roda para zoom · puxe a bolinha azul para ligar os passos
+        Arraste o fundo para navegar · Ctrl + roda para zoom · puxe a bolinha azul para ligar · clique numa linha para desligar
       </p>
 
       <div ref={world} className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
         {/* fios */}
         <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden>
           {wires.map((e) => (
-            <g key={e.key} className="pointer-events-auto" onPointerEnter={() => hoverOn(e.key)} onPointerLeave={() => hoverOff(e.key)}>
-              <path d={e.d} fill="none" stroke="transparent" strokeWidth={18} />
-              <path d={e.d} fill="none" style={{ stroke: hoverEdge === e.key ? "var(--danger)" : "var(--accent)" }} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+            <g
+              key={e.key}
+              className="pointer-events-auto cursor-pointer"
+              onPointerEnter={() => setHoverEdge(e.key)}
+              onPointerLeave={() => setHoverEdge((h) => (h === e.key ? null : h))}
+              onPointerDown={(ev) => {
+                ev.stopPropagation(); // não é arrastar o fundo
+                setMenu(null);
+                setSelEdge({ key: e.key, at: toWorld(ev.clientX, ev.clientY) });
+              }}
+            >
+              <path d={e.d} fill="none" stroke="transparent" strokeWidth={22} />
+              <path
+                d={e.d}
+                fill="none"
+                style={{ stroke: selEdge?.key === e.key ? "var(--danger)" : hoverEdge === e.key ? "color-mix(in srgb, var(--danger) 70%, var(--accent))" : "var(--accent)" }}
+                strokeWidth={selEdge?.key === e.key ? 4 : hoverEdge === e.key ? 3.5 : 2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.9}
+              />
             </g>
           ))}
           {drag?.kind === "wire" && ports[`${drag.from}:${drag.handle}`] && (
             <path d={curve(ports[`${drag.from}:${drag.handle}`], { x: drag.at.x, y: drag.at.y })} fill="none" style={{ stroke: "var(--accent)" }} strokeWidth={2.5} strokeDasharray="6 6" />
           )}
         </svg>
-        {/* × para desligar o fio sob o mouse */}
-        {wires
-          .filter((e) => e.key === hoverEdge)
-          .map((e) => (
-            <button
-              key={e.key}
-              type="button"
-              title="Apaga esta ligação entre os dois passos"
-              onPointerDown={(ev) => ev.stopPropagation()}
-              onPointerEnter={() => hoverOn(e.key)}
-              onPointerLeave={() => hoverOff(e.key)}
-              onClick={() => {
-                link(e.fromId, e.handle, null);
-                setHoverEdge(null);
-              }}
-              className="absolute z-40 inline-flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-pill bg-danger pl-2 pr-3 text-xs font-semibold text-on-accent shadow-[0_6px_14px_-6px_rgba(0,0,0,.45)] hover:brightness-110"
-              style={{ left: e.mid.x, top: e.mid.y }}
-            >
-              <X className="size-3.5" aria-hidden /> Desligar
+        {/* desligar: aparece onde a pessoa clicou no fio e fica até clicar em outro lugar */}
+        {selEdge && wires.some((w) => w.key === selEdge.key) && (
+          <div
+            className="absolute z-40 flex items-center gap-1 whitespace-nowrap rounded-pill bg-bg p-1 shadow-[0_0_0_1px_var(--border),0_10px_24px_-8px_rgba(14,26,58,.45)]"
+            style={{ left: selEdge.at.x, top: selEdge.at.y, transform: `translate(-50%, calc(-100% - 10px)) scale(${1 / zoom})`, transformOrigin: "bottom center" }}
+            onPointerDown={(ev) => ev.stopPropagation()}
+          >
+            <button type="button" onClick={() => cut(selEdge.key)} className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-danger px-3.5 text-sm font-semibold text-on-accent hover:brightness-110">
+              <X className="size-4" aria-hidden /> Desligar
             </button>
-          ))}
+            <button type="button" onClick={() => setSelEdge(null)} className="h-8 rounded-pill px-3 text-sm text-muted hover:bg-surface hover:text-fg">
+              Cancelar
+            </button>
+          </div>
+        )}
 
         {/* início */}
         <div

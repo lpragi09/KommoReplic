@@ -153,3 +153,29 @@ test("F20-E2 botão + Passo cria o passo escolhido no quadro", async ({ page }) 
   await page.getByRole("menuitem", { name: /Criar tarefa/ }).click();
   await expect(page.locator("section[data-node]")).toHaveCount(before + 1);
 });
+
+test("F20-E3 clicar numa linha seleciona e Desligar remove a ligação", async ({ page }) => {
+  const { slug } = await signUp(page);
+  await page.goto(`/${slug}/automations/new?preset=menu`);
+  const wires = page.locator("svg g.cursor-pointer");
+  await expect(wires.first()).toBeAttached();
+  await page.waitForTimeout(800); // quadro se organiza e enquadra
+  const before = await wires.count();
+  // ponto no meio do traçado da linha (não o meio da caixa dela)
+  const pt = await page.evaluate(() => {
+    const paths = [...document.querySelectorAll("svg g.cursor-pointer path:first-child")] as SVGPathElement[];
+    for (const p of paths) {
+      const q = p.getPointAtLength(p.getTotalLength() / 2);
+      const m = p.getScreenCTM()!;
+      const x = q.x * m.a + m.e;
+      const y = q.y * m.d + m.f;
+      const hit = document.elementFromPoint(x, y);
+      if (hit && hit.closest("g.cursor-pointer")) return { x, y };
+    }
+    return null;
+  });
+  expect(pt).not.toBeNull();
+  await page.mouse.click(pt!.x, pt!.y);
+  await page.getByRole("button", { name: "Desligar" }).click();
+  await expect(wires).toHaveCount(before - 1);
+});
