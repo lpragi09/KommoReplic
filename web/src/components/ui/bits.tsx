@@ -32,23 +32,7 @@ export function Tag({ children, onRemove, tone = 0 }: { children: string; onRemo
   );
 }
 
-export function Avatar({ name, size = 32, badge }: { name: string; size?: 20 | 24 | 32 | 40; badge?: ReactNode }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
-  const dim = { 20: "size-5 text-[9px]", 24: "size-6 text-[10px]", 32: "size-8 text-xs", 40: "size-10 text-sm" }[size];
-  return (
-    <span className="relative inline-flex shrink-0">
-      <span className={cn("inline-flex items-center justify-center rounded-sm bg-canvas font-semibold text-fg", dim)} aria-hidden>
-        {initials}
-      </span>
-      <span className="sr-only">{name}</span>
-      {badge && <span className="absolute -bottom-0.5 -right-0.5 rounded-xs bg-bg p-px">{badge}</span>}
-    </span>
-  );
-}
+export { Avatar } from "./avatar";
 
 export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text: string; action?: ReactNode }) {
   return (

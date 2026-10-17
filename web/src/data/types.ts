@@ -4,8 +4,8 @@
 export type ID = string;
 export type ISO = string; // timestamptz em UTC
 
-export type User = { id: ID; name: string; email: string };
-export type Workspace = { id: ID; slug: string; name: string; timezone: string; currency: string };
+export type User = { id: ID; name: string; email: string; /** foto (data URL pequena) */ avatar?: string | null };
+export type Workspace = { id: ID; slug: string; name: string; timezone: string; currency: string; /** logo (data URL pequena) */ logo?: string | null };
 
 export type StageKind = "open" | "won" | "lost";
 export type StageColor = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "won" | "lost";

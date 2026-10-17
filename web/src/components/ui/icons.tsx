@@ -105,3 +105,4 @@ export const ListBullets = icon(P.ListBullets);
 export const CaretUpDown = icon(P.CaretUpDown, "bold");
 export const UserCircle = icon(P.UserCircle);
 export const Coins = icon(P.Coins);
+export const Briefcase = icon(P.Briefcase);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ByParam, ParamTabs } from "@/components/pipeline/views";
 import { CalendarCheck } from "@/components/ui/icons";
 import { listMarks, listTasks } from "@/data";
 import { requireWorkspace } from "@/data/session";
@@ -46,24 +47,19 @@ export default async function CalendarPage({
   const thisMonth = localDay(new Date().toISOString()).slice(0, 7);
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.m ?? "") ? sp.m! : thisMonth;
   const grid = monthGrid(month);
-  const marks = view === "mes" ? await listMarks(ws.id, grid.days[0], grid.days[grid.days.length - 1]) : [];
-  const tasks =
-    view === "mes"
-      ? await listTasks(ws.id, {
-          owner: who === "me" ? user.id : undefined,
-          from: new Date(grid.from).toISOString(),
-          to: new Date(grid.to).toISOString(),
-        })
-      : await listTasks(ws.id, {
-          owner: who === "me" ? user.id : undefined,
-          open: done ? undefined : true,
-        });
-  const q = (p: Record<string, string | undefined>) => {
+  // as duas visões chegam prontas: trocar Mês/Lista é instantâneo (ByParam)
+  const [marks, monthTasks, listTasksAll] = await Promise.all([
+    listMarks(ws.id, grid.days[0], grid.days[grid.days.length - 1]),
+    listTasks(ws.id, { owner: who === "me" ? user.id : undefined, from: new Date(grid.from).toISOString(), to: new Date(grid.to).toISOString() }),
+    listTasks(ws.id, { owner: who === "me" ? user.id : undefined, open: done ? undefined : true }),
+  ]);
+  const tasks = listTasksAll;
+  const q = (p: Record<string, string | undefined>, v: "mes" | "lista" = view) => {
     const s = new URLSearchParams(
       Object.entries({
         who,
-        view,
-        m: view === "mes" ? month : undefined,
+        view: v === "lista" ? "lista" : undefined,
+        m: v === "mes" ? month : undefined,
         done,
         ...p,
       }).filter(([, v]) => v) as [string, string][],
@@ -111,9 +107,9 @@ export default async function CalendarPage({
     },
   ].filter((g) => g.items.length);
 
-  const tab = (v: string, label: string, on: boolean) => (
+  const tab = (v: string, label: string, on: boolean, cur: "mes" | "lista") => (
     <Link
-      href={q({ who: v })}
+      href={q({ who: v }, cur)}
       aria-current={on ? "page" : undefined}
       className={cn(
         "h-8 rounded-pill px-3 text-sm leading-8",
@@ -129,88 +125,75 @@ export default async function CalendarPage({
   return (
     <>
       <PageHeader title="Calendário">
-        <nav
-          aria-label="Visão"
-          className="flex rounded-sm bg-surface p-0.5 shadow-[inset_0_0_0_1px_var(--border)]"
-        >
-          {(
-            [
-              ["mes", "Mês"],
-              ["lista", "Lista"],
-            ] as const
-          ).map(([v, label]) => (
-            <Link
-              key={v}
-              href={q({ view: v, m: v === "mes" ? month : undefined })}
-              aria-current={view === v ? "page" : undefined}
-              className={cn(
-                "h-8 rounded-[6px] px-3 text-sm leading-8",
-                view === v
-                  ? "bg-bg font-medium text-fg shadow-[0_1px_2px_rgba(14,26,58,.12),0_0_0_1px_var(--border)]"
-                  : "text-muted hover:text-fg",
-              )}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <nav aria-label="De quem" className="flex gap-1">
-          {tab("me", "Minhas", who === "me")}
-          {tab("all", "Da equipe", who === "all")}
-        </nav>
-        {view === "lista" ? (
-          <Link
-            href={q({ done: done ? undefined : "1" })}
-            className="text-sm text-accent-text underline"
-          >
-            {done ? "Esconder concluídas" : "Mostrar concluídas"}
-          </Link>
-        ) : (
-          <nav aria-label="Mês" className="ml-auto flex items-center gap-1">
-            <Link
-              href={q({ m: shiftMonth(month, -1) })}
-              aria-label="Mês anterior"
-              className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg"
-            >
-              <ChevronRight className="size-4 rotate-180" aria-hidden />
-            </Link>
-            <span
-              className="min-w-36 text-center text-sm font-semibold text-fg"
-              aria-live="polite"
-            >
-              {monthLabel}
-            </span>
-            <Link
-              href={q({ m: shiftMonth(month, 1) })}
-              aria-label="Próximo mês"
-              className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg"
-            >
-              <ChevronRight className="size-4" aria-hidden />
-            </Link>
-            {month !== thisMonth && (
-              <Link
-                href={q({ m: thisMonth })}
-                className="ml-1 h-8 rounded-pill px-3 text-sm leading-8 text-accent-text hover:bg-accent-soft"
-              >
-                Hoje
-              </Link>
-            )}
-          </nav>
-        )}
+        <ParamTabs
+          param="view"
+          label="Visão"
+          fallback="mes"
+          options={[
+            { value: "mes", label: "Mês" },
+            { value: "lista", label: "Lista" },
+          ]}
+        />
+        <ByParam
+          param="view"
+          fallback="mes"
+          nodes={{
+            lista: (
+              <>
+                <nav aria-label="De quem" className="flex gap-1">
+                  {tab("me", "Minhas", who === "me", "lista")}
+                  {tab("all", "Da equipe", who === "all", "lista")}
+                </nav>
+                <Link href={q({ done: done ? undefined : "1" }, "lista")} className="text-sm text-accent-text underline">
+                  {done ? "Esconder concluídas" : "Mostrar concluídas"}
+                </Link>
+              </>
+            ),
+            mes: (
+              <>
+                <nav aria-label="De quem" className="flex gap-1">
+                  {tab("me", "Minhas", who === "me", "mes")}
+                  {tab("all", "Da equipe", who === "all", "mes")}
+                </nav>
+                <nav aria-label="Mês" className="ml-auto flex items-center gap-1">
+                  <Link href={q({ m: shiftMonth(month, -1) }, "mes")} aria-label="Mês anterior" className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg">
+                    <ChevronRight className="size-4 rotate-180" aria-hidden />
+                  </Link>
+                  <span className="min-w-36 text-center text-sm font-semibold text-fg" aria-live="polite">
+                    {monthLabel}
+                  </span>
+                  <Link href={q({ m: shiftMonth(month, 1) }, "mes")} aria-label="Próximo mês" className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg">
+                    <ChevronRight className="size-4" aria-hidden />
+                  </Link>
+                  {month !== thisMonth && (
+                    <Link href={q({ m: thisMonth }, "mes")} className="ml-1 h-8 rounded-pill px-3 text-sm leading-8 text-accent-text hover:bg-accent-soft">
+                      Hoje
+                    </Link>
+                  )}
+                </nav>
+              </>
+            ),
+          }}
+        />
       </PageHeader>
-      {view === "mes" ? (
+      <ByParam
+        param="view"
+        fallback="mes"
+        nodes={{
+          mes: (
         <div className="flex-1 overflow-y-auto bg-surface">
           <div className="mx-auto max-w-7xl p-4 sm:p-6">
             <MonthCalendar
               slug={slug}
               month={month}
-              tasks={tasks}
+              tasks={monthTasks}
               marks={marks}
               showOwner={who === "all"}
             />
           </div>
         </div>
-      ) : (
+          ),
+          lista: (
         <div className="flex-1 overflow-y-auto bg-surface">
           <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
             {groups.length === 0 && (
@@ -252,7 +235,9 @@ export default async function CalendarPage({
             ))}
           </div>
         </div>
-      )}
+          ),
+        }}
+      />
     </>
   );
 }

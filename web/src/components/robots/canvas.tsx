@@ -469,6 +469,8 @@ export function FlowCanvas({
   const startPan = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     const t = e.target as HTMLElement;
+    // menus em portal (ex.: escolher o passo) também mandam o clique para cá pelo React: não é clique no fundo
+    if (!box.current?.contains(t)) return;
     if (t.closest("[data-node], [data-port], button, input, textarea, select, a")) return;
     setMenu(null);
     setDrag({ kind: "pan", from: { x: e.clientX, y: e.clientY }, pan });

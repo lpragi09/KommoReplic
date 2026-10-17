@@ -244,7 +244,7 @@ export async function workspaceForUser(slug: string, _userId: ID): Promise<Works
   const sb = await userClient();
   const { data } = await sb.from("workspaces").select("*").eq("slug", slug).maybeSingle();
   if (!data) throw new DomainError("not_found"); // RLS: quem não é membro não enxerga
-  return { id: data.id, slug: data.slug, name: data.name, timezone: data.timezone, currency: data.currency };
+  return { id: data.id, slug: data.slug, name: data.name, timezone: data.timezone, currency: data.currency, logo: data.logo ?? null };
 }
 
 export async function createWorkspace(
@@ -275,8 +275,10 @@ export async function createWorkspace(
 
 export async function listUsers(wsId: ID): Promise<User[]> {
   const sb = await userClient();
-  const rows = check(await sb.from("memberships").select("user_id, profiles:user_id(full_name, email)").eq("workspace_id", wsId).eq("status", "active"));
-  return rows.map((m: Row) => ({ id: m.user_id, name: m.profiles?.full_name || m.profiles?.email || "", email: m.profiles?.email ?? "" }));
+  let r: { data: unknown; error: PostgrestError | null } = await sb.from("memberships").select("user_id, profiles:user_id(full_name, email, avatar)").eq("workspace_id", wsId).eq("status", "active");
+  if (r.error?.code === "42703") r = await sb.from("memberships").select("user_id, profiles:user_id(full_name, email)").eq("workspace_id", wsId).eq("status", "active"); // banco sem a atualização de fotos
+  const rows = check(r);
+  return rows.map((m: Row) => ({ id: m.user_id, name: m.profiles?.full_name || m.profiles?.email || "", email: m.profiles?.email ?? "", avatar: m.profiles?.avatar ?? null }));
 }
 
 // ---------------------------------------------------------------------------
@@ -684,9 +686,18 @@ export async function getContact(wsId: ID, id: ID) {
   return { contact: toContact(c), company: c.companies ? toCompany(c.companies) : null, leads };
 }
 
-export async function createContact(wsId: ID, actor: ID, input: { name: string; phone?: string; email?: string }) {
+export async function createCompany(wsId: ID, actor: ID, input: { name: string }) {
   const sb = await userClient();
-  const c = check(await sb.from("contacts").insert({ workspace_id: wsId, name: input.name.trim(), responsible_user_id: actor, created_by: actor }).select("*").single());
+  const name = input.name.trim();
+  const same = check(await sb.from("companies").select("*").eq("workspace_id", wsId).is("deleted_at", null).ilike("name", name.replace(/[%_]/g, "")).limit(1));
+  if (same[0]) return toCompany(same[0]); // mesma empresa: não duplica
+  return toCompany(check(await sb.from("companies").insert({ workspace_id: wsId, name, responsible_user_id: actor, created_by: actor }).select("*").single()));
+}
+
+export async function createContact(wsId: ID, actor: ID, input: { name: string; phone?: string; email?: string; companyName?: string }) {
+  const sb = await userClient();
+  const company = input.companyName?.trim() ? await createCompany(wsId, actor, { name: input.companyName }) : null;
+  const c = check(await sb.from("contacts").insert({ workspace_id: wsId, name: input.name.trim(), responsible_user_id: actor, created_by: actor, company_id: company?.id ?? null }).select("*").single());
   const ids = [
     ...(input.phone ? [{ kind: "phone", value: input.phone.replace(/[^\d+]/g, "") }] : []),
     ...(input.email ? [{ kind: "email", value: input.email.trim().toLowerCase() }] : []),
@@ -782,3 +793,21 @@ export * from "./attribution";
 export * from "./channels";
 export * from "./agent";
 export * from "./pipelines";
+
+// ---------------------------------------------------------------------------
+// foto de perfil e logo da empresa
+// ---------------------------------------------------------------------------
+export async function setMyAvatar(userId: ID, avatar: string | null) {
+  const sb = await userClient();
+  const { error } = await sb.from("profiles").update({ avatar }).eq("id", userId);
+  if (error?.code === "42703") throw new DomainError("invalid", "Rode o atualizacao-fotos.sql no Supabase para liberar as fotos.");
+  if (error) throw toDomain(error);
+}
+
+export async function setWorkspaceLogo(wsId: ID, logo: string | null) {
+  const sb = await userClient();
+  const { data, error } = await sb.from("workspaces").update({ logo }).eq("id", wsId).select("id");
+  if (error?.code === "42703") throw new DomainError("invalid", "Rode o atualizacao-fotos.sql no Supabase para liberar as fotos.");
+  if (error) throw toDomain(error);
+  if (!data?.length) throw new DomainError("forbidden", "Só administradores podem trocar o logo da empresa.");
+}

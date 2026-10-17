@@ -6,7 +6,7 @@ import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, phone } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/bits";
-import { stageBar } from "@/components/pipeline/kanban";
+import { stageBar } from "@/lib/stage-colors";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 

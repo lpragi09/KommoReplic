@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
+import { UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
 import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
+import { PhotoPicker } from "@/components/settings/photo";
 import { cn } from "@/lib/cn";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
@@ -36,6 +37,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
 
   const items: { href: string; icon: LucideIcon; title: string; text: string; stat: string; tone: string }[] = [
     { href: "channels", icon: MessageSquare, title: "Canais", text: "Chat do site, WhatsApp, Instagram e Messenger", stat: `${connected} ${connected === 1 ? "conectado" : "conectados"}`, tone: "from-[#25d366] to-[#128c4a]" },
+    { href: "profile", icon: UserCircle, title: "Meu perfil e foto", text: "Sua foto aparece para a equipe no lugar das iniciais", stat: "Você", tone: "from-[#f472b6] to-[#db2777]" },
     { href: "ai", icon: Sparkle, title: "Agente de IA", text: "Responde os clientes com a sua base de conhecimento e chama a equipe", stat: agent.enabled ? "Ligado" : "Desligado", tone: "from-[#38bdf8] to-[var(--accent)]" },
     { href: "pipelines", icon: Columns3, title: "Funis e etapas", text: "Nomes, ordem e cores das etapas", stat: `${pipelines.length} ${pipelines.length === 1 ? "funil" : "funis"}`, tone: "from-[var(--stage-4)] to-[var(--stage-7)]" },
     { href: "users", icon: Users, title: "Equipe e permissões", text: "Pessoas, papéis e o que cada uma vê", stat: `${team.members.length} ${team.members.length === 1 ? "pessoa" : "pessoas"}`, tone: "from-[var(--aurora-2)] to-[var(--aurora-1)]" },
@@ -52,9 +54,14 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
           {/* empresa */}
           <section aria-label="Sua empresa" className="fx-aurora overflow-hidden rounded-xl p-6 sm:p-8">
             <div className="relative z-10 flex flex-wrap items-center gap-5">
-              <span className="fx-glow grid size-16 shrink-0 place-items-center rounded-lg bg-accent text-2xl font-bold text-on-accent" aria-hidden>
-                {ws.name.slice(0, 1).toUpperCase()}
-              </span>
+              <PhotoPicker
+                slug={slug}
+                kind="logo"
+                current={ws.logo ?? null}
+                label="Trocar o logo da empresa"
+                className="fx-glow size-16 rounded-lg bg-accent"
+                fallback={<span className="text-2xl font-bold text-on-accent">{ws.name.slice(0, 1).toUpperCase()}</span>}
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-on-night-muted">Sua empresa</p>
                 <h2 className="truncate text-2xl font-semibold tracking-tight text-on-night">{ws.name}</h2>

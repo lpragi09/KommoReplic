@@ -4,7 +4,8 @@ import { MobileNav, NavRail } from "@/components/shell/nav-rail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { NavTracker } from "@/components/shell/back-button";
 import { requireWorkspace } from "@/data/session";
-import { getAccess, getBoard, listConversations } from "@/data";
+import { getAccess, getBoard, listConversations, listUsers } from "@/data";
+import { AvatarSeed } from "@/components/ui/avatar";
 import { AccessGate } from "@/components/shell/access-gate";
 
 // Telas atrás de login leem a sessão a cada pedido: a navegação bloqueia no servidor de propósito.
@@ -15,10 +16,11 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   const { ws: slug } = await params;
   const { user, ws } = await requireWorkspace(slug);
   if (mobile) return <MobileNav slug={slug} />;
-  const [convs, board] = await Promise.all([listConversations(ws.id, user.id, "unread"), getBoard(ws.id, undefined)]);
+  const [convs, board, people] = await Promise.all([listConversations(ws.id, user.id, "unread"), getBoard(ws.id, undefined), listUsers(ws.id)]);
   return (
     <>
-      <NavRail slug={slug} userName={user.name} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
+      <AvatarSeed people={people} />
+      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
       <LiveRefresh wsId={ws.id} slug={ws.slug} />
       <NavTracker />
     </>

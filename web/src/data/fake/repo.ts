@@ -139,7 +139,7 @@ export async function createWorkspace(
 export async function listUsers(wsId: ID): Promise<User[]> {
   await live();
   const ids = db.memberships.filter((m) => m.workspaceId === wsId).map((m) => m.userId);
-  return db.users.filter((u) => ids.includes(u.id)).map(({ id, name, email }) => ({ id, name, email }));
+  return db.users.filter((u) => ids.includes(u.id)).map(({ id, name, email, avatar }) => ({ id, name, email, avatar: avatar ?? null }));
 }
 
 // ---------------------------------------------------------------------------
@@ -704,12 +704,22 @@ export async function getContact(wsId: ID, id: ID) {
   return { contact: c, company: c.companyId ? (db.companies.find((x) => x.id === c.companyId) ?? null) : null, leads };
 }
 
-export async function createContact(wsId: ID, actor: ID, input: { name: string; phone?: string; email?: string }) {
+export async function createCompany(wsId: ID, actor: ID, input: { name: string }) {
+  const name = input.name.trim();
+  const same = db.companies.find((x) => x.workspaceId === wsId && x.name.toLowerCase() === name.toLowerCase());
+  if (same) return same; // mesma empresa: não duplica
+  const c = { id: uid(), workspaceId: wsId, name, responsibleUserId: actor, createdAt: now() };
+  db.companies.push(c);
+  return c;
+}
+
+export async function createContact(wsId: ID, actor: ID, input: { name: string; phone?: string; email?: string; companyName?: string }) {
+  const company = input.companyName?.trim() ? await createCompany(wsId, actor, { name: input.companyName }) : null;
   const c: Contact = {
     id: uid(),
     workspaceId: wsId,
     name: input.name.trim(),
-    companyId: null,
+    companyId: company?.id ?? null,
     responsibleUserId: actor,
     identities: [
       ...(input.phone ? [{ kind: "phone" as const, value: input.phone.replace(/[^\d+]/g, "") }] : []),
@@ -791,3 +801,16 @@ export * from "./attribution";
 export * from "./channels";
 export * from "./agent";
 export * from "./pipelines";
+
+// ---------------------------------------------------------------------------
+// foto de perfil e logo da empresa
+// ---------------------------------------------------------------------------
+export async function setMyAvatar(userId: ID, avatar: string | null) {
+  const u = db.users.find((x) => x.id === userId);
+  if (u) u.avatar = avatar;
+}
+
+export async function setWorkspaceLogo(wsId: ID, logo: string | null) {
+  const w = db.workspaces.find((x) => x.id === wsId);
+  if (w) w.logo = logo;
+}
