@@ -880,3 +880,60 @@ export async function setConversationAiAction(slug: string, conversationId: stri
     return null;
   });
 }
+
+// ---------------------------------------------------------------------------
+// funis e etapas
+// ---------------------------------------------------------------------------
+const pipeName = z.string().trim().min(1, "Dê um nome ao funil.").max(80, "Nome com no máximo 80 caracteres.");
+const stageName = z.string().trim().min(1, "Dê um nome à etapa.").max(60, "Nome com no máximo 60 caracteres.");
+const stageColor = z.enum(["1", "2", "3", "4", "5", "6", "7", "8"]);
+
+export async function createPipelineAction(slug: string, name: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    const n = pipeName.parse(name);
+    const { l, over } = await planLimits(ws.id);
+    const count = (await data.listPipelines(ws.id)).length;
+    if (count + 1 > l.pipelines) throw over("funis", l.pipelines, (x) => x.pipelines > count);
+    return { id: (await data.createPipeline(ws.id, n)).id };
+  });
+}
+
+export async function renamePipelineAction(slug: string, pipelineId: string, name: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.renamePipeline(ws.id, id.parse(pipelineId), pipeName.parse(name));
+    return null;
+  });
+}
+
+export async function deletePipelineAction(slug: string, pipelineId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.deletePipeline(ws.id, id.parse(pipelineId));
+    return null;
+  });
+}
+
+export async function addStageAction(slug: string, pipelineId: string, name: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    return { id: (await data.addStage(ws.id, id.parse(pipelineId), stageName.parse(name))).id };
+  });
+}
+
+export async function updateStageAction(slug: string, stageId: string, patch: { name?: string; color?: string }) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.updateStage(ws.id, id.parse(stageId), { name: patch.name === undefined ? undefined : stageName.parse(patch.name), color: patch.color === undefined ? undefined : stageColor.parse(patch.color) });
+    return null;
+  });
+}
+
+export async function deleteStageAction(slug: string, stageId: string, moveTo?: string | null) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.deleteStage(ws.id, id.parse(stageId), moveTo ? id.parse(moveTo) : null);
+    return null;
+  });
+}

@@ -122,6 +122,8 @@ export function overlaps(rects: Rect[]) {
 export function routeEdge(a: PortPt, b: Pt, rects: Rect[]): Pt[] | null {
   const inflated = rects.map((r) => ({ l: r.l - GAP, t: r.t - GAP, r: r.r + GAP, b: r.b + GAP }));
   const inside = (x: number, y: number) => inflated.some((r) => x > r.l + 0.5 && x < r.r - 0.5 && y > r.t + 0.5 && y < r.b - 0.5);
+  a = { ...a, x: Math.round(a.x), y: Math.round(a.y) };
+  b = { x: Math.round(b.x), y: Math.round(b.y) };
   const sa = a.dir === "down" ? { x: a.x, y: a.y + GAP + 4 } : { x: a.x + GAP + 4, y: a.y };
   const sb = { x: b.x, y: b.y - GAP - 4 };
   if (inside(sa.x, sa.y) || inside(sb.x, sb.y)) return null;
@@ -515,7 +517,22 @@ export function FlowCanvas({
     ...(sizes[START_ID] ? [{ l: start.x, t: start.y, r: start.x + sizes[START_ID].w, b: start.y + sizes[START_ID].h }] : []),
     ...steps.filter((s) => sizes[s.id]).map((s) => ({ l: s.x ?? 0, t: s.y ?? 0, r: (s.x ?? 0) + sizes[s.id].w, b: (s.y ?? 0) + sizes[s.id].h })),
   ];
+  /* curva lisa passa livre? confere pontos ao longo dela contra as caixas (com uma folga pequena) */
+  const curveIsClear = (a: PortPt, b: Pt) => {
+    const k = Math.max(50, Math.min(220, Math.hypot(b.x - a.x, b.y - a.y) * 0.45));
+    const c1 = a.dir === "down" ? { x: a.x, y: a.y + k } : { x: a.x + k, y: a.y };
+    const c2 = { x: b.x, y: b.y - k };
+    for (let i = 2; i <= 38; i++) {
+      const t = i / 40;
+      const u = 1 - t;
+      const x = u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x;
+      const y = u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y;
+      if (rects.some((r) => x > r.l - 8 && x < r.r + 8 && y > r.t - 8 && y < r.b + 8)) return false;
+    }
+    return true;
+  };
   const wires = edges.map((e) => {
+    if (curveIsClear(e.from, e.to)) return { ...e, d: curve(e.from, e.to), mid: { x: (e.from.x + e.to.x) / 2, y: (e.from.y + e.to.y) / 2 } };
     const pts = routeEdge(e.from, e.to, rects);
     return { ...e, d: pts ? roundedPath(pts) : curve(e.from, e.to), mid: pts ? midpoint(pts) : { x: (e.from.x + e.to.x) / 2, y: (e.from.y + e.to.y) / 2 } };
   });

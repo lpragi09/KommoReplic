@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useId,
   useOptimistic,
   useState,
@@ -50,6 +51,8 @@ import { useToast } from "@/components/ui/interactive";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
+import { AddStageColumn, StageMenu } from "./manage";
+import { HScroll } from "@/components/ui/hscroll";
 
 export const stageBar: Record<StageColor, string> = {
   "1": "bg-stage-1",
@@ -215,24 +218,32 @@ export function Board({
         }}
         onDragEnd={onDragEnd}
       >
-        <div className="flex min-h-0 flex-1 snap-x gap-3 overflow-x-auto bg-surface p-4">
+        <HScroll className="bg-surface">
+        <div className="flex min-h-0 w-max min-w-full snap-x gap-3 p-4">
           <IncomingColumn
             slug={slug}
             items={incoming}
             linkTargets={linkTargets}
             onError={(t) => toast.show({ text: t, tone: "error" })}
           />
-          {optimistic.map((c) => (
-            <ColumnView
-              key={c.stage.id}
-              slug={slug}
-              pipelineId={pipelineId}
-              col={c}
-              owner={owner}
-              onError={(t) => toast.show({ text: t, tone: "error" })}
-            />
+          {optimistic.map((c, i) => (
+            <Fragment key={c.stage.id}>
+              <ColumnView
+                slug={slug}
+                pipelineId={pipelineId}
+                col={c}
+                siblings={optimistic.map((x) => x.stage)}
+                owner={owner}
+                onError={(t) => toast.show({ text: t, tone: "error" })}
+              />
+              {/* "+ Nova etapa" depois da última etapa aberta (antes de Ganho/Perdido) */}
+              {c.stage.kind === "open" && optimistic[i + 1]?.stage.kind !== "open" && (
+                <AddStageColumn slug={slug} pipelineId={pipelineId} onError={(t) => toast.show({ text: t, tone: "error" })} />
+              )}
+            </Fragment>
           ))}
         </div>
+        </HScroll>
         <DragOverlay>
           {dragging && (
             <LeadCard
@@ -322,12 +333,14 @@ function ColumnView({
   slug,
   pipelineId,
   col,
+  siblings,
   owner,
   onError,
 }: {
   slug: string;
   pipelineId: string;
   col: Column;
+  siblings: Stage[];
   owner: (id: string | null) => string;
   onError: (t: string) => void;
 }) {
@@ -362,16 +375,19 @@ function ColumnView({
               {money(col.totalCents)}
             </p>
           </div>
-          {!closed && (
-            <IconButton
-              label={`Adicionar lead em ${stage.name}`}
-              size={28}
-              aria-expanded={adding}
-              onClick={() => setAdding((v) => !v)}
-            >
-              <Plus className="size-4" />
-            </IconButton>
-          )}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {!closed && (
+              <IconButton
+                label={`Adicionar lead em ${stage.name}`}
+                size={28}
+                aria-expanded={adding}
+                onClick={() => setAdding((v) => !v)}
+              >
+                <Plus className="size-4" />
+              </IconButton>
+            )}
+            <StageMenu slug={slug} stage={stage} siblings={siblings} count={col.count} onError={onError} />
+          </div>
         </div>
       </header>
       {adding && (

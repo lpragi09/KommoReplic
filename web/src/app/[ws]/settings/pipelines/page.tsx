@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listPipelines } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { cn } from "@/lib/cn";
@@ -15,7 +16,13 @@ export default async function PipelinesSettings({ params }: PageProps<"/[ws]/set
       <PageHeader title="Funis e etapas" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl p-4 sm:p-6">
-          <p className="mb-4 rounded-sm bg-warning-soft px-3 py-2 text-sm text-warning">Edição de etapas (renomear, reordenar, cores) ainda não está pronta. Por enquanto, só leitura.</p>
+          <p className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm text-fg">
+            Crie, renomeie e apague funis e etapas direto no{" "}
+            <Link href={`/${slug}/leads`} className="font-medium text-accent-text underline">
+              funil
+            </Link>
+            : o botão <strong>⋯</strong> ao lado do nome do funil e o <strong>⋯</strong> no topo de cada etapa. A coluna <strong>+ Nova etapa</strong> fica no fim.
+          </p>
           {pipelines.map((p) => (
             <section key={p.id} className="mb-4 rounded-md border border-border" aria-label={p.name}>
               <h2 className="border-b border-border px-4 py-2 font-medium text-fg">{p.name}</h2>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Columns3 } from "@/components/ui/icons";
+import { Bot, Columns3 } from "@/components/ui/icons";
 import { getBoard, listLeads, listLossReasons, listUsers, type LeadFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Board, stageBar } from "@/components/pipeline/kanban";
 import { LeadsToolbar } from "@/components/pipeline/toolbar";
 import { NewLeadButton } from "@/components/pipeline/new-lead";
+import { LeadsViews } from "@/components/pipeline/views";
 import { Avatar, EmptyState, Tag } from "@/components/ui/bits";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
@@ -27,37 +28,48 @@ export default async function LeadsPage({ params, searchParams }: PageProps<"/[w
     <>
       <PageHeader
         title="Funil de vendas"
-        actions={<NewLeadButton slug={slug} pipelineId={board.pipeline.id} stages={board.columns.map((c) => c.stage).filter((s) => s.kind === "open")} defaultStageId={firstOpen.id} />}
+        actions={
+          <>
+            <Link
+              href={`/${slug}/automations`}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-[linear-gradient(135deg,#0b1220,#1e293b)] px-4 text-sm font-semibold uppercase tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_8px_18px_-10px_rgba(14,26,58,.8)] transition-[filter,transform] duration-fast hover:brightness-125 active:scale-[.98]"
+            >
+              <Bot className="size-4 text-[#7aa2ff]" aria-hidden /> Automatize
+            </Link>
+            <NewLeadButton slug={slug} pipelineId={board.pipeline.id} stages={board.columns.map((c) => c.stage).filter((s) => s.kind === "open")} defaultStageId={firstOpen.id} />
+          </>
+        }
       >
-        <LeadsToolbar pipelines={board.pipelines} users={users} />
+        <LeadsToolbar slug={slug} pipelines={board.pipelines} users={users} pipelineId={board.pipeline.id} />
       </PageHeader>
 
-      {sp.view === "list" ? (
-        <ListView slug={slug} wsId={ws.id} pipelineId={board.pipeline.id} filter={filter} userName={userName} />
-      ) : board.columns.every((c) => c.count === 0) && board.incoming.length === 0 && !sp.q && !sp.owner && !sp.task ? (
-        <div className="grid flex-1 place-items-center bg-canvas">
-          <EmptyState
-            icon={Columns3}
-            title="Seu funil está vazio"
-            text="Crie o primeiro lead pelo botão “Novo lead”, ou conecte o chat do site para receber contatos automaticamente."
-            action={
-              <Link href={`/${slug}/settings/channels`} className="text-sm font-medium text-accent-text underline">
-                Conectar canal
-              </Link>
-            }
-          />
-        </div>
-      ) : (
-        <Board
-          slug={slug}
-          pipelineId={board.pipeline.id}
-          columns={board.columns}
-          incoming={board.incoming}
-          lossReasons={lossReasons}
-          users={users}
-          linkTargets={board.columns.flatMap((c) => c.leads).map((l) => ({ id: l.id, title: `${leadTitle(l)} · #${l.number}` }))}
-        />
-      )}
+      <LeadsViews
+        list={<ListView slug={slug} wsId={ws.id} pipelineId={board.pipeline.id} filter={filter} userName={userName} />}
+        kanban={
+          <>
+            {board.columns.every((c) => c.count === 0) && board.incoming.length === 0 && !sp.q && !sp.owner && !sp.task && (
+              <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-accent-soft px-4 py-2.5 text-sm">
+                <Columns3 className="size-4 text-accent" aria-hidden />
+                <p className="text-fg">
+                  <strong>Seu funil está vazio.</strong> Crie o primeiro lead pelo botão “Novo lead”, ou conecte o chat do site para receber contatos automaticamente.
+                </p>
+                <Link href={`/${slug}/settings/channels`} className="font-medium text-accent-text underline">
+                  Conectar canal
+                </Link>
+              </div>
+            )}
+            <Board
+              slug={slug}
+              pipelineId={board.pipeline.id}
+              columns={board.columns}
+              incoming={board.incoming}
+              lossReasons={lossReasons}
+              users={users}
+              linkTargets={board.columns.flatMap((c) => c.leads).map((l) => ({ id: l.id, title: `${leadTitle(l)} · #${l.number}` }))}
+            />
+          </>
+        }
+      />
     </>
   );
 }

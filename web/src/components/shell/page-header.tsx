@@ -11,7 +11,6 @@ export function PageHeader({
   actions,
   className,
   crumbs,
-  back = true,
 }: {
   title: ReactNode;
   children?: ReactNode;
@@ -19,7 +18,6 @@ export function PageHeader({
   className?: string;
   /** trilha acima do título, ex.: [{ label: "Configurações", href: "/ws/settings" }] */
   crumbs?: { label: string; href: string }[];
-  back?: boolean;
 }) {
   return (
     <header
@@ -29,7 +27,8 @@ export function PageHeader({
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        {back && <BackButton className="-ml-2" />}
+        {/* voltar só dentro de uma seção: leva para a seção de cima (último item da trilha) */}
+        {crumbs && crumbs.length > 0 && <BackButton href={crumbs[crumbs.length - 1].href} className="-ml-2" />}
         <div className="min-w-0">
           {crumbs && crumbs.length > 0 && (
             <nav aria-label="Trilha" className="flex items-center gap-1 text-xs text-muted">

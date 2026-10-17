@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/bits";
 import { SegmentedControl } from "@/components/ui/interactive";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
+import { PipelineMenu } from "./manage";
 
 const TASKS: { v: string; label: string; icon: ReactNode }[] = [
   { v: "", label: "Qualquer", icon: <CalendarCheck className="size-4" aria-hidden /> },
@@ -15,7 +16,7 @@ const TASKS: { v: string; label: string; icon: ReactNode }[] = [
   { v: "late", label: "Atrasadas", icon: <AlarmClock className="size-4" aria-hidden /> },
 ];
 
-export function LeadsToolbar({ pipelines, users }: { pipelines: { id: string; name: string }[]; users: { id: string; name: string }[] }) {
+export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: string; pipelines: { id: string; name: string }[]; users: { id: string; name: string }[]; pipelineId: string }) {
   const router = useRouter();
   const path = usePathname();
   const sp = useSearchParams();
@@ -34,6 +35,7 @@ export function LeadsToolbar({ pipelines, users }: { pipelines: { id: string; na
   const task = sp.get("task") ?? "";
   const activeFilters = [owner, task, sp.get("tag")].filter(Boolean).length;
   const ownerName = users.find((u) => u.id === owner)?.name;
+  const current = pipelines.find((p) => p.id === pipelineId);
 
   const chip = (on: boolean) =>
     cn(
@@ -49,17 +51,24 @@ export function LeadsToolbar({ pipelines, users }: { pipelines: { id: string; na
           hideLabel
           size="sm"
           icon={<Funnel className="size-4" aria-hidden />}
-          value={sp.get("pipeline") ?? pipelines[0]?.id}
+          value={pipelineId}
           onValueChange={(v) => set({ pipeline: v })}
           options={pipelines.map((p) => ({ value: p.id, label: p.name, icon: <Funnel className="size-4 text-muted" aria-hidden /> }))}
           triggerClassName="h-10 min-w-40 max-w-56 rounded-pill bg-bg font-medium"
         />
       )}
+      {current && <PipelineMenu slug={slug} pipeline={current} />}
 
       <SegmentedControl
         label="Visualização"
         value={view}
-        onChange={(v) => set({ view: v === "kanban" ? null : v })}
+        onChange={(v) => {
+          // troca na hora: só muda o endereço (o Next acompanha o history), sem pedir a página ao servidor
+          const next = new URLSearchParams(sp.toString());
+          if (v === "kanban") next.delete("view");
+          else next.set("view", v);
+          window.history.replaceState(null, "", `${path}${next.size ? `?${next}` : ""}`);
+        }}
         options={[
           { value: "kanban", label: "Kanban", icon: <KanbanIcon className="size-4" aria-hidden /> },
           { value: "list", label: "Lista", icon: <ListBullets className="size-4" aria-hidden /> },

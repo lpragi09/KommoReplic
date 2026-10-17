@@ -1,34 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
-/* Quantas telas a pessoa já visitou DENTRO do app nesta aba.
-   As trocas de tela não recarregam a página, então o document.referrer não serve. */
-let visited = 0;
+/* Voltar sempre sobe UMA seção (robô → Automações, canal → Configurações).
+   Não usa o histórico do navegador: na tela principal de uma seção não há botão de voltar. */
 
-/** Montado uma vez no layout: conta cada troca de tela. */
+/** mantido para o layout (antes contava telas para o histórico) */
 export function NavTracker() {
-  const path = usePathname();
-  useEffect(() => {
-    visited += 1;
-  }, [path]);
   return null;
 }
 
-/** Voltar para a tela anterior do app. Se não houver (chegou por link ou favorito), vai para a tela-pai. */
-export function BackButton({ fallback, label = "Voltar", className }: { fallback?: string; label?: string; className?: string }) {
-  const router = useRouter();
+export function BackButton({ href, fallback, label = "Voltar", className }: { href?: string; fallback?: string; label?: string; className?: string }) {
   const path = usePathname();
-  // tela-pai: /ws/a/b -> /ws/a ; /ws/a -> /ws/leads (o funil é a "casa")
   const parts = path.split("/").filter(Boolean);
-  const parent = fallback ?? (parts.length > 2 ? "/" + parts.slice(0, -1).join("/") : `/${parts[0] ?? ""}/leads`);
+  const parent = href ?? fallback ?? (parts.length > 2 ? "/" + parts.slice(0, -1).join("/") : `/${parts[0] ?? ""}`);
   return (
-    <button
-      type="button"
-      onClick={() => (visited > 1 ? router.back() : router.push(parent))}
+    <Link
+      href={parent}
       aria-label={label}
       title={label}
       className={cn(
@@ -37,6 +28,6 @@ export function BackButton({ fallback, label = "Voltar", className }: { fallback
       )}
     >
       <ArrowLeft className="size-5" aria-hidden />
-    </button>
+    </Link>
   );
 }
