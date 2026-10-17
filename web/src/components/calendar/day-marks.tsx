@@ -6,7 +6,7 @@ import { deleteMarkAction, saveMarkAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Plus, Trash2 } from "@/components/ui/icons";
+import { Plus, Trash2, CalendarDays } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export const MARK_TONE: Record<MarkColor, { chip: string; dot: string; label: string }> = {
@@ -74,6 +74,7 @@ export function DayMarks({ slug, date, marks, dayLabel }: { slug: string; date: 
       <Dialog
         open={!!draft}
         onOpenChange={(o) => !o && setDraft(null)}
+        icon={<CalendarDays className="size-5" />}
         title={draft?.id ? "Editar marcação" : "Nova marcação"}
         description={dayLabel}
         size="sm"

@@ -170,6 +170,7 @@ export function TemplatesManager({ slug, company, templates }: { slug: string; c
       <Dialog
         open={!!draft}
         onOpenChange={(o) => !o && setDraft(null)}
+        icon={<ChatText className="size-5" />}
         title={draft?.id ? "Editar modelo" : "Novo modelo de mensagem"}
         description="Escolha a rede: limites, botões e prévia seguem as regras de cada uma."
         size="xl"

@@ -28,21 +28,7 @@ import {
   markDragEnd,
   swallowClickAfterDrag,
 } from "@/components/ui/dnd";
-import {
-  AlarmClock,
-  CalendarCheck,
-  Check,
-  GripVertical,
-  Inbox,
-  Link2,
-  Mail,
-  MessageCircle,
-  Phone,
-  Plus,
-  FileText,
-  Trash2,
-  X,
-} from "@/components/ui/icons";
+import { AlarmClock, CalendarCheck, Check, GripVertical, Inbox, Link2, Mail, MessageCircle, Phone, Plus, FileText, Trash2, X, XCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { leadTitle, money, when } from "@/lib/format";
 import type {
@@ -290,6 +276,8 @@ export function LostDialog({
       open={open}
       onOpenChange={(o) => !o && onCancel()}
       size="sm"
+      icon={<XCircle className="size-5" />}
+      tone="danger"
       title="Por que este negócio foi perdido?"
       description="O motivo entra no relatório de perdas."
       footer={

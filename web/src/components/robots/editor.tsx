@@ -352,6 +352,8 @@ export function RobotEditor({
           )}
           {robotId && (
             <Dialog
+              icon={<Trash2 className="size-5" />}
+              tone="danger"
               title="Apagar robô?"
               description="O histórico de execuções vai junto. Isso não pode ser desfeito."
               size="sm"

@@ -6,7 +6,7 @@ import { setLeadAttributionAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Pencil } from "@/components/ui/icons";
+import { Pencil, Link2 } from "@/components/ui/icons";
 import { ATTR_KEYS, ATTR_LABEL, VIA_LABEL } from "@/lib/utm";
 
 const EDITABLE = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
@@ -64,6 +64,7 @@ export function LeadOrigin({ slug, leadId, attribution }: { slug: string; leadId
       <Dialog
         open={open}
         onOpenChange={setOpen}
+        icon={<Link2 className="size-5" />}
         title="Origem do lead"
         description="Para quando o cliente veio por indicação, ligação ou um lugar sem link."
         footer={

@@ -7,7 +7,7 @@ import { connectChannelAction, disconnectChannelAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Check, Copy, ExternalLink, Globe, InstagramLogo, MessengerLogo, WhatsappLogo, type LucideIcon } from "@/components/ui/icons";
+import { Check, Copy, ExternalLink, Globe, InstagramLogo, MessengerLogo, WhatsappLogo, type LucideIcon, MessageSquare } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 type Social = "whatsapp" | "instagram" | "messenger";
@@ -175,6 +175,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
       <Dialog
         open={!!open}
         onOpenChange={(o) => !o && setOpen(null)}
+        icon={<MessageSquare className="size-5" />}
         title={open ? `Conectar ${NETS[open].label}` : ""}
         description="Pela API oficial da Meta. Você cola os dados da sua conta e o Recadi confere com a Meta antes de salvar."
         size="lg"

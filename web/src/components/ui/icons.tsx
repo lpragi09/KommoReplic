@@ -100,3 +100,8 @@ export const At = icon(P.At);
 
 export const Minus = icon(P.Minus, "bold");
 export const ArrowsOut = icon(P.CornersOut);
+export const KanbanIcon = icon(P.Kanban);
+export const ListBullets = icon(P.ListBullets);
+export const CaretUpDown = icon(P.CaretUpDown, "bold");
+export const UserCircle = icon(P.UserCircle);
+export const Coins = icon(P.Coins);

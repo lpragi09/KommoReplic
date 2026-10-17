@@ -91,6 +91,8 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
                     ))}
                   </select>
                   <Dialog
+                    icon={<Trash2 className="size-5" />}
+                    tone="danger"
                     title={`Remover ${m.name || m.email}?`}
                     description="A pessoa perde o acesso a esta empresa. Os leads dela continuam aqui."
                     size="sm"
@@ -138,6 +140,7 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
       <Dialog
         open={open}
         onOpenChange={setOpen}
+        icon={<UserPlus className="size-5" />}
         title="Adicionar pessoa"
         description="Crie o acesso e passe o email e a senha inicial para a pessoa."
         footer={

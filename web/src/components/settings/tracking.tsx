@@ -199,6 +199,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
       <Dialog
         open={!!draft}
         onOpenChange={(o) => !o && setDraft(null)}
+        icon={<Link2 className="size-5" />}
         title={draft?.id ? "Editar link rastreável" : "Novo link rastreável"}
         description="As UTMs abaixo valem para todo clique; UTMs na própria URL do link têm prioridade."
         size="lg"

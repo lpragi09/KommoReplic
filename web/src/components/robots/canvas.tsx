@@ -102,6 +102,173 @@ export function autoLayout(steps: RobotStep[], start: Start, heights: Record<str
 }
 
 // ---------------------------------------------------------------------------
+// fios que contornam as caixas: caminho em ângulos retos (com cantos redondos) que nunca passa por dentro de uma caixa
+// ---------------------------------------------------------------------------
+type Rect = { l: number; t: number; r: number; b: number };
+const GAP = 22; // folga entre o fio e a caixa
+const BEND = 60; // custo de cada curva: prefere caminhos com poucas dobras
+
+export function overlaps(rects: Rect[]) {
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i];
+      const c = rects[j];
+      if (a.l < c.r && c.l < a.r && a.t < c.b && c.t < a.b) return true;
+    }
+  return false;
+}
+
+/** pontos do caminho de a (saída) até b (entrada no topo da caixa), desviando de `rects` */
+export function routeEdge(a: PortPt, b: Pt, rects: Rect[]): Pt[] | null {
+  const inflated = rects.map((r) => ({ l: r.l - GAP, t: r.t - GAP, r: r.r + GAP, b: r.b + GAP }));
+  const inside = (x: number, y: number) => inflated.some((r) => x > r.l + 0.5 && x < r.r - 0.5 && y > r.t + 0.5 && y < r.b - 0.5);
+  const sa = a.dir === "down" ? { x: a.x, y: a.y + GAP + 4 } : { x: a.x + GAP + 4, y: a.y };
+  const sb = { x: b.x, y: b.y - GAP - 4 };
+  if (inside(sa.x, sa.y) || inside(sb.x, sb.y)) return null;
+
+  // grade esparsa: bordas das caixas (com folga), as pontas e o meio entre elas
+  const axis = (vals: number[]) => {
+    const u = [...new Set(vals.map((v) => Math.round(v)))].sort((p, q) => p - q);
+    const out: number[] = [];
+    u.forEach((v, i) => {
+      out.push(v);
+      if (i < u.length - 1 && u[i + 1] - v > 8) out.push(Math.round((v + u[i + 1]) / 2));
+    });
+    return out;
+  };
+  const xs = axis([sa.x, sb.x, ...inflated.flatMap((r) => [r.l, r.r])]);
+  const ys = axis([sa.y, sb.y, ...inflated.flatMap((r) => [r.t, r.b])]);
+  const W = xs.length;
+  const H = ys.length;
+  const xi = xs.indexOf(Math.round(sa.x));
+  const yi = ys.indexOf(Math.round(sa.y));
+  const xj = xs.indexOf(Math.round(sb.x));
+  const yj = ys.indexOf(Math.round(sb.y));
+  if (xi < 0 || yi < 0 || xj < 0 || yj < 0) return null;
+
+  // A* com direção no estado (0 horizontal, 1 vertical) para cobrar as curvas
+  const key = (x: number, y: number, d: number) => (y * W + x) * 2 + d;
+  const dist = new Map<number, number>();
+  const prev = new Map<number, number>();
+  const heap: [number, number, number][] = []; // [f, g, key]
+  const push = (f: number, g: number, k: number) => {
+    heap.push([f, g, k]);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heap[p][0] <= heap[i][0]) break;
+      [heap[p], heap[i]] = [heap[i], heap[p]];
+      i = p;
+    }
+  };
+  const pop = () => {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length) {
+      heap[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1;
+        const r = l + 1;
+        let m = i;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        [heap[m], heap[i]] = [heap[i], heap[m]];
+        i = m;
+      }
+    }
+    return top;
+  };
+  const h = (x: number, y: number) => Math.abs(xs[x] - xs[xj]) + Math.abs(ys[y] - ys[yj]);
+  const d0 = a.dir === "down" ? 1 : 0;
+  const k0 = key(xi, yi, d0);
+  dist.set(k0, 0);
+  push(h(xi, yi), 0, k0);
+  let goal = -1;
+  let guard = 0;
+  while (heap.length && guard++ < 60000) {
+    const [, g, k] = pop();
+    if (g > (dist.get(k) ?? Infinity)) continue;
+    const d = k % 2;
+    const cell = (k - d) / 2;
+    const x = cell % W;
+    const y = (cell - x) / W;
+    if (x === xj && y === yj) {
+      goal = k;
+      break;
+    }
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      if (inside(xs[nx], ys[ny]) || inside((xs[x] + xs[nx]) / 2, (ys[y] + ys[ny]) / 2)) continue;
+      const nd = dy !== 0 ? 1 : 0;
+      // chegar na entrada vindo de lado obriga mais uma curva
+      const ng = g + Math.abs(xs[nx] - xs[x]) + Math.abs(ys[ny] - ys[y]) + (nd !== d ? BEND : 0) + (nx === xj && ny === yj && nd === 0 ? BEND : 0);
+      const nk = key(nx, ny, nd);
+      if (ng < (dist.get(nk) ?? Infinity)) {
+        dist.set(nk, ng);
+        prev.set(nk, k);
+        push(ng + h(nx, ny), ng, nk);
+      }
+    }
+  }
+  if (goal < 0) return null;
+  const pts: Pt[] = [];
+  for (let k: number | undefined = goal; k !== undefined; k = prev.get(k)) {
+    const cell = (k - (k % 2)) / 2;
+    pts.push({ x: xs[cell % W], y: ys[Math.floor(cell / W)] });
+  }
+  pts.reverse();
+  const all = [{ x: a.x, y: a.y }, ...pts, { x: b.x, y: b.y }];
+  // tira pontos no meio de retas
+  return all.filter((p, i) => {
+    if (i === 0 || i === all.length - 1) return true;
+    const p0 = all[i - 1];
+    const p1 = all[i + 1];
+    return !((p0.x === p.x && p.x === p1.x) || (p0.y === p.y && p.y === p1.y));
+  });
+}
+
+/** linha com cantos arredondados */
+export function roundedPath(pts: Pt[], radius = 14) {
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1];
+    const p = pts[i];
+    const p1 = pts[i + 1];
+    const r = Math.min(radius, Math.hypot(p.x - p0.x, p.y - p0.y) / 2, Math.hypot(p1.x - p.x, p1.y - p.y) / 2);
+    const ux = Math.sign(p.x - p0.x);
+    const uy = Math.sign(p.y - p0.y);
+    const vx = Math.sign(p1.x - p.x);
+    const vy = Math.sign(p1.y - p.y);
+    d += ` L ${p.x - ux * r} ${p.y - uy * r} Q ${p.x} ${p.y} ${p.x + vx * r} ${p.y + vy * r}`;
+  }
+  const last = pts[pts.length - 1];
+  return `${d} L ${last.x} ${last.y}`;
+}
+
+/** ponto no meio do comprimento do caminho (onde fica o botão de desligar) */
+function midpoint(pts: Pt[]): Pt {
+  const segs = pts.slice(1).map((p, i) => Math.hypot(p.x - pts[i].x, p.y - pts[i].y));
+  let half = segs.reduce((s, x) => s + x, 0) / 2;
+  for (let i = 0; i < segs.length; i++) {
+    if (half <= segs[i]) {
+      const t = segs[i] ? half / segs[i] : 0;
+      return { x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, y: pts[i].y + (pts[i + 1].y - pts[i].y) * t };
+    }
+    half -= segs[i];
+  }
+  return pts[pts.length - 1];
+}
+
+// ---------------------------------------------------------------------------
 // quadro
 // ---------------------------------------------------------------------------
 type Drag =
@@ -217,8 +384,26 @@ export function FlowCanvas({
   const organize = () => {
     const heights = Object.fromEntries(Object.entries(sizes).map(([k, v]) => [k, v.h]));
     onChange(autoLayout(steps, start, heights), start);
-    requestAnimationFrame(() => requestAnimationFrame(fit));
+    setRefit((n) => n + 1);
   };
+
+  // caixas umas por cima das outras (robô antigo ou modelo pronto, posicionados antes de medir): organiza com a altura real.
+  // Confere ao abrir e quando muda o número de passos; arrastar uma caixa por cima de outra de propósito não desfaz nada.
+  const checkedFor = useRef(-1);
+  useEffect(() => {
+    if (checkedFor.current === steps.length || steps.some((s) => !sizes[s.id])) return;
+    checkedFor.current = steps.length;
+    const boxes = steps.map((s) => ({ l: s.x ?? 0, t: s.y ?? 0, r: (s.x ?? 0) + sizes[s.id].w, b: (s.y ?? 0) + sizes[s.id].h }));
+    if (overlaps(boxes)) {
+      onChange(autoLayout(steps, start, Object.fromEntries(Object.entries(sizes).map(([k, v]) => [k, v.h]))), start);
+      setRefit((n) => n + 1); // enquadra de novo depois de reorganizar
+    }
+  }, [sizes, steps, start, onChange]);
+  // enquadra depois que as posições novas chegaram (a função fit da pintura seguinte já vê os passos novos)
+  const [refit, setRefit] = useState(0);
+  useEffect(() => {
+    if (refit) fit();
+  }, [refit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // primeira abertura: enquadra o robô inteiro
   const fitted = useRef(false);
@@ -325,8 +510,28 @@ export function FlowCanvas({
       const b = t ? inPort(t) : undefined;
       if (a && b) edges.push({ key: `${s.id}:${h}`, from: a, to: b, fromId: s.id, handle: h });
     }
-  /* curva: sai para baixo (saída principal) ou para o lado (botão/regra) e entra por cima da caixa */
-  const curve = (a: PortPt, b: Pt) => {
+  // caixas como obstáculos (a do início também)
+  const rects: Rect[] = [
+    ...(sizes[START_ID] ? [{ l: start.x, t: start.y, r: start.x + sizes[START_ID].w, b: start.y + sizes[START_ID].h }] : []),
+    ...steps.filter((s) => sizes[s.id]).map((s) => ({ l: s.x ?? 0, t: s.y ?? 0, r: (s.x ?? 0) + sizes[s.id].w, b: (s.y ?? 0) + sizes[s.id].h })),
+  ];
+  const wires = edges.map((e) => {
+    const pts = routeEdge(e.from, e.to, rects);
+    return { ...e, d: pts ? roundedPath(pts) : curve(e.from, e.to), mid: pts ? midpoint(pts) : { x: (e.from.x + e.to.x) / 2, y: (e.from.y + e.to.y) / 2 } };
+  });
+  /* o botão de desligar fica um pouco depois de sair da linha, para dar tempo de clicar */
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverOn = (k: string) => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    setHoverEdge(k);
+  };
+  const hoverOff = (k: string) => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setHoverEdge((h) => (h === k ? null : h)), 700);
+  };
+
+  /* curva (fio sendo puxado, ou quando não há caminho livre): sai para baixo ou para o lado e entra por cima */
+  function curve(a: PortPt, b: Pt) {
     const k = Math.max(50, Math.min(220, Math.hypot(b.x - a.x, b.y - a.y) * 0.45));
     const c1 = a.dir === "down" ? { x: a.x, y: a.y + k } : { x: a.x + k, y: a.y };
     const c2 = { x: b.x, y: b.y - k };
@@ -381,10 +586,10 @@ export function FlowCanvas({
       <div ref={world} className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
         {/* fios */}
         <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width="1" height="1" aria-hidden>
-          {edges.map((e) => (
-            <g key={e.key} className="pointer-events-auto" onPointerEnter={() => setHoverEdge(e.key)} onPointerLeave={() => setHoverEdge((h) => (h === e.key ? null : h))}>
-              <path d={curve(e.from, e.to)} fill="none" stroke="transparent" strokeWidth={18} />
-              <path d={curve(e.from, e.to)} fill="none" style={{ stroke: hoverEdge === e.key ? "var(--danger)" : "var(--accent)" }} strokeWidth={2.5} strokeLinecap="round" opacity={0.85} />
+          {wires.map((e) => (
+            <g key={e.key} className="pointer-events-auto" onPointerEnter={() => hoverOn(e.key)} onPointerLeave={() => hoverOff(e.key)}>
+              <path d={e.d} fill="none" stroke="transparent" strokeWidth={18} />
+              <path d={e.d} fill="none" style={{ stroke: hoverEdge === e.key ? "var(--danger)" : "var(--accent)" }} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
             </g>
           ))}
           {drag?.kind === "wire" && ports[`${drag.from}:${drag.handle}`] && (
@@ -392,23 +597,24 @@ export function FlowCanvas({
           )}
         </svg>
         {/* × para desligar o fio sob o mouse */}
-        {edges
+        {wires
           .filter((e) => e.key === hoverEdge)
           .map((e) => (
             <button
               key={e.key}
               type="button"
-              aria-label="Desligar"
-              title="Desligar"
-              onPointerEnter={() => setHoverEdge(e.key)}
+              title="Apaga esta ligação entre os dois passos"
+              onPointerDown={(ev) => ev.stopPropagation()}
+              onPointerEnter={() => hoverOn(e.key)}
+              onPointerLeave={() => hoverOff(e.key)}
               onClick={() => {
                 link(e.fromId, e.handle, null);
                 setHoverEdge(null);
               }}
-              className="absolute z-20 grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-pill bg-danger text-on-accent shadow-[0_4px_10px_-4px_rgba(0,0,0,.4)]"
-              style={{ left: (e.from.x + e.to.x) / 2, top: (e.from.y + e.to.y) / 2 }}
+              className="absolute z-40 inline-flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-pill bg-danger pl-2 pr-3 text-xs font-semibold text-on-accent shadow-[0_6px_14px_-6px_rgba(0,0,0,.45)] hover:brightness-110"
+              style={{ left: e.mid.x, top: e.mid.y }}
             >
-              <X className="size-3.5" />
+              <X className="size-3.5" aria-hidden /> Desligar
             </button>
           ))}
 
