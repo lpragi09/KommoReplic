@@ -418,10 +418,15 @@ textarea:not([data-plain]):focus {
 }
 
 @keyframes fx-fade { from { opacity: 0; } to { opacity: 1; } }
+/* só anima o "translate" próprio (o Tailwind centraliza a janela com a propriedade translate, que não pode ser tocada aqui) */
 @keyframes fx-dialog {
-  from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.98); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-state="open"] { animation: none !important; }
 }
+
+/* esconde a barra de rolagem do navegador (a tela desenha a sua, ver HScroll) */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
