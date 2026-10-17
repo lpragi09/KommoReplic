@@ -144,3 +144,12 @@ test.describe("F20 robôs e telas novas", () => {
     await expect(v2.getByText(/Sem problema! Em instantes/)).toBeVisible({ timeout: 15_000 });
   });
 });
+
+test("F20-E2 botão + Passo cria o passo escolhido no quadro", async ({ page }) => {
+  const { slug } = await signUp(page);
+  await page.goto(`/${slug}/automations/new`);
+  const before = await page.locator("section[data-node]").count();
+  await page.getByRole("button", { name: "Passo", exact: true }).click();
+  await page.getByRole("menuitem", { name: /Criar tarefa/ }).click();
+  await expect(page.locator("section[data-node]")).toHaveCount(before + 1);
+});

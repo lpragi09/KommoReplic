@@ -331,13 +331,26 @@ export async function markReadAction(slug: string, conversationId: string) {
   });
 }
 
-export async function createContactAction(slug: string, input: { name: string; phone?: string; email?: string }) {
+export async function createContactAction(slug: string, input: { name: string; phone?: string; email?: string; companyName?: string }) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     const v = z
-      .object({ name: z.string().trim().min(1, "Digite o nome.").max(120), phone: z.string().max(30).optional(), email: z.string().max(200).optional() })
+      .object({
+        name: z.string().trim().min(1, "Digite o nome.").max(120),
+        phone: z.string().max(30).optional(),
+        email: z.string().max(200).optional(),
+        companyName: z.string().trim().max(160, "Nome da empresa com no máximo 160 caracteres.").optional(),
+      })
       .parse(input);
     const c = await data.createContact(ws.id, user.id, v);
+    return { id: c.id };
+  });
+}
+
+export async function createCompanyAction(slug: string, name: string) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const c = await data.createCompany(ws.id, user.id, { name: z.string().trim().min(1, "Digite o nome da empresa.").max(160).parse(name) });
     return { id: c.id };
   });
 }
@@ -934,6 +947,31 @@ export async function deleteStageAction(slug: string, stageId: string, moveTo?: 
   return run(async () => {
     const { ws } = await requireActive(slug);
     await data.deleteStage(ws.id, id.parse(stageId), moveTo ? id.parse(moveTo) : null);
+    return null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// foto de perfil e logo da empresa (data URL já reduzida no navegador)
+// ---------------------------------------------------------------------------
+const photo = z
+  .string()
+  .max(200_000, "Imagem grande demais.")
+  .regex(/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/, "Formato de imagem inválido.")
+  .nullable();
+
+export async function setMyAvatarAction(slug: string, avatar: string | null) {
+  return run(async () => {
+    const { user } = await requireWorkspace(slug);
+    await data.setMyAvatar(user.id, photo.parse(avatar));
+    return null;
+  });
+}
+
+export async function setLogoAction(slug: string, logo: string | null) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.setWorkspaceLogo(ws.id, photo.parse(logo));
     return null;
   });
 }

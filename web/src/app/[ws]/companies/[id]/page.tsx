@@ -6,7 +6,8 @@ import { requireWorkspace } from "@/data/session";
 import { leadTitle, money } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/bits";
-import { stageBar } from "@/components/pipeline/kanban";
+import { stageBar } from "@/lib/stage-colors";
+import { NewContactButton } from "@/components/lists/lists";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
@@ -21,9 +22,18 @@ export default async function CompanyPage({ params }: PageProps<"/[ws]/companies
         <Link href={`/${slug}/companies`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
           <ArrowLeft className="size-4" aria-hidden /> Empresas
         </Link>
-        <h1 className="mt-3 flex items-center gap-2 break-words text-xl text-fg">
-          <Building2 className="size-6 shrink-0 text-muted" aria-hidden /> {d.company.name}
-        </h1>
+        <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+          <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#3b82f6,var(--accent))] text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3)]" aria-hidden>
+            <Building2 className="size-7" weight="fill" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="break-words text-2xl font-semibold tracking-tight text-fg">{d.company.name}</h1>
+            <p className="text-sm text-muted">
+              {d.contacts.length} {d.contacts.length === 1 ? "pessoa" : "pessoas"} · {d.leads.length} {d.leads.length === 1 ? "negócio" : "negócios"}
+            </p>
+          </div>
+          <NewContactButton slug={slug} defaultCompany={d.company.name} label="Adicionar pessoa" />
+        </div>
         <section aria-labelledby="pc" className="mt-6">
           <h2 id="pc" className="text-caps uppercase text-muted">
             Pessoas ({d.contacts.length})

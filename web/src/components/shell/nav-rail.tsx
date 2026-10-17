@@ -4,22 +4,7 @@ import { Fragment, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import {
-  Bell,
-  Bot,
-  CalendarDays,
-  ChartColumn,
-  ChevronsLeft,
-  ChevronsRight,
-  Columns3,
-  Contact,
-  House,
-  LogOut,
-  MessageSquare,
-  Search,
-  Settings,
-  type LucideIcon,
-} from "@/components/ui/icons";
+import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
@@ -55,12 +40,14 @@ const friendly = (n: string) => (n.includes("@") ? n.split("@")[0].replace(/[._-
 export function NavRail({
   slug,
   userName,
+  userAvatar,
   workspaceName,
   unread = 0,
   incoming = 0,
 }: {
   slug: string;
   userName: string;
+  userAvatar?: string | null;
   workspaceName: string;
   unread?: number;
   incoming?: number;
@@ -158,7 +145,7 @@ export function NavRail({
         <li>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger className="mt-1 flex w-full items-center gap-3 rounded-sm px-2 py-1 text-left hover:bg-nav-hover" aria-label={`Conta de ${userName}`}>
-              <Avatar name={friendly(userName)} size={32} />
+              <Avatar name={friendly(userName)} size={32} src={userAvatar} />
               <span className={cn("min-w-0 flex-col text-left", expanded ? "flex" : "sr-only")}>
                 <span className="truncate text-sm text-nav-text">{friendly(userName)}</span>
                 {userName.includes("@") && <span className="truncate text-xs text-nav-muted">{userName}</span>}
@@ -167,6 +154,11 @@ export function NavRail({
             <DropdownMenu.Portal>
               <DropdownMenu.Content side="right" align="end" sideOffset={8} className="z-50 min-w-48 rounded-md border border-border bg-bg p-1 shadow-pop">
                 <DropdownMenu.Label className="px-2 py-1.5 text-xs text-muted">{userName}</DropdownMenu.Label>
+                <DropdownMenu.Item asChild>
+                  <Link href={`${base}/settings/profile`} className="flex h-8 items-center gap-2 rounded-sm px-2 text-sm text-fg outline-none data-[highlighted]:bg-surface">
+                    <UserCircle className="size-4" aria-hidden /> Meu perfil e foto
+                  </Link>
+                </DropdownMenu.Item>
                 <DropdownMenu.Item asChild>
                   <Link href={`${base}/settings`} className="flex h-8 items-center gap-2 rounded-sm px-2 text-sm text-fg outline-none data-[highlighted]:bg-surface">
                     <Settings className="size-4" aria-hidden /> Configurações

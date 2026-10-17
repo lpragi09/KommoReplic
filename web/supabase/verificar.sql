@@ -28,4 +28,7 @@ select 'atualização 0007 (robôs com caminhos, marcações)', count(*)::text, 
   from information_schema.tables where table_schema = 'public' and table_name = 'calendar_marks'
 union all
 select 'atualização 0008 (canais da Meta, agente de IA)', count(*)::text, case when count(*) = 2 then 'ok' else 'faltando' end
-  from information_schema.tables where table_schema = 'public' and table_name in ('channel_secrets','ai_agents');
+  from information_schema.tables where table_schema = 'public' and table_name in ('channel_secrets','ai_agents')
+union all
+select 'atualização 0009 (foto de perfil e logo)', count(*)::text, case when count(*) = 2 then 'ok' else 'faltando' end
+  from information_schema.columns where table_schema = 'public' and ((table_name = 'profiles' and column_name = 'avatar') or (table_name = 'workspaces' and column_name = 'logo'));

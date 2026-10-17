@@ -3,7 +3,7 @@ import { listPipelines } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
-import { stageBar } from "@/components/pipeline/kanban";
+import { stageBar } from "@/lib/stage-colors";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
