@@ -130,6 +130,7 @@ const toChannel = (r: Row): Channel => ({
   publicKey: r.public_key,
   defaultPipelineId: r.default_pipeline_id,
   status: r.status,
+  externalId: r.external_id ?? null,
 });
 const toTask = (r: Row): Task => ({
   id: r.id,

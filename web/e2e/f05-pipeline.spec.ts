@@ -54,8 +54,12 @@ test.describe("F05/F06/F07/F12 funil, leads e tarefas", () => {
     await page.getByRole("button", { name: "Novo lead" }).click();
     await page.getByLabel("Nome do negócio").fill("Vai perder");
     await page.getByRole("button", { name: "Criar lead" }).click();
-    await page.getByRole("button", { name: "Perdido" }).click();
     const dlg = page.getByRole("dialog", { name: "Por que este negócio foi perdido?" });
+    // o cartão chega pronto do servidor: um clique antes da hidratação se perde
+    await expect(async () => {
+      await page.getByRole("button", { name: "Perdido" }).click();
+      await expect(dlg).toBeVisible({ timeout: 1000 });
+    }).toPass();
     await dlg.getByLabel("Escolheu concorrente").check();
     await dlg.getByRole("button", { name: "Marcar como perdido" }).click();
     await expect(page.getByText("Negócio perdido · Escolheu concorrente")).toBeVisible();

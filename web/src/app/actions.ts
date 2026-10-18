@@ -437,12 +437,15 @@ export async function startCheckoutAction(slug: string, lookupKey: string, seats
 }
 
 /** Portal do Stripe: trocar plano, cartão, usuários — e cancelar em um clique. */
-export async function openBillingPortalAction(slug: string, customerId: string) {
+export async function openBillingPortalAction(slug: string) {
   return run(async () => {
-    await requireWorkspace(slug);
+    const { ws } = await requireWorkspace(slug);
+    // o cliente do Stripe vem do banco, nunca da tela; só admin lê a assinatura (RLS)
+    const { stripeCustomerId } = await data.getSubscription(ws.id);
+    if (!stripeCustomerId) throw new DomainError("invalid", "Só administradores com plano ativo gerenciam a cobrança.");
     const s = await stripe();
     const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-    const portal = await s.billingPortal.sessions.create({ customer: customerId, return_url: `${origin}/${slug}/settings/billing` });
+    const portal = await s.billingPortal.sessions.create({ customer: stripeCustomerId, return_url: `${origin}/${slug}/settings/billing` });
     return { url: portal.url };
   });
 }
@@ -817,7 +820,8 @@ export async function connectChannelAction(slug: string, input: z.input<typeof c
     const v = connectInput.parse(input);
     const { l, over } = await planLimits(ws.id);
     const social = (await data.listChannels(ws.id)).filter((c) => c.kind !== "webchat" && c.status === "connected");
-    const isReconnect = social.some((c) => c.kind === v.kind && c.name);
+    // reconectar é a mesma conta; outro número do mesmo tipo conta como canal novo
+    const isReconnect = social.some((c) => c.kind === v.kind && c.externalId === v.externalId);
     if (!isReconnect && social.length + 1 > l.socialChannels) throw over("canais de rede social", l.socialChannels, (x) => x.socialChannels > social.length);
     let name: string;
     try {

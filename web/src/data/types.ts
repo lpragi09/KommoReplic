@@ -101,6 +101,8 @@ export type Channel = {
   publicKey: string | null;
   defaultPipelineId: ID | null;
   status: "connecting" | "connected" | "error" | "disconnected";
+  /** id da conta na rede (número do WhatsApp, página, perfil); webchat não tem */
+  externalId?: string | null;
 };
 
 export type Conversation = {

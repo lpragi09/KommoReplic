@@ -2,6 +2,7 @@ import "server-only";
 import { deliverQueued } from "./channels";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
+import { accessOf } from "../access";
 import { fireRobots as fire, tickRobots as tick, type RobotPort } from "../robots/engine";
 import { DomainError, type Conversation, type ID, type Lead, type Robot, type RobotEvent, type RobotInput, type RobotRun, type Template, type TemplateInput } from "../types";
 
@@ -270,6 +271,9 @@ export async function tickRobots(wsId: ID | null) {
 export async function fireRobotsForMessage(messageId: ID) {
   const m = check(await adminClient().from("messages").select("workspace_id, conversation_id, body").eq("id", messageId).maybeSingle());
   if (!m) return;
+  // teste acabado ou plano suspenso: a mensagem fica gravada, mas robô não roda (igual ao chat do site)
+  const s = (await adminClient().from("subscriptions").select("plan, status, trial_ends_at").eq("workspace_id", m.workspace_id).maybeSingle()).data;
+  if (s && accessOf(s.status, s.trial_ends_at, s.plan).state === "locked") return;
   const { count } = await adminClient().from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).eq("direction", "in");
   await fireRobots(m.workspace_id, { trigger: "message_in", conversationId: m.conversation_id, text: m.body });
   if (count === 1) await fire(port, m.workspace_id, { trigger: "new_contact", conversationId: m.conversation_id, text: m.body });

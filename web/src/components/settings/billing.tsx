@@ -90,7 +90,7 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
           </p>
         </div>
         {sub.stripeCustomerId && (
-          <Button variant="secondary" loading={pending && picked === null} onClick={() => go(null, openBillingPortalAction(slug, sub.stripeCustomerId!))}>
+          <Button variant="secondary" loading={pending && picked === null} onClick={() => go(null, openBillingPortalAction(slug))}>
             Trocar plano, cartão ou cancelar
           </Button>
         )}

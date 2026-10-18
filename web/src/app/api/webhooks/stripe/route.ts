@@ -31,7 +31,11 @@ export async function POST(req: Request) {
 
   const db = adminClient();
   const { error: dup } = await db.from("inbound_webhooks").insert({ provider: "stripe", external_id: event.id, payload: event as unknown as object });
-  if (dup) return new Response("ok (repetido)", { status: 200 }); // unique violation = já processado
+  if (dup) {
+    // já recebido: só ignora se terminou; se a tentativa anterior falhou, processa de novo
+    const { data: prev } = await db.from("inbound_webhooks").select("processed_at").eq("provider", "stripe").eq("external_id", event.id).maybeSingle();
+    if (!prev || prev.processed_at) return new Response("ok (repetido)", { status: 200 });
+  }
 
   try {
     switch (event.type) {
