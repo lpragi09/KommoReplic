@@ -12,6 +12,8 @@ import { NewLeadButton } from "@/components/pipeline/new-lead";
 import { LeadsViews } from "@/components/pipeline/views";
 import { Avatar, EmptyState, Tag } from "@/components/ui/bits";
 
+export const metadata = { title: "Funil de vendas" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 type SP = { pipeline?: string; view?: string; q?: string; owner?: string; task?: string; tag?: string };
@@ -33,9 +35,9 @@ export default async function LeadsPage({ params, searchParams }: PageProps<"/[w
           <>
             <Link
               href={`/${slug}/automations`}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-[linear-gradient(135deg,#0b1220,#1e293b)] px-4 text-sm font-semibold uppercase tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_8px_18px_-10px_rgba(14,26,58,.8)] transition-[filter,transform] duration-fast hover:brightness-125 active:scale-[.98]"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-[linear-gradient(135deg,#0b1220,#1e293b)] px-3 sm:px-4 text-sm font-semibold uppercase tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_8px_18px_-10px_rgba(14,26,58,.8)] transition-[filter,transform] duration-fast hover:brightness-125 active:scale-[.98]"
             >
-              <Bot className="size-4 text-[#7aa2ff]" aria-hidden /> Automatize
+              <Bot className="size-4 text-[#7aa2ff]" aria-hidden /> <span className="sr-only sm:not-sr-only">Automatize</span>
             </Link>
             <NewLeadButton slug={slug} pipelineId={board.pipeline.id} stages={board.columns.map((c) => c.stage).filter((s) => s.kind === "open")} defaultStageId={firstOpen.id} />
           </>

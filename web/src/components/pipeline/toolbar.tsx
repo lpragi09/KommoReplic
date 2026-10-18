@@ -44,7 +44,8 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
     );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // no celular a barra vai para baixo do título (título e botões numa linha só) e a busca divide a linha com Filtros
+    <div className="order-last flex w-full flex-wrap items-center gap-2 pb-1 md:order-none md:w-auto md:pb-0">
       {pipelines.length > 0 && (
         <Select
           label="Funil"
@@ -54,13 +55,14 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
           value={pipelineId}
           onValueChange={(v) => set({ pipeline: v })}
           options={pipelines.map((p) => ({ value: p.id, label: p.name, icon: <Funnel className="size-4 text-muted" aria-hidden /> }))}
-          triggerClassName="h-10 min-w-40 max-w-56 rounded-pill bg-bg font-medium"
+          triggerClassName="h-10 min-w-0 flex-1 max-w-56 rounded-pill bg-bg font-medium md:min-w-40 md:flex-none"
         />
       )}
       {current && <PipelineMenu slug={slug} pipeline={current} />}
 
       <SegmentedControl
         label="Visualização"
+        compact
         value={view}
         onChange={(v) => {
           // troca na hora: só muda o endereço (o Next acompanha o history), sem pedir a página ao servidor
@@ -77,7 +79,7 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
 
       <form
         role="search"
-        className="group flex h-10 w-full items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(37,99,235,.15)] sm:w-64"
+        className="group flex h-10 min-w-0 flex-1 basis-40 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(37,99,235,.15)] sm:w-64 sm:flex-none"
         onSubmit={(e) => {
           e.preventDefault();
           set({ q: q.trim() || null });

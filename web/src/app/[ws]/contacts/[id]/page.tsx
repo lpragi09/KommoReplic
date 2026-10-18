@@ -8,6 +8,8 @@ import { cn } from "@/lib/cn";
 import { Avatar } from "@/components/ui/bits";
 import { stageBar } from "@/lib/stage-colors";
 
+export const metadata = { title: "Contato" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 const icon = { phone: Phone, email: Mail, whatsapp: MessageCircle, instagram: MessageCircle, webchat: MessageCircle };

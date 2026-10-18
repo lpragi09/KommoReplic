@@ -1,5 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { humanMinutes } from "@/lib/robot-meta";
 import { validCPF } from "@/lib/document";
 import { UTM_KEYS } from "../types";
@@ -153,12 +155,33 @@ function conditionValue(step: Extract<RobotStep, { type: "condition" }>, ctx: Ro
   }
 }
 
-/** webhook de saída: só https, sem endereço interno, 5 s de limite */
+/** endereço que não é da internet pública (rede interna, loopback, metadados da nuvem, CGNAT) */
+function privateIp(ip: string) {
+  const v4 = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  if (isIP(v4) === 4) {
+    const [a, b] = v4.split(".").map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
+  }
+  const v6 = ip.toLowerCase();
+  return v6 === "::" || v6 === "::1" || v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe80");
+}
+
+/** webhook de saída: só https, só endereço público (conferido no DNS), sem seguir redirecionamento, 5 s de limite */
 async function postWebhook(url: string, payload: unknown) {
+  const refuse = () => new Error("Webhook recusado: use um endereço https público.");
   const u = new URL(url);
-  if (u.protocol !== "https:" || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(u.hostname) || u.hostname.endsWith(".internal"))
-    throw new Error("Webhook recusado: use um endereço https público.");
-  const res = await fetch(u, { method: "POST", headers: { "content-type": "application/json", "user-agent": "Recadi-Robo/1.0" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(5000) });
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (u.protocol !== "https:" || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) throw refuse();
+  const ips = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map((r) => r.address);
+  if (!ips.length || ips.some(privateIp)) throw refuse();
+  const res = await fetch(u, {
+    method: "POST",
+    headers: { "content-type": "application/json", "user-agent": "Recadi-Robo/1.0" },
+    body: JSON.stringify(payload),
+    redirect: "manual", // um redirecionamento poderia levar para um endereço interno
+    signal: AbortSignal.timeout(5000),
+  });
+  if (res.status >= 300 && res.status < 400) throw new Error("Webhook respondeu com redirecionamento; use o endereço final.");
   if (!res.ok) throw new Error(`Webhook respondeu ${res.status}.`);
 }
 

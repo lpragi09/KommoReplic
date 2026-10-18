@@ -12,7 +12,7 @@ npm run dev
 
 Abre em http://localhost:3000. Sem configurar nada, roda com dados de exemplo em memória (somem ao reiniciar). Conta de exemplo: ver `web/src/data/fake/store.ts` (`SEED_LOGIN`).
 
-Para o banco real: `replica/backend.md`.
+Para o banco real: `replica/backend.md`. Banco novo: rode `web/supabase/setup.sql` no SQL Editor. Banco que já existia: rode os `web/supabase/atualizacao-*.sql` que faltam, na ordem escrita no topo de cada um (todos podem rodar de novo). As variáveis estão explicadas em `web/.env.example`.
 
 ## Testes
 

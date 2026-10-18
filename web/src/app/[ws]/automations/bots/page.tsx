@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+export const metadata = { title: "Robôs" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 /* Os bots viraram "robôs" dentro de Automações (mesmo editor de passos). */

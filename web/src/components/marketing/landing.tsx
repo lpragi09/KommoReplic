@@ -14,6 +14,7 @@ import {
   Fingerprint,
   Inbox,
   Lightning,
+  Link2,
   ListPlus,
   Megaphone,
   MessageCircle,
@@ -60,8 +61,8 @@ const soon = [
   },
   {
     icon: MessageCircle,
-    title: "WhatsApp pela API oficial",
-    text: "Conexão guiada que confere os pré-requisitos da Meta antes de você pagar nada.",
+    title: "Fotos, áudios e documentos na conversa",
+    text: "Hoje a conversa mostra texto; anexos chegam marcados e entram por inteiro em seguida.",
   },
 ];
 
@@ -71,7 +72,7 @@ const plans = [
     who: "1 a 2 pessoas",
     m: 59,
     a: 49,
-    items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel"],
+    items: ["1 funil, até 2 pessoas", "Chat do site + 1 rede social", "3 robôs ligados", "Tarefas, calendário e painel"],
   },
   {
     name: "Equipe",
@@ -79,10 +80,11 @@ const plans = [
     m: 99,
     a: 82,
     items: [
-      "Funis ilimitados",
-      "3 canais",
+      "Funis e pessoas ilimitados",
+      "Chat do site + 3 redes sociais",
+      "Agente de IA no atendimento",
+      "Robôs, disparos e relatórios completos",
       "Papéis: todos, equipe ou só os meus",
-      "Automações por etapa",
     ],
     highlight: true,
   },
@@ -92,9 +94,9 @@ const plans = [
     m: 159,
     a: 132,
     items: [
-      "Canais ilimitados",
-      "Relatórios e webhooks",
-      "Histórico de auditoria",
+      "Tudo do Equipe",
+      "Redes sociais ilimitadas",
+      "Webhooks nos robôs",
       "Suporte com prazo de resposta",
     ],
   },
@@ -111,7 +113,11 @@ const faq = [
   },
   {
     q: "Funciona com o meu WhatsApp?",
-    a: "Vamos usar a API oficial da Meta, com o número da sua empresa. A conexão do WhatsApp ainda está em desenvolvimento; hoje o canal pronto é o chat do site.",
+    a: "Sim, pela API oficial da Meta, com o número da sua empresa. Você conecta em Configurações → Canais; Instagram Direct e Messenger entram do mesmo jeito. O chat do site já vem pronto.",
+  },
+  {
+    q: "A IA responde meus clientes sozinha?",
+    a: "Se você quiser. Nos planos Equipe e Operação, o agente de IA responde com o que você ensinar (preços, horários, serviços) e passa para a equipe quando precisa. Você testa antes de ligar e pausa em qualquer conversa.",
   },
   {
     q: "Quanto custam as mensagens do WhatsApp?",
@@ -119,11 +125,11 @@ const faq = [
   },
   {
     q: "Consigo trazer meus contatos de outra ferramenta?",
-    a: "A importação por planilha (CSV) está no plano de construção. Até lá, nossa equipe ajuda na migração.",
+    a: "Sim. Em Contatos → Importar, envie uma planilha CSV com nome, telefone e email. Dá para exportar do mesmo jeito.",
   },
   {
     q: "Meus dados ficam onde?",
-    a: "Num banco de dados em São Paulo, com acesso separado por empresa. Você pode exportar ou apagar tudo quando quiser.",
+    a: "Num banco de dados em São Paulo, com acesso separado por empresa. Você exporta contatos e leads em planilha e apaga a conta quando quiser.",
   },
 ];
 
@@ -136,9 +142,11 @@ const ticker = [
   "Disparos",
   "Relatórios",
   "Chat da equipe",
-  "WhatsApp · em breve",
-  "Instagram · em breve",
-  "Messenger · em breve",
+  "WhatsApp",
+  "Instagram Direct",
+  "Messenger",
+  "Agente de IA",
+  "Links rastreáveis",
 ];
 
 function Eyebrow({ children }: { children: ReactNode }) {
@@ -448,7 +456,7 @@ export function Landing() {
                 n: "01",
                 icon: MessageCircle,
                 t: "O cliente escreve",
-                x: "Pelo chat do seu site (e em breve WhatsApp e Instagram). Alguém novo aparece na coluna de entrada.",
+                x: "Pelo WhatsApp, Instagram, Messenger ou chat do seu site. Alguém novo aparece na coluna de entrada.",
                 art: <ArtChat />,
               },
               {
@@ -579,6 +587,49 @@ export function Landing() {
                 </div>
               </article>
             ))}
+
+            <article className="fx-reveal fx-lit flex flex-col p-8 md:col-span-6">
+              <span className="fx-tile size-11" aria-hidden>
+                <Sparkle className="size-5" weight="fill" />
+              </span>
+              <h3 className="mt-6 text-xl tracking-tight text-on-night">
+                Agente de IA que atende e passa a vez
+              </h3>
+              <p className="mt-2 text-base text-on-night-muted">
+                Responde com o que você ensinou, no tom da sua empresa, e chama
+                alguém da equipe quando o cliente pede ou o assunto foge do
+                combinado.
+              </p>
+              <div className="mt-7 flex flex-1 flex-col justify-end gap-2 text-sm" aria-hidden>
+                <p className="max-w-[80%] self-start rounded-lg rounded-bl-xs bg-[color-mix(in_srgb,var(--on-night)_7%,transparent)] px-3 py-2 text-on-night">
+                  Vocês abrem sábado?
+                </p>
+                <p className="max-w-[80%] self-end rounded-lg rounded-br-xs bg-[color-mix(in_srgb,var(--aurora-2)_22%,transparent)] px-3 py-2 text-on-night">
+                  Abrimos, das 9h às 13h. Quer que eu reserve um horário?
+                </p>
+                <p className="self-end text-xs text-on-night-muted">respondido pela IA · 2 s</p>
+              </div>
+            </article>
+
+            <article className="fx-reveal fx-lit flex flex-col p-8 md:col-span-6">
+              <span className="fx-tile size-11" aria-hidden>
+                <Link2 className="size-5" weight="fill" />
+              </span>
+              <h3 className="mt-6 text-xl tracking-tight text-on-night">
+                De onde veio cada cliente
+              </h3>
+              <p className="mt-2 text-base text-on-night-muted">
+                Link rastreável de WhatsApp, script do site e anúncio da Meta:
+                a campanha fica gravada no lead e o relatório mostra quais vendem.
+              </p>
+              <ul className="mt-7 flex flex-1 flex-wrap content-end gap-2 text-xs" aria-hidden>
+                {["utm_source: instagram", "utm_campaign: black-friday", "anúncio: Implantes", "link: bio"].map((t) => (
+                  <li key={t} className="rounded-pill px-2.5 py-1 font-mono text-on-night-muted shadow-[inset_0_0_0_1px_var(--night-line)]">
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </article>
 
             <ul className="fx-reveal grid gap-3 sm:grid-cols-2 md:col-span-12 lg:grid-cols-4">
               {[

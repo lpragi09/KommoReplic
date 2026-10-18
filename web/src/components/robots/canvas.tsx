@@ -313,7 +313,9 @@ export function FlowCanvas({
     return { x: (cx - r.left - p.x) / z, y: (cy - r.top - p.y) / z };
   }, []);
 
-  /* mede onde ficaram as bolinhas (portas) e o tamanho das caixas depois de cada pintura */
+  /* mede onde ficaram as bolinhas (portas) e o tamanho das caixas depois de cada pintura
+     (sem lista de dependências de propósito; só grava quando mudou, então não entra em loop) */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const w = world.current;
     if (!w) return;

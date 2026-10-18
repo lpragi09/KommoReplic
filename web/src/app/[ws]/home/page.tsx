@@ -62,7 +62,8 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
   const rate = closed ? Math.round((d.won.length / closed) * 100) : null;
   const hour = Number(new Intl.DateTimeFormat("pt-BR", { hour: "numeric", hour12: false, timeZone: ws.timezone }).format(new Date()));
   const hello = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-  const today = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: ws.timezone }).format(new Date());
+  const longDate = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: ws.timezone }).format(new Date());
+  const today = longDate.charAt(0).toUpperCase() + longDate.slice(1); // "Domingo, 18 de outubro" (o "de" fica minúsculo)
   const who = users.find((u) => u.id === sp.u);
 
   const open = board.columns.filter((c) => c.stage.kind === "open");
@@ -113,7 +114,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
           <section aria-label="Resumo" className="fx-aurora overflow-hidden rounded-xl p-6 sm:p-8">
             <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div>
-                <p className="text-sm capitalize text-on-night-muted">{today}</p>
+                <p className="text-sm text-on-night-muted">{today}</p>
                 <h2 className="mt-1 text-3xl font-semibold tracking-tight text-on-night">
                   {hello}, {(user.name || "tudo bem").split(" ")[0]}
                   {who ? <span className="text-on-night-muted"> · vendo {who.name.split(" ")[0]}</span> : null}
@@ -157,7 +158,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
           </section>
 
           {/* números */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <Kpi icon={MessageSquare} tone="from-[#3b82f6] to-[var(--accent)]" label="Conversas abertas" value={String(d.openConversations)} sub={d.unanswered ? `${d.unanswered} sem resposta` : "Todas respondidas"} subTone={d.unanswered ? "danger" : "success"} href={`/${slug}/inbox`} />
             <Kpi icon={Trophy} tone="from-[#34d399] to-[#059669]" label="Negócios ganhos" value={String(d.won.length)} sub={money(wonV)} href={leadsHref("")} />
             <Kpi icon={TrendingDown} tone="from-[#fb7185] to-[#e11d48]" label="Negócios perdidos" value={String(d.lost.length)} sub={money(sum(d.lost))} />
@@ -298,17 +299,17 @@ function Kpi({ icon: Icon, tone, label, value, sub, subTone, href }: { icon: Luc
   const body = (
     <>
       <div className="flex items-start justify-between">
-        <span className={cn("grid size-11 place-items-center rounded-lg bg-gradient-to-br text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(14,26,58,.45)]", tone)} aria-hidden>
+        <span className={cn("grid size-9 place-items-center rounded-lg bg-gradient-to-br sm:size-11 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(14,26,58,.45)]", tone)} aria-hidden>
           <Icon className="size-5" weight="fill" />
         </span>
         {href && <ArrowRight className="size-4 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />}
       </div>
-      <p className="mt-4 text-sm text-muted">{label}</p>
-      <p className="mt-0.5 text-3xl font-semibold tracking-tight tabular-nums text-fg">{value}</p>
+      <p className="mt-3 text-sm text-muted sm:mt-4">{label}</p>
+      <p className="mt-0.5 text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums text-fg">{value}</p>
       <p className={cn("mt-1 text-sm", subTone === "danger" ? "text-danger" : subTone === "success" ? "text-success" : "text-muted")}>{sub}</p>
     </>
   );
-  const cls = cn(card, "group block p-5");
+  const cls = cn(card, "group block p-4 sm:p-5"); // duas por linha no celular
   return href ? (
     <Link href={href} className={cn(cls, "transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(29,78,216,.45)]")}>
       {body}

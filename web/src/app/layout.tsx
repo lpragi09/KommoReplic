@@ -25,7 +25,8 @@ export const viewport: Viewport = { themeColor: "#0a0a0b" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${geist.variable} ${geistMono.variable} h-full antialiased`}>
+    // data-scroll-behavior: a rolagem suave da âncora não atrapalha a troca de página do Next
+    <html lang="pt-BR" data-scroll-behavior="smooth" className={`${geist.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <a
           href="#conteudo"

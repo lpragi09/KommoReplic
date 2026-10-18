@@ -77,6 +77,7 @@ export async function webchatKey(page: Page, slug: string) {
 
 export async function axe(page: Page) {
   await page.waitForLoadState("networkidle"); // não mede no meio de uma troca de página
+  await page.waitForFunction(() => document.title.trim() !== ""); // o título da tela chega por streaming (metadata do Next 16)
   // espera as animações de entrada (finitas) acabarem; as de fundo (infinitas) não contam
   await page.waitForFunction(() =>
     document

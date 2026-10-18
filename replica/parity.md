@@ -1,5 +1,7 @@
 # Paridade: clone × Kommo (funções centrais)
 
+> **Atualização de 18/10/2026.** Este documento é de 11/10. Desde então ficaram prontos: vários funis (criar, renomear, excluir) e etapas editáveis (S19), criar empresa e ligar ao contato, conexão de WhatsApp, Instagram e Messenger pela API oficial (inclusive com o app da própria empresa), status de entrega, agente de IA, robôs em fluxo livre, links rastreáveis e UTMs, calendário com mês, botão de chat para colar no site (`widget.js`), importar e exportar contatos em planilha e exportar leads. Continuam faltando: anexos na conversa, login com Google, tempo real de verdade (hoje atualiza a cada poucos segundos), convite por email (hoje o admin cria o acesso) e marcar notificação como lida. A nota abaixo não foi recalculada.
+
 Data: 2026-10-11 · Build: branch `build` (63ce999) · Ferramentas: `parity.py` (skill replica-diff)
 
 ## Veredito: **não pronto para lançar**

@@ -11,6 +11,8 @@ import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
 import { AiSwitch } from "@/components/lead/ai-switch";
 
+export const metadata = { title: "Caixa de entrada" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 const filters: { v: ConvFilter; label: string }[] = [

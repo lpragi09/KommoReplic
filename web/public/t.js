@@ -16,7 +16,7 @@
     try {
       var v = JSON.parse(localStorage.getItem(STORE) || "null");
       return v && Date.now() - v.t < 30 * 864e5 ? v : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -36,7 +36,7 @@
     origem = { p: has ? fresh : (origem && origem.p) || {}, landing: location.href.split("#")[0].slice(0, 300), ref: document.referrer.slice(0, 300), t: Date.now() };
     try {
       localStorage.setItem(STORE, JSON.stringify(origem));
-    } catch (e) {}
+    } catch {}
   }
 
   function params(extra) {

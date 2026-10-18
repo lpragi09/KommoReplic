@@ -6,6 +6,8 @@ import { leadTitle, when } from "@/lib/format";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/ui/bits";
 
+export const metadata = { title: "Notificações" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 /* Por enquanto as notificações são calculadas do estado atual (não lidas, entradas, tarefas atrasadas).

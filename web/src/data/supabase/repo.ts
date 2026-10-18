@@ -36,7 +36,7 @@ import { accessOf } from "../access";
 
 export const MANAGES_OWN_SESSION = true;
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars -- parâmetros mantidos para ter a mesma assinatura do repositório falso */
+/* eslint-disable @typescript-eslint/no-explicit-any -- linhas cruas do PostgREST */
 type Row = Record<string, any>;
 
 const iso = (v: string | null | undefined) => (v ? new Date(v).toISOString() : null);
@@ -659,17 +659,29 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
 // ---------------------------------------------------------------------------
 // contatos, empresas, canais, busca, painel
 // ---------------------------------------------------------------------------
-export async function listContacts(wsId: ID, q = "") {
+/** a tela mostra os 500 primeiros; all = todos (exportação), de 1000 em 1000 (limite por pedido do Supabase) */
+export async function listContacts(wsId: ID, q = "", all = false) {
   const sb = await userClient();
-  let query = sb
-    .from("contacts")
-    .select("*, contact_identities(kind, value), companies(*), lead_contacts(lead_id), profiles:responsible_user_id(full_name)")
-    .eq("workspace_id", wsId)
-    .is("deleted_at", null)
-    .order("name")
-    .limit(500);
-  if (q.trim()) query = query.ilike("name", `%${q.trim().replace(/[%_]/g, "")}%`);
-  return check(await query).map((c: Row) => ({
+  const base = () => {
+    let query = sb
+      .from("contacts")
+      .select("*, contact_identities(kind, value), companies(*), lead_contacts(lead_id), profiles:responsible_user_id(full_name)")
+      .eq("workspace_id", wsId)
+      .is("deleted_at", null)
+      .order("name")
+      .order("id");
+    if (q.trim()) query = query.ilike("name", `%${q.trim().replace(/[%_]/g, "")}%`);
+    return query;
+  };
+  const rows: Row[] = [];
+  if (!all) rows.push(...check(await base().limit(500)));
+  else
+    for (let from = 0; ; from += 1000) {
+      const page: Row[] = check(await base().range(from, from + 999));
+      rows.push(...page);
+      if (page.length < 1000) break;
+    }
+  return rows.map((c: Row) => ({
     ...toContact(c),
     company: c.companies ? toCompany(c.companies) : null,
     leadCount: (c.lead_contacts ?? []).length,

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DropdownMenu as M } from "radix-ui";
 import type { Stage, StageColor } from "@/data/types";
 import { addStageAction, createPipelineAction, deletePipelineAction, deleteStageAction, renamePipelineAction, updateStageAction } from "@/app/actions";
-import { Check, Funnel, MoreHorizontal, Pencil, Plus, Trash2 } from "@/components/ui/icons";
+import { Check, Download, Funnel, MoreHorizontal, Pencil, Plus, Trash2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
@@ -115,6 +115,11 @@ export function PipelineMenu({ slug, pipeline }: { slug: string; pipeline: { id:
             </M.Item>
             <M.Item className={menuItem} onSelect={() => setDialog("rename")}>
               <Pencil className="size-4 text-muted" aria-hidden /> Renomear “{pipeline.name}”
+            </M.Item>
+            <M.Item asChild className={menuItem}>
+              <a href={`/${slug}/leads/export?pipeline=${pipeline.id}`} download>
+                <Download className="size-4 text-muted" aria-hidden /> Exportar leads (planilha)
+              </a>
             </M.Item>
             <M.Separator className="my-1 h-px bg-border" />
             <M.Item className={menuDanger} onSelect={() => setDialog("delete")}>

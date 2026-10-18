@@ -28,6 +28,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // tudo menos arquivos estáticos, imagens e webhooks (que não têm sessão)
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/cron|w/|t\.js|.*\\.(?:png|jpg|svg|webp|ico)$).*)"],
+  // tudo menos arquivos estáticos, imagens, scripts do site do cliente e webhooks (que não têm sessão)
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/cron|w/|t\\.js|widget\\.js|.*\\.(?:png|jpg|svg|webp|ico)$).*)"],
 };

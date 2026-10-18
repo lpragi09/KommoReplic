@@ -5,6 +5,8 @@ import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
 import { stageBar } from "@/lib/stage-colors";
 
+export const metadata = { title: "Funis e etapas" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 export default async function PipelinesSettings({ params }: PageProps<"/[ws]/settings/pipelines">) {

@@ -6,8 +6,10 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
    O banco só vê texto cifrado; quem lê é o servidor. */
 
 function key() {
-  const raw = process.env.CHANNEL_SECRET_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "recadi-dev-only";
-  return createHash("sha256").update(`recadi-canais:${raw}`).digest();
+  const raw = process.env.CHANNEL_SECRET_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // em produção, chave conhecida de todos não protege nada: melhor parar do que cifrar com ela
+  if (!raw && process.env.NODE_ENV === "production") throw new Error("Variável de ambiente ausente: CHANNEL_SECRET_KEY (veja web/.env.example)");
+  return createHash("sha256").update(`recadi-canais:${raw || "recadi-dev-only"}`).digest();
 }
 
 export function seal(plain: string) {

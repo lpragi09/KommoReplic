@@ -37,7 +37,6 @@ import type {
   LeadCard as LeadCardT,
   LossReason,
   Stage,
-  StageColor,
 } from "@/data/types";
 import {
   acceptIncomingAction,

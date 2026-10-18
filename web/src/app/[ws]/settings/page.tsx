@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
 import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
 import { requireWorkspace } from "@/data/session";
@@ -32,6 +33,8 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
     getAgent(ws.id),
   ]);
   const connected = channels.filter((c) => c.status === "connected").length;
+  // endereço real do painel (domínio próprio, prévia da Vercel ou localhost), não um fixo
+  const appHost = (process.env.APP_URL ? new URL(process.env.APP_URL).host : (await headers()).get("host")) ?? "";
   const plan =
     access.state === "trial" ? `Teste grátis · ${access.daysLeft ?? 14} ${access.daysLeft === 1 ? "dia" : "dias"}` : access.state === "active" ? "Plano ativo" : "Plano pausado";
 
@@ -65,7 +68,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-on-night-muted">Sua empresa</p>
                 <h2 className="truncate text-2xl font-semibold tracking-tight text-on-night">{ws.name}</h2>
-                <p className="text-sm text-on-night-muted">recadi.vercel.app/{ws.slug}</p>
+                <p className="text-sm text-on-night-muted">{appHost}/{ws.slug}</p>
               </div>
               <Link
                 href={`/${slug}/settings/billing`}

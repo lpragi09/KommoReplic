@@ -1629,3 +1629,12 @@ alter table profiles add constraint profiles_avatar_check check (avatar is null 
 alter table workspaces add column if not exists logo text;
 alter table workspaces drop constraint if exists workspaces_logo_check;
 alter table workspaces add constraint workspaces_logo_check check (logo is null or (char_length(logo) <= 200000 and logo ~ '^data:image/(webp|jpeg|png);base64,'));
+
+-- Canal desconectado não prende mais o número: outra empresa pode conectar a mesma conta depois.
+-- O índice único passa a valer só para canais ativos (o webhook já procura só os conectados).
+drop index if exists channels_external;
+create unique index channels_external on channels (kind, external_id) where external_id is not null and status <> 'disconnected';
+
+-- Chave secreta do app da Meta por canal (cifrada), para empresas que usam o próprio app:
+-- o webhook confere a assinatura de cada aviso com ela (ou com a META_APP_SECRET do Recadi).
+alter table channel_secrets add column if not exists app_secret_enc text;

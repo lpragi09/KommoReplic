@@ -1,5 +1,7 @@
 # Checklist de deploy: Recadi
 
+> **Atualização de 18/10/2026.** Do preflight abaixo já existem: Termos e Privacidade (`/termos`, `/privacidade`), exclusão de conta (Configurações → Plano e cobrança), favicon e imagem social. O que ainda trava é ligar o Supabase de produção (`NEXT_PUBLIC_DATA_BACKEND=supabase` e as chaves de `web/.env.example`): sem isso o app roda com dados em memória, em que qualquer email entra na conta de demonstração.
+
 Data: 2026-10-11 · Commit: branch `build` · Go do usuário: **ainda não pedido, e o preflight não passou**
 
 ## Veredito: **parado no preflight. Nada foi publicado.**

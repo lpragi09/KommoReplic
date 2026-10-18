@@ -347,6 +347,55 @@ export async function createContactAction(slug: string, input: { name: string; p
   });
 }
 
+/** telefone brasileiro no formato que os canais usam (+55DDDNÚMERO); outro formato fica como veio */
+function normalPhone(raw: string) {
+  const d = digits(raw);
+  if (d.length === 10 || d.length === 11) return `+55${d}`;
+  if (d.startsWith("55") && (d.length === 12 || d.length === 13)) return `+${d}`;
+  return raw.trim().startsWith("+") && d.length >= 8 ? `+${d}` : d;
+}
+
+const importRows = z
+  .array(
+    z.object({
+      name: z.string().trim().max(120),
+      phone: z.string().max(40).optional(),
+      email: z.string().max(200).optional(),
+      companyName: z.string().trim().max(160).optional(),
+    }),
+  )
+  .min(1, "A planilha não tem nenhuma linha com contato.")
+  .max(1000, "Até 1.000 contatos por vez. Divida a planilha e importe em partes.");
+
+/** Importa contatos de uma planilha (já lida no navegador). Pula quem já existe pelo telefone ou email. */
+export async function importContactsAction(slug: string, rows: z.input<typeof importRows>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    if (!rateLimit(`import:${ws.id}`, 5, 10 * 60_000)) throw new DomainError("invalid", "Muitas importações seguidas. Espere alguns minutos.");
+    const list = importRows.parse(rows);
+    const seen = new Set<string>();
+    for (const c of await data.listContacts(ws.id, "", true))
+      for (const i of c.identities) seen.add(i.kind === "email" ? `e:${i.value.toLowerCase()}` : `p:${digits(i.value)}`);
+    let created = 0;
+    let skipped = 0;
+    for (const r of list) {
+      const phone = r.phone ? normalPhone(r.phone) : "";
+      const email = r.email?.trim().toLowerCase() ?? "";
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+      const keys = [phone && `p:${digits(phone)}`, validEmail && `e:${validEmail}`].filter(Boolean) as string[];
+      const name = r.name || validEmail || phone;
+      if (!name || keys.some((k) => seen.has(k))) {
+        skipped++;
+        continue;
+      }
+      keys.forEach((k) => seen.add(k));
+      await data.createContact(ws.id, user.id, { name, phone: phone || undefined, email: validEmail || undefined, companyName: r.companyName || undefined });
+      created++;
+    }
+    return { created, skipped };
+  });
+}
+
 export async function createCompanyAction(slug: string, name: string) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
@@ -811,6 +860,14 @@ const connectInput = z.object({
     .or(z.literal(""))
     .transform((v) => v || undefined),
   token: z.string().trim().min(20, "Cole o token de acesso permanente.").max(1000),
+  /** chave secreta do app da Meta, quando o app é da própria empresa (confere a assinatura dos avisos desse app) */
+  appSecret: z
+    .string()
+    .trim()
+    .regex(/^[a-f0-9]{32}$/i, "A chave secreta do app tem 32 letras e números (Configurações do app → Básico).")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => v || undefined),
   pipelineId: id.nullable(),
 });
 

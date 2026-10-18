@@ -5,13 +5,16 @@ import { requireWorkspace } from "@/data/session";
 import { phone } from "@/lib/format";
 import { PageHeader } from "@/components/shell/page-header";
 import { Avatar } from "@/components/ui/bits";
-import { ListsTabs, NewContactButton, SearchPill } from "@/components/lists/lists";
+import { ContactsCsvButtons, ListsTabs, NewContactButton, SearchPill } from "@/components/lists/lists";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 export const metadata = { title: "Contatos" };
 
 const idIcon = { phone: Phone, email: At, whatsapp: WhatsappLogo, instagram: InstagramLogo, webchat: Globe } as const;
+/** o id do visitante e o do Instagram são internos: na tela vale o nome do canal */
+const idText = (kind: keyof typeof idIcon, value: string) =>
+  kind === "phone" || kind === "whatsapp" ? phone(value) : kind === "webchat" ? "Chat do site" : kind === "instagram" ? "Instagram" : value;
 
 export default async function ContactsPage({ params, searchParams }: PageProps<"/[ws]/contacts">) {
   const { ws: slug } = await params;
@@ -23,7 +26,15 @@ export default async function ContactsPage({ params, searchParams }: PageProps<"
 
   return (
     <>
-      <PageHeader title="Contatos" actions={<NewContactButton slug={slug} companies={companies.map((c) => c.name)} />}>
+      <PageHeader
+        title="Contatos"
+        actions={
+          <>
+            <ContactsCsvButtons slug={slug} />
+            <NewContactButton slug={slug} companies={companies.map((c) => c.name)} />
+          </>
+        }
+      >
         <ListsTabs slug={slug} active="contacts" counts={{ contacts: contacts.length, companies: companies.length }} />
         <SearchPill id="cq" placeholder="Buscar nome ou telefone…" defaultValue={q} />
       </PageHeader>
@@ -99,7 +110,7 @@ export default async function ContactsPage({ params, searchParams }: PageProps<"
                           return (
                             <li key={i.kind + i.value} className="inline-flex max-w-full items-center gap-1.5 rounded-pill bg-surface px-2.5 py-1 text-xs text-fg shadow-[inset_0_0_0_1px_var(--border)]">
                               <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />
-                              <span className="truncate">{i.kind === "phone" || i.kind === "whatsapp" ? phone(i.value) : i.value}</span>
+                              <span className="truncate">{idText(i.kind, i.value)}</span>
                             </li>
                           );
                         })}

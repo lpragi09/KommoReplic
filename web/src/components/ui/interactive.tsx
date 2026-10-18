@@ -9,11 +9,14 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  compact,
 }: {
   label: string;
   options: { value: T; label: string; icon?: ReactNode }[];
   value: T;
   onChange: (v: T) => void;
+  /** no celular mostra só os ícones (o texto continua para leitor de tela) */
+  compact?: boolean;
 }) {
   return (
     <div role="radiogroup" aria-label={label} className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
@@ -35,11 +38,12 @@ export function SegmentedControl<T extends string>({
             tabIndex={on ? 0 : -1}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-fast ease-out",
+              compact && o.icon && "px-2.5 sm:px-3.5",
               on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(14,26,58,.25)]" : "text-muted hover:text-fg",
             )}
           >
             {o.icon && <span className={cn("grid place-items-center", on && "text-accent")}>{o.icon}</span>}
-            {o.label}
+            {compact && o.icon ? <span className="sr-only sm:not-sr-only">{o.label}</span> : o.label}
           </button>
         );
       })}

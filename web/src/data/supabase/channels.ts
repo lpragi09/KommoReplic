@@ -20,14 +20,15 @@ function check(r: { data: unknown; error: PostgrestError | null }): any {
   return r.data;
 }
 
-export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; name: string; pipelineId: ID | null }): Promise<Channel> {
+export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; appSecret?: string; name: string; pipelineId: ID | null }): Promise<Channel> {
   const sb = await userClient();
   const existing = check(await sb.from("channels").select("id").eq("workspace_id", wsId).eq("kind", input.kind).eq("external_id", input.externalId).maybeSingle());
   const row = { name: input.name, external_id: input.externalId, status: "connected", status_detail: null, default_pipeline_id: input.pipelineId, config: input.pageId ? { page_id: input.pageId } : {} };
   const ch = existing
     ? check(await sb.from("channels").update(row).eq("id", existing.id).select("*").single())
     : check(await sb.from("channels").insert({ ...row, workspace_id: wsId, kind: input.kind }).select("*").single());
-  check(await adminClient().from("channel_secrets").upsert({ channel_id: ch.id, workspace_id: wsId, token_enc: seal(input.token), updated_at: new Date().toISOString() }));
+  // app secret: só grava quando veio (reconectar sem ela mantém a anterior)
+  check(await adminClient().from("channel_secrets").upsert({ channel_id: ch.id, workspace_id: wsId, token_enc: seal(input.token), ...(input.appSecret ? { app_secret_enc: seal(input.appSecret) } : {}), updated_at: new Date().toISOString() }));
   return { id: ch.id, workspaceId: wsId, kind: ch.kind, name: ch.name, publicKey: ch.public_key, defaultPipelineId: ch.default_pipeline_id, status: ch.status };
 }
 

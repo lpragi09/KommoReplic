@@ -678,7 +678,7 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
 // ---------------------------------------------------------------------------
 // contatos, empresas, canais, busca, painel
 // ---------------------------------------------------------------------------
-export async function listContacts(wsId: ID, q = "") {
+export async function listContacts(wsId: ID, q = "", _all = false) {
   await live();
   const s = q.toLowerCase();
   return db.contacts

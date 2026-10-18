@@ -6,6 +6,8 @@ import { leadTitle, phone } from "@/lib/format";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/ui/bits";
 
+export const metadata = { title: "Busca" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 export default async function SearchPage({ params, searchParams }: PageProps<"/[ws]/search">) {

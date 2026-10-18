@@ -1,3 +1,5 @@
+// Mede quadros por segundo (parado e rolando, CPU 4x mais lenta) na landing, login, funil e caixa de entrada.
+// Uso: suba o app na porta 3100 (npm run dev -- --port 3100) e rode  node scripts/fps.mjs
 import { chromium } from "@playwright/test";
 const b = await chromium.launch({ args: ["--enable-gpu-rasterization"] });
 const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5 });

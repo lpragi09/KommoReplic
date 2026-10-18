@@ -9,6 +9,8 @@ import { Avatar } from "@/components/ui/bits";
 import { stageBar } from "@/lib/stage-colors";
 import { NewContactButton } from "@/components/lists/lists";
 
+export const metadata = { title: "Empresa" };
+
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 export default async function CompanyPage({ params }: PageProps<"/[ws]/companies/[id]">) {

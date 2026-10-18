@@ -6,7 +6,6 @@ import { requireWorkspace } from "@/data/session";
 import { leadTitle } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
-import { EmptyState } from "@/components/ui/bits";
 import { TaskItem } from "@/components/lead/feed";
 import {
   MonthCalendar,
@@ -16,6 +15,8 @@ import {
   shiftMonth,
 } from "@/components/calendar/month";
 import { ChevronRight } from "@/components/ui/icons";
+
+export const metadata = { title: "Calendário" };
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 

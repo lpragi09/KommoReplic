@@ -12,6 +12,8 @@ import { cn } from "@/lib/cn";
 
 type Social = "whatsapp" | "instagram" | "messenger";
 
+const widgetTag = (base: string, key: string | null) => `<script src="${base}/widget.js" data-chat="${key ?? ""}" async></script>`;
+
 const NETS: Record<Social, { label: string; icon: LucideIcon; tint: string; idLabel: string; idHint: string; steps: string[]; needsPage?: boolean }> = {
   whatsapp: {
     label: "WhatsApp",
@@ -57,7 +59,7 @@ const NETS: Record<Social, { label: string; icon: LucideIcon; tint: string; idLa
 
 export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBase }: { slug: string; channels: Channel[]; pipelines: Pipeline[]; webhookUrl: string; chatBase: string }) {
   const [open, setOpen] = useState<Social | null>(null);
-  const [form, setForm] = useState({ externalId: "", pageId: "", token: "", pipelineId: pipelines[0]?.id ?? "" });
+  const [form, setForm] = useState({ externalId: "", pageId: "", token: "", appSecret: "", pipelineId: pipelines[0]?.id ?? "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState<string | null>(null);
@@ -72,11 +74,11 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
   const connect = () =>
     start(async () => {
       if (!open) return;
-      const res = await connectChannelAction(slug, { kind: open, externalId: form.externalId, pageId: form.pageId, token: form.token, pipelineId: form.pipelineId || null });
+      const res = await connectChannelAction(slug, { kind: open, externalId: form.externalId, pageId: form.pageId, token: form.token, appSecret: form.appSecret, pipelineId: form.pipelineId || null });
       if (!res.ok) return setError(res.error);
       setError(null);
       setOpen(null);
-      setForm({ ...form, externalId: "", pageId: "", token: "" });
+      setForm({ ...form, externalId: "", pageId: "", token: "", appSecret: "" });
     });
   const disconnect = (c: Channel) =>
     start(async () => {
@@ -119,6 +121,16 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
               </Button>
             </div>
             <p className="mt-2 text-sm text-muted">Quem escrever por este link cai como lead de entrada no seu funil. Coloque no site, na bio ou no email.</p>
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-sm font-medium text-fg">Botão de chat no seu site</p>
+              <p className="mt-0.5 text-sm text-muted">Cole antes de &lt;/body&gt;: aparece um botão no canto que abre este chat, levando a campanha (UTM) da visita.</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 text-sm">{widgetTag(chatBase, c.publicKey)}</code>
+                <Button size="sm" variant="secondary" icon={<Copy className="size-4" aria-hidden />} onClick={() => copy(`w-${c.id}`, widgetTag(chatBase, c.publicKey))}>
+                  {copied === `w-${c.id}` ? "Copiado" : "Copiar"}
+                </Button>
+              </div>
+            </div>
           </section>
         ))}
 
@@ -211,7 +223,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
                 </div>
               </div>
               <p className="text-xs text-muted sm:col-span-2">
-                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). A Vercel também precisa de <code>META_APP_SECRET</code> (chave secreta do app da Meta) para conferir a assinatura de cada aviso.
+                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). Cada aviso da Meta vem assinado: se o app é o do Recadi, vale a <code>META_APP_SECRET</code>; se o app é da sua empresa, cole a chave secreta dele abaixo.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -219,6 +231,16 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
               {NETS[open].needsPage && <Field label="ID da página do Facebook ligada" value={form.pageId} onChange={(e) => setForm({ ...form, pageId: e.target.value })} inputMode="numeric" />}
               <div className="sm:col-span-2">
                 <Field label="Token de acesso permanente" type="password" autoComplete="off" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} hint="Fica guardado criptografado. Ninguém da equipe consegue ver depois." />
+              </div>
+              <div className="sm:col-span-2">
+                <Field
+                  label="Chave secreta do app (se o app da Meta é da sua empresa)"
+                  type="password"
+                  autoComplete="off"
+                  value={form.appSecret}
+                  onChange={(e) => setForm({ ...form, appSecret: e.target.value })}
+                  hint="Configurações do app → Básico → Chave secreta do app. Sem ela, os avisos do seu app são recusados. Também fica criptografada."
+                />
               </div>
               <label className="flex flex-col gap-1 text-sm font-medium text-fg sm:col-span-2">
                 Funil onde os contatos novos caem
