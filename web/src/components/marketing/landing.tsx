@@ -203,8 +203,16 @@ export function Landing() {
               text="Cada mensagem entra no cartão do cliente, com o histórico, as tarefas e a origem. Ninguém da equipe responde no escuro."
               points={["WhatsApp oficial, Instagram, Messenger e chat do site", "Fotos, arquivos e emoji na conversa", "Vendedor vê os dele; gerente vê tudo"]}
               art={
-                <div className="overflow-hidden rounded-xl shadow-[0_0_0_1px_color-mix(in_srgb,var(--aurora-2)_25%,transparent),0_30px_60px_-30px_rgba(0,0,0,.9)]">
-                  <Image src="/produto-lead.png" alt="" width={1440} height={900} sizes="(min-width: 768px) 560px, 100vw" />
+                <div className="relative">
+                  <div className="fx-orb -inset-6" aria-hidden />
+                  <div className="relative overflow-hidden rounded-2xl bg-night-raised p-1.5 shadow-[0_0_0_1px_var(--night-line),0_40px_80px_-40px_rgba(0,0,0,.95)]">
+                    <div className="flex items-center gap-1.5 px-3 pb-2 pt-1.5" aria-hidden>
+                      <span className="size-2.5 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_18%,transparent)]" />
+                      <span className="size-2.5 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_18%,transparent)]" />
+                      <span className="size-2.5 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_18%,transparent)]" />
+                    </div>
+                    <Image src="/produto-lead.png" alt="" width={2112} height={1260} sizes="(min-width: 768px) 560px, 100vw" className="rounded-xl" />
+                  </div>
                 </div>
               }
             />
@@ -260,7 +268,8 @@ export function Landing() {
           <SectionHead id="precos" center eyebrow="Preços" title={<>Mensal, sem fidelidade. <span className="text-on-night-muted">14 dias grátis.</span></>} />
           <div className="mt-14 grid gap-5 lg:grid-cols-3 lg:items-stretch">
             {plans.map((p) => (
-              <div key={p.name} className={cn("fx-reveal fx-bezel", p.highlight && "is-hot lg:-translate-y-4")}>
+              <div key={p.name} className="fx-reveal">
+                <div className={cn("fx-bezel fx-plan h-full", p.highlight && "is-hot lg:-translate-y-4")}>
                 <div className="fx-core flex h-full flex-col p-8">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-lg text-on-night">{p.name}</h3>
@@ -268,7 +277,7 @@ export function Landing() {
                   </div>
                   <p className="text-sm text-on-night-muted">Para {p.who}</p>
                   <p className="mt-8 flex items-baseline gap-1">
-                    <span className="text-[3rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-on-night">R$ {p.m}</span>
+                    <span className="fx-plan-price text-[3rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-on-night">R$ {p.m}</span>
                     <span className="text-sm text-on-night-muted">/usuário/mês</span>
                   </p>
                   <p className="mt-2 text-sm text-on-night-muted">ou R$ {p.a}/mês no anual</p>
@@ -285,6 +294,7 @@ export function Landing() {
                     </IslandCTA>
                   </div>
                 </div>
+              </div>
               </div>
             ))}
           </div>
