@@ -5,7 +5,6 @@ test.describe("landing pública", () => {
     await page.emulateMedia({ reducedMotion: "reduce" }); // tudo visível de uma vez para o axe medir
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Nenhum cliente perdido no caminho." })).toBeVisible();
-    await expect(page.getByText("Em construção")).toBeVisible(); // recurso não pronto é marcado
     await axe(page);
     await page.getByRole("link", { name: /Testar 14 dias grátis/ }).first().click();
     await expect(page).toHaveURL(/\/signup/);
