@@ -11,6 +11,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { digits, isDisposableEmail, validDoc } from "@/lib/document";
 import { cleanAttribution } from "@/lib/utm";
 import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
+import { inviteEmail, sendEmail } from "@/lib/email";
 import { checkTemplate } from "@/lib/template-rules";
 import { limitsOf, upgradeFor, type Limits } from "@/lib/plans";
 import { MetaError, verifyAccount } from "@/lib/meta";
@@ -480,6 +481,38 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
   });
 }
 
+/** visitante do chat do site manda um arquivo (foto, áudio, PDF...): entra como mensagem recebida com o anexo */
+export async function visitorUploadAction(form: FormData) {
+  return run(async () => {
+    const v = visitorMsg.pick({ publicKey: true, visitorId: true, name: true, messageId: true }).parse({
+      publicKey: String(form.get("publicKey") ?? ""),
+      visitorId: String(form.get("visitorId") ?? ""),
+      name: String(form.get("name") ?? ""),
+      messageId: String(form.get("messageId") ?? ""),
+    });
+    const ip = await clientIp();
+    if (!(await rateLimit(`chat-file-ip:${ip}`, 6, 60_000)) || !(await rateLimit(`chat-file-v:${v.visitorId}`, 4, 60_000)))
+      throw new DomainError("invalid", "Muitos arquivos seguidos. Espere um pouco.");
+    const file = form.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new DomainError("invalid", "Escolha um arquivo.");
+    if (file.size > MAX_ATTACHMENT) throw new DomainError("invalid", "Arquivo grande demais: o limite é 4 MB.");
+    const mime = file.type || "application/octet-stream";
+    const kind = kindOf(mime);
+    if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito. Mande foto, áudio, vídeo ou PDF.");
+    const caption = z.string().trim().max(1000).parse(String(form.get("caption") ?? ""));
+    const body = caption || { image: "[foto]", audio: "[áudio]", video: "[vídeo]", file: "[arquivo]" }[kind];
+    const { channelId, workspaceId: ws } = await data.getWebchat(v.publicKey);
+    const got = await data.receiveInbound(channelId, v.visitorId, v.name, body, v.messageId);
+    if (!got) return null; // repetido (duplo clique)
+    await data.attachInbound(got.messageId, { name: file.name || "arquivo", mime, bytes: new Uint8Array(await file.arrayBuffer()) });
+    if ((await data.getAccess(ws).catch(() => null))?.state !== "locked") {
+      await data.fireRobots(ws, { trigger: "message_in", conversationId: got.conversationId, text: body });
+      if (got.isNew) await data.fireRobots(ws, { trigger: "new_contact", conversationId: got.conversationId, text: body });
+    }
+    return null;
+  });
+}
+
 export async function visitorThreadAction(publicKey: string, visitorId: string) {
   const v = visitorMsg.pick({ publicKey: true, visitorId: true }).parse({ publicKey, visitorId });
   const msgs = await data.visitorThread(v.publicKey, v.visitorId);
@@ -722,9 +755,14 @@ export async function createInviteAction(slug: string, input: z.input<typeof new
     const { l, over } = await planLimits(ws.id);
     const n = (await data.listMembers(ws.id)).members.length + (await data.listInvites(ws.id)).length;
     if (n + 1 > l.users) throw over("pessoas na equipe (contando convites abertos)", l.users, (x) => x.users > n);
-    const { token } = await data.createInvite(ws.id, user.id, newInvite.parse(input));
-    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-    return { url: `${origin}/convite/${token}` };
+    const v = newInvite.parse(input);
+    const { token } = await data.createInvite(ws.id, user.id, v);
+    const origin = process.env.APP_URL || ((await headers()).get("origin") ?? "");
+    const url = `${origin}/convite/${token}`;
+    // com o Resend configurado o convite também chega por email; sem ele, o admin manda o link
+    const role = (await data.listMembers(ws.id)).roles.find((r) => r.id === v.roleId)?.name ?? "integrante";
+    const emailed = await sendEmail({ to: v.email.trim().toLowerCase(), ...inviteEmail({ workspace: ws.name, inviter: user.name || user.email, role, url }) });
+    return { url, emailed };
   });
 }
 

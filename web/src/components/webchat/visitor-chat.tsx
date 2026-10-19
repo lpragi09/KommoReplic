@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { Send } from "@/components/ui/icons";
-import { visitorSendAction, visitorThreadAction } from "@/app/actions";
+import { Paperclip, Send } from "@/components/ui/icons";
+import { visitorSendAction, visitorThreadAction, visitorUploadAction } from "@/app/actions";
+import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { fromSearch } from "@/lib/utm";
 import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -49,6 +50,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   const end = useRef<HTMLLIElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!vid) return;
@@ -71,6 +73,27 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
     const body = text;
     start(async () => {
       const r = await visitorSendAction({ publicKey, visitorId: vid, name, body, messageId: crypto.randomUUID(), attribution: pageOrigin() });
+      if (!r.ok) return setError(r.error);
+      setText("");
+      setMsgs((await visitorThreadAction(publicKey, vid)) as M[]);
+    });
+  }
+
+  /** arquivo vai na hora, com o texto digitado como legenda */
+  function upload(f: File | undefined) {
+    if (!vid || !f) return;
+    setError(undefined);
+    if (f.size > MAX_ATTACHMENT) return setError("Arquivo grande demais: o limite é 4 MB.");
+    if (!kindOf(f.type)) return setError("Esse tipo de arquivo não é aceito. Mande foto, áudio, vídeo ou PDF.");
+    const fd = new FormData();
+    fd.set("publicKey", publicKey);
+    fd.set("visitorId", vid);
+    fd.set("name", name);
+    fd.set("messageId", crypto.randomUUID());
+    fd.set("caption", text);
+    fd.set("file", f);
+    start(async () => {
+      const r = await visitorUploadAction(fd);
       if (!r.ok) return setError(r.error);
       setText("");
       setMsgs((await visitorThreadAction(publicKey, vid)) as M[]);
@@ -126,6 +149,21 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
           </>
         )}
         <div className="flex gap-2">
+          <input
+            ref={fileInput}
+            type="file"
+            accept={ACCEPT_ATTR}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              upload(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <Button type="button" variant="secondary" size="lg" disabled={!vid || pending} aria-label="Mandar arquivo (foto, áudio, vídeo ou PDF)" title="Mandar arquivo (até 4 MB)" onClick={() => fileInput.current?.click()}>
+            <Paperclip className="size-4" aria-hidden />
+          </Button>
           <label htmlFor="vmsg" className="sr-only">
             Mensagem
           </label>

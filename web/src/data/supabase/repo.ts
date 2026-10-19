@@ -748,13 +748,13 @@ export async function visitorThread(publicKey: string, visitorId: string): Promi
   );
 }
 
-export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean } | null> {
+export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean; messageId: ID } | null> {
   const a = adminClient();
   const msgId = check(await a.rpc("receive_inbound", { p_channel: channelId, p_thread: externalThreadId, p_sender_name: senderName, p_body: body, p_external_id: externalId })) as string | null;
   if (!msgId) return null; // repetida
   const m = check(await a.from("messages").select("conversation_id").eq("id", msgId).single());
   const { count } = await a.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).eq("direction", "in");
-  return { conversationId: m.conversation_id, isNew: count === 1 };
+  return { conversationId: m.conversation_id, isNew: count === 1, messageId: msgId };
 }
 
 // ---------------------------------------------------------------------------

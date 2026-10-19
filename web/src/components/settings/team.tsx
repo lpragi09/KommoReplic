@@ -22,6 +22,7 @@ export function TeamManager({ slug, roles, members, invites = [], meId, canManag
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState({ email: "", roleId: defaultRole });
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailed, setEmailed] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", roleId: roles.find((r) => r.name === "Vendedor")?.id ?? roles[0]?.id ?? "" });
@@ -43,6 +44,7 @@ export function TeamManager({ slug, roles, members, invites = [], meId, canManag
       if (!res.ok) return setInviteError(res.error);
       setInviteError(null);
       setInviteUrl(res.data.url);
+      setEmailed(res.data.emailed);
     });
   const copyInvite = async () => {
     if (!inviteUrl) return;
@@ -268,7 +270,15 @@ export function TeamManager({ slug, roles, members, invites = [], meId, canManag
         {inviteUrl ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-fg">
-              Convite para <strong>{invite.email}</strong> pronto. Mande o link:
+              {emailed ? (
+                <>
+                  Enviamos o convite para <strong>{invite.email}</strong> por email. Se quiser, mande o link também:
+                </>
+              ) : (
+                <>
+                  Convite para <strong>{invite.email}</strong> pronto. Mande o link:
+                </>
+              )}
             </p>
             <div className="flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 text-sm">{inviteUrl}</code>

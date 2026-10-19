@@ -37,3 +37,22 @@ test("F26-H1 foto com legenda sai do cartão do lead e aparece para o visitante"
   await expect(visitor.getByRole("img", { name: "cardapio.png" })).toBeVisible({ timeout: 15_000 });
   await expect(visitor.getByText("Segue o cardápio!")).toBeVisible();
 });
+
+test("F26-H2 visitante manda foto pelo chat do site e a equipe vê no cartão do lead", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { slug } = await signUp(page);
+  const key = await webchatKey(page, slug);
+  const visitor = await visitorPage(browser);
+  await visitor.goto(`/chat/${key}`);
+  await visitor.getByLabel("Seu nome (opcional)").fill("Caio Anexo");
+  await visitor.getByLabel("Mensagem", { exact: true }).fill("Olha o defeito");
+  await visitor.locator('input[type="file"]').setInputFiles({ name: "defeito.png", mimeType: "image/png", buffer: PNG });
+  await expect(visitor.getByRole("img", { name: "defeito.png" })).toBeVisible();
+  await expect(visitor.getByText("Olha o defeito")).toBeVisible();
+
+  await page.goto(`/${slug}/leads`);
+  await page.getByRole("button", { name: "Aceitar Caio Anexo como lead" }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}/leads/[0-9a-f-]{36}`));
+  await expect(page.getByRole("img", { name: "defeito.png" })).toBeVisible();
+  await expect(page.getByText("Olha o defeito").first()).toBeVisible();
+});

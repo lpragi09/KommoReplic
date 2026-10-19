@@ -658,7 +658,7 @@ export async function visitorThread(publicKey: string, visitorId: string) {
 }
 
 /** Mesmo caminho que o webhook da Meta vai usar: acha/cria contato → conversa → mensagem → lead de entrada. */
-export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean } | null> {
+export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean; messageId: ID } | null> {
   const ch = db.channels.find((c) => c.id === channelId);
   if (!ch) throw new DomainError("not_found");
   const text = body.trim().slice(0, 4000);
@@ -714,12 +714,12 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
   if (conv.leadId) {
     const l = db.leads.find((x) => x.id === conv!.leadId);
     if (l) l.lastActivityAt = now();
-    return { conversationId: conv.id, isNew };
+    return { conversationId: conv.id, isNew, messageId: m.id };
   }
   const pending = db.incoming.find((i) => i.conversationId === conv!.id && i.status === "pending");
   if (pending) {
     pending.preview = text; // um card por conversa: atualiza a prévia
-    return { conversationId: conv.id, isNew };
+    return { conversationId: conv.id, isNew, messageId: m.id };
   }
   const contact = db.contacts.find((c) => c.id === conv!.contactId)!;
   db.incoming.push({
@@ -737,7 +737,7 @@ export async function receiveInbound(channelId: ID, externalThreadId: string, se
     resolvedBy: null,
     createdAt: now(),
   });
-  return { conversationId: conv.id, isNew };
+  return { conversationId: conv.id, isNew, messageId: m.id };
 }
 
 // ---------------------------------------------------------------------------
