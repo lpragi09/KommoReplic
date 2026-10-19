@@ -1,29 +1,5 @@
 import type { ChannelKind, RobotStepType } from "@/data/types";
-import {
-  ArrowRightLeft,
-  Bot,
-  ChatText,
-  CheckCheck,
-  Link2,
-  Mail,
-  MessageSquare,
-  Textbox,
-  Users,
-  Workflow,
-  X,
-  XCircle,
-  Globe,
-  Hourglass,
-  InstagramLogo,
-  ListPlus,
-  MessageCircle,
-  MessengerLogo,
-  StickyNote,
-  TagIcon,
-  UserPlus,
-  WhatsappLogo,
-  type LucideIcon,
-} from "@/components/ui/icons";
+import { ArrowRightLeft, Bot, ChatText, CheckCheck, Link2, Mail, MessageSquare, Textbox, Users, Workflow, X, XCircle, Globe, Hourglass, InstagramLogo, ListPlus, MessageCircle, MessengerLogo, StickyNote, TagIcon, UserPlus, WhatsappLogo, type LucideIcon, Sparkle, CircleCheck, Plus } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 /* Peças pequenas dos robôs, sem estado: servem tanto ao servidor quanto ao cliente. */
@@ -54,6 +30,9 @@ export const stepIcon: Record<RobotStepType, LucideIcon> = {
   email: Mail,
   start_robot: Bot,
   stop: X,
+  ai: Sparkle,
+  complete_tasks: CircleCheck,
+  create_lead: Plus,
 };
 
 /* cada tipo de passo com um tom próprio (todos dentro da paleta azul/preto + verde/âmbar de estado) */
@@ -76,6 +55,9 @@ export const stepTone: Record<RobotStepType, string> = {
   email: "bg-accent-soft text-accent-text",
   start_robot: "bg-inverse-bg text-on-inverse",
   stop: "bg-danger-soft text-danger",
+  ai: "bg-[linear-gradient(135deg,var(--accent),var(--stage-4))] text-on-accent",
+  complete_tasks: "bg-[color-mix(in_srgb,var(--success)_15%,var(--bg))] text-success",
+  create_lead: "bg-accent-soft text-accent-text",
 };
 
 export function StepBadge({ type, size = "md" }: { type: RobotStepType; size?: "sm" | "md" }) {

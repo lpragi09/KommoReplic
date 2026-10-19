@@ -33,6 +33,42 @@ const port: RobotPort = {
     const row = db.leads.find((l) => l.id === lead.id);
     if (row) row.tags = row.tags.filter((t) => t !== tag);
   },
+  async setPrice(_wsId, lead, cents) {
+    const row = db.leads.find((l) => l.id === lead.id);
+    if (row) row.priceCents = cents;
+  },
+  async setAi(_wsId, c, on) {
+    const row = db.conversations.find((x) => x.id === c.id);
+    if (row) row.aiPaused = !on;
+  },
+  async completeTasks(_wsId, lead) {
+    const open = db.tasks.filter((t) => t.leadId === lead.id && !t.completedAt);
+    for (const t of open) t.completedAt = now();
+    const row = db.leads.find((l) => l.id === lead.id);
+    if (row) row.closestTaskAt = null;
+    return open.length;
+  },
+  async createLead(wsId, from, stageId, name) {
+    const st = db.pipelines.flatMap((p) => p.stages).find((s) => s.id === stageId);
+    if (!st) throw new Error("Pulado: a etapa do lead novo não existe mais.");
+    const id = uid();
+    db.leads.push({ ...from, id, number: ++db.leadSeq, name, pipelineId: st.pipelineId, stageId, priceCents: 0, tags: [], lossReasonId: null, closedAt: st.kind === "open" ? null : now(), closestTaskAt: null, lastActivityAt: now(), createdAt: now(), attribution: from.attribution ?? null });
+    for (const lc of db.leadContacts.filter((x) => x.leadId === from.id)) db.leadContacts.push({ ...lc, leadId: id });
+    db.events.push({ id: uid(), leadId: id, kind: "lead_created", before: null, after: { stageId }, actorUserId: null, createdAt: now() });
+    return id;
+  },
+  async scheduledRobots(wsId) {
+    return db.robots.filter((r) => r.active && r.trigger === "schedule_daily" && (!wsId || r.workspaceId === wsId));
+  },
+  async claimDaily(robot, day) {
+    const r = db.robots.find((x) => x.id === robot.id);
+    if (!r || r.conditions?.dailyDone === day) return false;
+    r.conditions = { ...r.conditions, dailyDone: day };
+    return true;
+  },
+  async leadsInStage(wsId, stageId) {
+    return db.leads.filter((l) => l.workspaceId === wsId && l.stageId === stageId).slice(0, 500).map((l) => l.id);
+  },
   async setField(_wsId, lead, fieldId, value) {
     const cur = (db.leadCustom[lead.id] ??= {});
     if (value) cur[fieldId] = value;

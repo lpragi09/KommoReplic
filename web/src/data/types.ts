@@ -169,9 +169,9 @@ export type FeedItem =
   | { type: "event"; at: ISO; event: LeadEvent; text: string };
 
 /* ---------- robôs (automações em passos, estilo Salesbot + funil digital) ---------- */
-export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact" | "responsible_changed";
+export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact" | "responsible_changed" | "tag_added" | "field_changed" | "no_reply" | "schedule_daily";
 /** gatilho de etapa (estilo funil digital do Kommo): o que ele faz */
-export type StageTriggerAction = "robot" | "message" | "email" | "task" | "tag" | "stage" | "responsible" | "webhook" | "note";
+export type StageTriggerAction = "robot" | "message" | "email" | "task" | "tag" | "stage" | "responsible" | "webhook" | "note" | "ai_on" | "ai_off" | "complete_tasks" | "field" | "create_lead";
 /** horário de atividade: só roda nesses dias/horas (fuso de Brasília) */
 export type ActiveHours = { from: string; to: string; days: number[] };
 /** posição no quadro e ligação para o próximo passo (null = termina; ausente = o seguinte da lista) */
@@ -197,6 +197,9 @@ export type RobotStep = StepBase &
     | { type: "close" }
     | { type: "webhook"; url: string }
     | { type: "email"; subject: string; text: string }
+    | { type: "ai"; on: boolean }
+    | { type: "complete_tasks" }
+    | { type: "create_lead"; stageId: string; name: string }
     | { type: "start_robot"; robotId: string }
     | { type: "stop" }
   );
@@ -236,6 +239,15 @@ export type Robot = {
     action?: StageTriggerAction;
     /** tirado do funil: não dispara sozinho, mas continua salvo e pode ser chamado por um gatilho de etapa */
     detached?: boolean;
+    /** "tag_added": só esta etiqueta dispara (vazio = qualquer uma) */
+    tagTrigger?: string;
+    /** "field_changed": só este campo ("price" = valor da venda, ou o id do campo personalizado) */
+    fieldTrigger?: string;
+    /** com espera: só age se o lead ainda estiver na etapa quando o tempo passar */
+    stayInStage?: boolean;
+    /** "schedule_daily": horário (Brasília, HH:MM) e o último dia em que rodou */
+    dailyAt?: string;
+    dailyDone?: string;
   };
   runCount: number;
   lastRunAt: ISO | null;
@@ -264,7 +276,10 @@ export type RobotEvent =
   | { trigger: "stage_enter"; leadId: ID; stageId: ID; depth?: number; via?: "created" | "moved"; robotId?: ID }
   | { trigger: "lead_created"; leadId: ID; depth?: number }
   | { trigger: "responsible_changed"; leadId: ID; depth?: number; robotId?: ID }
-  | { trigger: "message_in" | "new_contact"; conversationId: ID; text: string };
+  | { trigger: "message_in" | "new_contact" | "no_reply"; conversationId: ID; text: string }
+  | { trigger: "tag_added"; leadId: ID; tag: string; depth?: number }
+  | { trigger: "field_changed"; leadId: ID; field: string; depth?: number }
+  | { trigger: "schedule_daily"; leadId: ID; robotId: ID };
 
 export type Template = {
   id: ID;

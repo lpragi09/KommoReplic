@@ -21,7 +21,19 @@ const dot: Record<Stage["color"], string> = {
 type View = "funil" | "lista" | "prontos";
 
 /** Painel de robôs: funil digital (robôs por etapa), lista completa e modelos prontos. */
-export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: string; pipelines: Pipeline[]; robots: Robot[]; users?: { id: string; name: string }[] }) {
+export function RobotsBoard({
+  slug,
+  pipelines,
+  robots,
+  users = [],
+  fields = [],
+}: {
+  slug: string;
+  pipelines: Pipeline[];
+  robots: Robot[];
+  users?: { id: string; name: string }[];
+  fields?: { id: string; name: string }[];
+}) {
   // "Adicionar" de uma etapa: janela de gatilhos (como no funil digital do Kommo)
   const [trigger, setTrigger] = useState<{ stage: Stage; existing: Robot | null } | null>(null);
   const [view, setView] = useState<View>(robots.length ? "funil" : "prontos");
@@ -58,7 +70,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
   const pipeline = pipelines.find((p) => p.id === pid) ?? pipelines[0];
   const stages = pipeline ? [...pipeline.stages].sort((a, b) => a.sort - b.sort) : [];
   const allStages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
-  const inbound = list.filter((r) => r.trigger === "message_in" || r.trigger === "new_contact");
+  const inbound = list.filter((r) => (r.trigger === "message_in" || r.trigger === "new_contact") && !isStageTrigger(r));
   const onlyRobots = all.filter((r) => !isStageTrigger(r)); // a lista mostra robôs; gatilhos de etapa ficam no funil
   const created = list.filter((r) => r.trigger === "lead_created" && (!r.pipelineId || r.pipelineId === pipeline?.id));
   const base = `/${slug}/automations`;
@@ -139,7 +151,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
               key={s.id}
               title={s.name}
               head={<span className={cn("size-2.5 rounded-pill", dot[s.color])} aria-hidden />}
-              robots={list.filter((r) => (r.trigger === "stage_enter" || r.trigger === "responsible_changed") && r.stageId === s.id)}
+              robots={list.filter((r) => r.stageId === s.id && (isStageTrigger(r) || r.trigger === "stage_enter" || r.trigger === "responsible_changed"))}
               addHref={`${base}/new?trigger=stage_enter&stage=${s.id}`}
               onAdd={() => setTrigger({ stage: s, existing: null })}
               onRemove={remove}
@@ -208,6 +220,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
           key={(trigger.existing?.id ?? "novo") + trigger.stage.id}
           open
           onOpenChange={(o) => !o && setTrigger(null)}
+          fields={fields}
           slug={slug}
           pipeline={pipelines.find((p) => p.stages.some((s) => s.id === trigger.stage.id)) ?? pipeline}
           stage={trigger.stage}
@@ -295,7 +308,16 @@ function summary(r: Robot, stages: Map<string, Stage>) {
   const delay = first?.type === "wait" ? `depois de ${humanMinutes(first.minutes)}` : "na hora";
   if (isStageTrigger(r)) {
     const c = r.conditions ?? {};
-    const parts = [r.trigger === "responsible_changed" ? "quando o responsável muda" : WHEN_TEXT[c.when ?? "both"], delay];
+    const head: Partial<Record<Robot["trigger"], string>> = {
+      responsible_changed: "quando o responsável muda",
+      tag_added: c.tagTrigger ? `quando ganha a etiqueta “${c.tagTrigger}”` : "quando ganha uma etiqueta",
+      field_changed: c.fieldTrigger === "price" ? "quando o valor da venda muda" : "quando um campo muda",
+      schedule_daily: `todo dia às ${c.dailyAt ?? "09:00"}`,
+      message_in: r.keywords.length ? `quando o cliente escreve “${r.keywords.slice(0, 2).join("”, “")}”` : "quando o cliente escreve",
+      no_reply: `depois de ${first?.type === "wait" ? humanMinutes(first.minutes) : "um tempo"} sem o cliente escrever`,
+    };
+    const parts = [head[r.trigger] ?? WHEN_TEXT[c.when ?? "both"]];
+    if (r.trigger !== "no_reply") parts.push(c.stayInStage ? `${delay} (se ainda estiver aqui)` : delay);
     if (c.tags?.length) parts.push(`etiqueta ${c.tags.join(" ou ")}`);
     if (c.hours) parts.push(`${c.hours.days.map((d) => DAY[d]).join(", ")} ${c.hours.from}–${c.hours.to}`);
     return parts.join(" · ");
@@ -311,6 +333,8 @@ function summary(r: Robot, stages: Map<string, Stage>) {
       return "Primeira mensagem de alguém novo";
     case "responsible_changed":
       return `Responsável muda · ${delay}`;
+    default:
+      return TRIGGERS[r.trigger].label;
   }
 }
 

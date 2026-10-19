@@ -24,6 +24,10 @@ export const TRIGGERS: Record<RobotTrigger, { label: string; hint: string }> = {
   message_in: { label: "Mensagem recebida", hint: "A cada mensagem que chegar, opcionalmente só com certas palavras." },
   new_contact: { label: "Primeiro contato", hint: "Quando alguém novo escreve pela primeira vez em um canal." },
   responsible_changed: { label: "Responsável muda", hint: "Quando o responsável do lead é trocado (opcionalmente só para leads de uma etapa)." },
+  tag_added: { label: "Etiqueta adicionada", hint: "Quando alguém (ou um robô) coloca uma etiqueta no lead." },
+  field_changed: { label: "Campo alterado", hint: "Quando o valor da venda ou um campo personalizado muda." },
+  no_reply: { label: "Cliente sem responder", hint: "Depois de um tempo sem o cliente mandar mensagem." },
+  schedule_daily: { label: "Todo dia no horário", hint: "Todo dia, no horário escolhido, para cada lead da etapa." },
 };
 
 export const CHANNELS: { kind: ChannelKind; label: string }[] = [
@@ -54,6 +58,9 @@ export const STEP_TYPES: Record<RobotStepType, { label: string; hint: string; gr
   round_robin: { label: "Rodízio entre vendedores", hint: "Distribui os leads um para cada, em sequência.", group: "Equipe" },
   internal: { label: "Mensagem interna", hint: "Avisa a equipe no chat interno (o cliente não vê).", group: "Equipe" },
   webhook: { label: "Webhook", hint: "Envia os dados do lead para outro sistema (Zapier, Make, seu site).", group: "Integração" },
+  ai: { label: "Agente de IA", hint: "Liga ou para o agente de IA nesta conversa.", group: "Conversa" },
+  complete_tasks: { label: "Concluir tarefas", hint: "Marca como feitas todas as tarefas abertas do lead.", group: "Lead" },
+  create_lead: { label: "Criar lead", hint: "Abre um lead novo para o mesmo contato, em outra etapa ou funil.", group: "Lead" },
 };
 
 const sid = () => Math.random().toString(36).slice(2, 10);
@@ -95,6 +102,12 @@ export function newStep(type: RobotStepType): RobotStep {
       return { id, type, subject: "", text: "Olá, {{nome}}!\n\n" };
     case "start_robot":
       return { id, type, robotId: "" };
+    case "ai":
+      return { id, type, on: true };
+    case "complete_tasks":
+      return { id, type };
+    case "create_lead":
+      return { id, type, stageId: "", name: "{{lead}}" };
     case "stop":
       return { id, type };
   }

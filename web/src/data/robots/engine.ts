@@ -45,6 +45,19 @@ export interface RobotPort {
   removeTag(wsId: ID, lead: Lead, tag: string): Promise<void>;
   setResponsible(wsId: ID, lead: Lead, userId: ID): Promise<void>;
   setField(wsId: ID, lead: Lead, fieldId: ID, value: string): Promise<void>;
+  setPrice(wsId: ID, lead: Lead, cents: number): Promise<void>;
+  /** liga (on) ou pausa o agente de IA na conversa */
+  setAi(wsId: ID, conversation: Conversation, on: boolean): Promise<void>;
+  /** conclui as tarefas abertas do lead; devolve quantas */
+  completeTasks(wsId: ID, lead: Lead): Promise<number>;
+  /** novo lead para o mesmo contato (outra etapa ou funil); devolve o id */
+  createLead(wsId: ID, from: Lead, stageId: ID, name: string): Promise<ID>;
+  /** robôs "todo dia às HH:MM" ligados (de uma empresa ou de todas) */
+  scheduledRobots(wsId: ID | null): Promise<Robot[]>;
+  /** marca que o robô diário rodou hoje; false se outro processo já marcou */
+  claimDaily(robot: Robot, day: string): Promise<boolean>;
+  /** ids dos leads abertos numa etapa (até 500) */
+  leadsInStage(wsId: ID, stageId: ID): Promise<ID[]>;
   /** devolve false se o lead já estava na etapa */
   moveStage(wsId: ID, lead: Lead, stageId: ID): Promise<boolean>;
   addNote(wsId: ID, lead: Lead, text: string): Promise<void>;
@@ -94,6 +107,8 @@ export function inHours(h: { from: string; to: string; days: number[] } | undefi
 function matches(r: Robot, ev: RobotEvent, ctx: RobotCtx) {
   if (r.trigger !== ev.trigger) return false;
   if (r.conditions?.detached) return false; // fora do funil: só roda quando outro robô ou gatilho chama
+  // gatilho preso a uma etapa (mensagem, etiqueta, campo...): só para leads que estão nela
+  if (r.stageId && ev.trigger !== "stage_enter" && ev.trigger !== "lead_created" && ctx.lead?.stageId !== r.stageId) return false;
   if ("robotId" in ev && ev.robotId && r.id !== ev.robotId) return false; // "aplicar aos leads que já estão na etapa"
   const c = r.conditions;
   if (c?.tags?.length && !c.tags.some((t) => ctx.lead?.tags.some((x) => x.toLowerCase() === t.toLowerCase()))) return false;
@@ -121,6 +136,42 @@ function matches(r: Robot, ev: RobotEvent, ctx: RobotCtx) {
     }
     case "new_contact":
       return true;
+    case "tag_added": {
+      const want = c?.tagTrigger?.trim().toLowerCase();
+      return !want || ev.tag.trim().toLowerCase() === want;
+    }
+    case "field_changed":
+      return !c?.fieldTrigger || c.fieldTrigger === ev.field;
+    case "no_reply":
+      return !!r.stageId || !!ctx.conversation; // sem etapa: vale para qualquer conversa
+    case "schedule_daily":
+      return true;
+  }
+}
+
+/** dia (AAAA-MM-DD) e hora (HH:MM) agora em Brasília */
+function brtNow(now = new Date()) {
+  const day = now.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const hm = now.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/^24/, "00");
+  return { day, hm };
+}
+
+/** "Todo dia às HH:MM": passou do horário e ainda não rodou hoje → roda para cada lead da etapa.
+   Chamado a cada continuação (tela aberta, ações, webhooks e a rotina diária): sem fila extra nem varredura de leads à toa. */
+async function fireDaily(port: RobotPort, wsId: ID | null) {
+  const robots = await port.scheduledRobots(wsId);
+  if (!robots.length) return;
+  const { day, hm } = brtNow();
+  for (const r of robots) {
+    if (!r.stageId || r.conditions?.detached || hm < (r.conditions?.dailyAt ?? "09:00") || r.conditions?.dailyDone === day) continue;
+    if (!inHours(r.conditions?.hours)) continue;
+    if (!(await port.claimDaily(r, day))) continue;
+    for (const leadId of await port.leadsInStage(r.workspaceId, r.stageId)) {
+      const ctx = await port.context(r.workspaceId, leadId, null);
+      if (!matches(r, { trigger: "schedule_daily", leadId, robotId: r.id }, ctx)) continue;
+      if (r.once && (await port.hasRun(r.id, { leadId, conversationId: null }))) continue;
+      await advance(port, r, newRun(r.workspaceId, r, ctx, 0), ctx);
+    }
   }
 }
 
@@ -236,6 +287,7 @@ function newRun(wsId: ID, r: Robot, ctx: RobotCtx, depth: number): RobotRun {
 /** Dispara os robôs que combinam com o evento. Nunca derruba a ação de quem chamou. */
 export async function fireRobots(port: RobotPort, wsId: ID, ev: RobotEvent) {
   try {
+    if (ev.trigger === "message_in") await fireRobots(port, wsId, { trigger: "no_reply", conversationId: ev.conversationId, text: "" });
     // resposta do cliente: primeiro continua os robôs que estavam esperando por ela
     if (ev.trigger === "message_in") {
       const waiting = await port.waitingReply(wsId, ev.conversationId);
@@ -272,6 +324,7 @@ export async function fireRobots(port: RobotPort, wsId: ID, ev: RobotEvent) {
 /** Continua os robôs que estavam esperando (tempo, ou resposta que não veio no prazo). */
 export async function tickRobots(port: RobotPort, wsId: ID | null, limit = 25) {
   try {
+    await fireDaily(port, wsId).catch((e) => console.error("[robôs] diário", e));
     const due = await port.dueRuns(wsId, nowIso(), limit);
     for (const run of due) {
       if (!(await port.claim(run))) continue;
@@ -303,6 +356,16 @@ export async function tickRobots(port: RobotPort, wsId: ID | null, limit = 25) {
 async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, reply?: string, lastMessage = "") {
   const log = (text: string, ok = true) => run.log.push({ at: nowIso(), text, ok });
   const ws = run.workspaceId;
+  // guardas de quem esperou: o lead saiu da etapa, ou o cliente voltou a escrever → não faz mais sentido agir
+  const stop = async (text: string) => {
+    log(text);
+    run.cursor = null;
+    run.status = "done";
+    run.state = {};
+    await port.saveRun(run);
+  };
+  if (run.cursor !== undefined && r.conditions?.stayInStage && r.stageId && ctx.lead && ctx.lead.stageId !== r.stageId) return stop("O lead saiu da etapa antes do tempo: nada a fazer.");
+  if (run.cursor !== undefined && r.trigger === "no_reply" && ctx.conversation?.lastInboundAt && Date.parse(ctx.conversation.lastInboundAt) > Date.parse(run.createdAt) + 2000) return stop("O cliente escreveu de novo: o “sem resposta” foi cancelado.");
   // execução antiga (salva por índice) vira cursor
   let id: string | null = run.cursor !== undefined ? run.cursor : run.step > 0 ? (r.steps[run.step]?.id ?? null) : startOf(r);
   let pendingReply = reply;
@@ -447,8 +510,12 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
             await port.removeTag(ws, lead, tag);
             lead.tags = lead.tags.filter((t) => t !== tag);
           } else {
+            const had = lead.tags.includes(tag);
             await port.addTag(ws, lead, tag);
             if (!lead.tags.includes(tag)) lead.tags.push(tag);
+            if (!had) {
+              if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "tag_added", leadId: lead.id, tag, depth: run.depth + 1 });
+            }
           }
           log(`Etiqueta ${step.remove ? "removida" : "adicionada"}: ${tag}`);
           await port.logOnLead(ws, lead.id, r.name, `Etiqueta ${step.remove ? "removida" : "adicionada"}: ${tag}`);
@@ -499,8 +566,37 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
         }
         case "set_field": {
           const lead = needLead();
-          await port.setField(ws, lead, step.fieldId, renderText(step.value, ctx));
+          const value = renderText(step.value, ctx);
+          if (step.fieldId === "price") {
+            const cents = Math.round(Number(value.replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".")) * 100);
+            if (!Number.isFinite(cents) || cents < 0) throw new Error("Pulado: valor da venda inválido.");
+            await port.setPrice(ws, lead, cents);
+            lead.priceCents = cents;
+          } else await port.setField(ws, lead, step.fieldId, value);
           log("Campo preenchido.");
+          if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "field_changed", leadId: lead.id, field: step.fieldId, depth: run.depth + 1 });
+          break;
+        }
+        case "ai": {
+          if (!ctx.conversation) throw new Error("Pulado: este lead ainda não tem conversa.");
+          await port.setAi(ws, ctx.conversation, step.on);
+          log(step.on ? "Agente de IA ligado nesta conversa." : "Agente de IA parado nesta conversa.");
+          if (ctx.lead) await port.logOnLead(ws, ctx.lead.id, r.name, step.on ? "Agente de IA ligado." : "Agente de IA parado.");
+          break;
+        }
+        case "complete_tasks": {
+          const lead = needLead();
+          const n = await port.completeTasks(ws, lead);
+          log(n ? `${n} ${n === 1 ? "tarefa concluída" : "tarefas concluídas"}.` : "Nenhuma tarefa aberta.");
+          break;
+        }
+        case "create_lead": {
+          const lead = needLead();
+          const name = renderText(step.name, ctx) || lead.name;
+          const newId = await port.createLead(ws, lead, step.stageId, name);
+          log(`Lead novo criado: ${name || "sem nome"}.`);
+          await port.logOnLead(ws, lead.id, r.name, `Lead novo criado: ${name || "sem nome"}.`);
+          if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "stage_enter", leadId: newId, stageId: step.stageId, depth: run.depth + 1, via: "created" });
           break;
         }
         case "close": {

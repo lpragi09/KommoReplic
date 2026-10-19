@@ -47,7 +47,7 @@ const fromRobot = (i: RobotInput) => ({
   is_active: i.active,
   trigger: i.trigger,
   pipeline_id: i.pipelineId,
-  stage_id: i.trigger === "stage_enter" || i.trigger === "responsible_changed" ? i.stageId : null,
+  stage_id: i.trigger === "lead_created" ? null : i.stageId,
   channels: i.channels,
   keywords: i.keywords,
   once: i.once,
@@ -135,6 +135,52 @@ const port: RobotPort = {
     const a = adminClient();
     const t = check(await a.from("tags").select("id").eq("workspace_id", wsId).eq("name", tag).maybeSingle());
     if (t) check(await a.from("lead_tags").delete().eq("lead_id", lead.id).eq("tag_id", t.id));
+  },
+  async setPrice(wsId, lead, cents) {
+    check(await adminClient().from("leads").update({ price_cents: cents }).eq("workspace_id", wsId).eq("id", lead.id));
+  },
+  async setAi(wsId, c, on) {
+    check(await adminClient().from("conversations").update({ ai_paused: !on }).eq("workspace_id", wsId).eq("id", c.id));
+  },
+  async completeTasks(wsId, lead) {
+    const r = check(await adminClient().from("tasks").update({ completed_at: new Date().toISOString() }).eq("workspace_id", wsId).eq("lead_id", lead.id).is("completed_at", null).select("id"));
+    return r.length;
+  },
+  async createLead(wsId, from, stageId, name) {
+    const a = adminClient();
+    const st = check(await a.from("stages").select("pipeline_id").eq("id", stageId).maybeSingle());
+    if (!st) throw new Error("Pulado: a etapa do lead novo não existe mais.");
+    const lead = check(
+      await a
+        .from("leads")
+        .insert({ workspace_id: wsId, pipeline_id: st.pipeline_id, stage_id: stageId, name, price_cents: 0, responsible_user_id: from.responsibleUserId, source: from.source ?? "manual", attribution: from.attribution ?? null })
+        .select("id")
+        .single(),
+    );
+    const links = check(await a.from("lead_contacts").select("contact_id, is_main").eq("lead_id", from.id));
+    if (links.length) check(await a.from("lead_contacts").insert(links.map((l: Row) => ({ lead_id: lead.id, contact_id: l.contact_id, is_main: l.is_main, workspace_id: wsId }))));
+    return lead.id;
+  },
+  async scheduledRobots(wsId) {
+    let q = adminClient().from("robots").select("*").eq("is_active", true).eq("trigger", "schedule_daily").limit(200);
+    if (wsId) q = q.eq("workspace_id", wsId);
+    const { data, error } = await q;
+    return error ? [] : (data as Row[]).map(toRobot); // banco sem o gatilho novo: nada a fazer
+  },
+  async claimDaily(robot, day) {
+    // marca o dia só se ainda não estava marcado: dois processos ao mesmo tempo, só um roda
+    const r = check(
+      await adminClient()
+        .from("robots")
+        .update({ conditions: { ...(robot.conditions ?? {}), ...(robot.start ? { start: robot.start } : {}), dailyDone: day } })
+        .eq("id", robot.id)
+        .or(`conditions->>dailyDone.is.null,conditions->>dailyDone.neq.${day}`)
+        .select("id"),
+    );
+    return r.length > 0;
+  },
+  async leadsInStage(wsId, stageId) {
+    return check(await adminClient().from("leads").select("id").eq("workspace_id", wsId).eq("stage_id", stageId).is("deleted_at", null).limit(500)).map((l: Row) => l.id);
   },
   async setField(wsId, lead, fieldId, value) {
     const a = adminClient();

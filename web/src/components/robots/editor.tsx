@@ -9,6 +9,8 @@ import { Field } from "@/components/ui/input";
 import { Dialog, DialogClose } from "@/components/ui/overlay";
 import { CheckCheck, CircleCheck, Clock, Trash2, XCircle } from "@/components/ui/icons";
 import { CHANNELS, TRIGGERS, humanMinutes } from "@/lib/robot-meta";
+
+const EDITOR_TRIGGERS: RobotTrigger[] = ["stage_enter", "lead_created", "message_in", "new_contact", "responsible_changed"];
 import { cn } from "@/lib/cn";
 import { Switch, channelIcon } from "./parts";
 import { FlowCanvas, normalizeFlow, type Start } from "./canvas";
@@ -109,6 +111,8 @@ export function RobotEditor({
         return "Alguém novo escreve pela 1ª vez";
       case "responsible_changed":
         return st ? `Responsável muda (lead em “${st.name}”)` : "Responsável do lead muda";
+      default:
+        return `${TRIGGERS[r.trigger].label}${st ? ` (lead em “${st.name}”)` : ""}`;
     }
   })();
 
@@ -153,7 +157,8 @@ export function RobotEditor({
             Quando disparar
           </legend>
           <div className="grid gap-1.5">
-            {(Object.keys(TRIGGERS) as RobotTrigger[]).map((t) => (
+            {// os gatilhos novos (etiqueta, campo, sem resposta, diário) se configuram pelo funil digital
+            (Object.keys(TRIGGERS) as RobotTrigger[]).filter((t) => EDITOR_TRIGGERS.includes(t) || t === r.trigger).map((t) => (
               <label
                 key={t}
                 className={cn(

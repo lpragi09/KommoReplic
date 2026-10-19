@@ -258,10 +258,13 @@ export async function updateLeadAction(slug: string, leadId: string, input: z.in
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     const { price, ...rest } = leadPatch.parse(input);
-    const before = rest.responsibleUserId !== undefined ? (await data.getLead(ws.id, id.parse(leadId))).lead.responsibleUserId : undefined;
-    await data.updateLead(ws.id, user.id, id.parse(leadId), { ...rest, ...(price !== undefined ? { priceCents: parseBRL(price) } : {}) });
-    // trocou o responsável: gatilhos "quando o responsável muda"
-    if (rest.responsibleUserId !== undefined && rest.responsibleUserId !== before) await data.fireRobots(ws.id, { trigger: "responsible_changed", leadId });
+    const old = rest.responsibleUserId !== undefined || rest.tags !== undefined || price !== undefined ? (await data.getLead(ws.id, id.parse(leadId))).lead : null;
+    const cents = price !== undefined ? parseBRL(price) : undefined;
+    await data.updateLead(ws.id, user.id, id.parse(leadId), { ...rest, ...(cents !== undefined ? { priceCents: cents } : {}) });
+    // gatilhos: responsável mudou, etiqueta nova, valor da venda mudou
+    if (old && rest.responsibleUserId !== undefined && rest.responsibleUserId !== old.responsibleUserId) await data.fireRobots(ws.id, { trigger: "responsible_changed", leadId });
+    for (const tag of old && rest.tags ? rest.tags.filter((t) => !old.tags.includes(t)) : []) await data.fireRobots(ws.id, { trigger: "tag_added", leadId, tag });
+    if (old && cents !== undefined && cents !== old.priceCents) await data.fireRobots(ws.id, { trigger: "field_changed", leadId, field: "price" });
     return null;
   });
 }
@@ -681,10 +684,13 @@ const robotStep = z.discriminatedUnion("type", [
   z.object({ ...base, type: z.literal("responsible"), userId: z.string().uuid("Escolha quem vai ser o responsável.") }),
   z.object({ ...base, type: z.literal("stage"), stageId: z.string().uuid("Escolha a etapa de destino.") }),
   z.object({ ...base, type: z.literal("note"), text: z.string().trim().min(1, "Escreva a nota.").max(2000) }),
-  z.object({ ...base, type: z.literal("set_field"), fieldId: z.string().uuid("Escolha o campo."), value: z.string().trim().max(500) }),
+  z.object({ ...base, type: z.literal("set_field"), fieldId: z.union([z.literal("price"), z.string().uuid("Escolha o campo.")]), value: z.string().trim().max(500) }),
   z.object({ ...base, type: z.literal("close") }),
   z.object({ ...base, type: z.literal("webhook"), url: z.string().trim().regex(/^https:\/\/[^\s/]+\.[^\s]+$/, "O webhook precisa de um endereço https:// válido.").max(500) }),
   z.object({ ...base, type: z.literal("start_robot"), robotId: z.string().uuid("Escolha o robô.") }),
+  z.object({ ...base, type: z.literal("ai"), on: z.boolean() }),
+  z.object({ ...base, type: z.literal("complete_tasks") }),
+  z.object({ ...base, type: z.literal("create_lead"), stageId: z.string().uuid("Escolha a etapa do lead novo."), name: z.string().trim().max(200) }),
   z.object({ ...base, type: z.literal("email"), subject: z.string().trim().min(1, "Escreva o assunto do email.").max(200), text: z.string().trim().min(1, "Escreva o texto do email.").max(5000) }),
   z.object({ ...base, type: z.literal("stop") }),
 ]);
@@ -692,7 +698,7 @@ const robotInput = z
   .object({
     name: z.string().trim().min(1, "Dê um nome ao robô.").max(80),
     active: z.boolean(),
-    trigger: z.enum(["stage_enter", "lead_created", "message_in", "new_contact", "responsible_changed"]),
+    trigger: z.enum(["stage_enter", "lead_created", "message_in", "new_contact", "responsible_changed", "tag_added", "field_changed", "no_reply", "schedule_daily"]),
     pipelineId: id.nullable(),
     stageId: id.nullable(),
     channels: z.array(channelKind).max(4),
@@ -712,12 +718,18 @@ const robotInput = z
           .refine((h) => h.from !== h.to, "O horário de início e de fim não podem ser iguais.")
           .optional(),
         origin: z.literal("stage_trigger").optional(),
-        action: z.enum(["robot", "message", "email", "task", "tag", "stage", "responsible", "webhook", "note"]).optional(),
+        action: z.enum(["robot", "message", "email", "task", "tag", "stage", "responsible", "webhook", "note", "ai_on", "ai_off", "complete_tasks", "field", "create_lead"]).optional(),
         detached: z.boolean().optional(),
+        tagTrigger: z.string().trim().max(40).optional(),
+        fieldTrigger: z.string().trim().max(60).optional(),
+        stayInStage: z.boolean().optional(),
+        dailyAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário inválido.").optional(),
+        dailyDone: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       })
       .optional(),
   })
-  .refine((r) => r.trigger !== "stage_enter" || !!r.stageId, "Escolha a etapa que dispara o robô.");
+  .refine((r) => r.trigger !== "stage_enter" || !!r.stageId, "Escolha a etapa que dispara o robô.")
+  .refine((r) => r.trigger !== "schedule_daily" || !!r.stageId, "O gatilho diário precisa de uma etapa.");
 
 export async function saveRobotAction(slug: string, robotId: string | null, input: z.input<typeof robotInput>) {
   return run(async () => {
@@ -742,7 +754,14 @@ export async function applyStageTriggerAction(slug: string, robotId: string) {
     if (!r.active) throw new DomainError("invalid", "Ligue o gatilho antes de aplicar aos leads da etapa.");
     const leads = (await data.listLeads(ws.id, { stageId: r.stageId })).slice(0, 300);
     for (const l of leads)
-      await data.fireRobots(ws.id, r.trigger === "responsible_changed" ? { trigger: "responsible_changed", leadId: l.id, robotId: r.id } : { trigger: "stage_enter", leadId: l.id, stageId: r.stageId, robotId: r.id });
+      await data.fireRobots(
+        ws.id,
+        r.trigger === "responsible_changed"
+          ? { trigger: "responsible_changed", leadId: l.id, robotId: r.id }
+          : r.trigger === "schedule_daily"
+            ? { trigger: "schedule_daily", leadId: l.id, robotId: r.id }
+            : { trigger: "stage_enter", leadId: l.id, stageId: r.stageId, robotId: r.id },
+      );
     return { count: leads.length };
   });
 }
@@ -969,6 +988,7 @@ export async function setLeadFieldAction(slug: string, leadId: string, fieldId: 
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     await data.setLeadCustom(ws.id, user.id, id.parse(leadId), id.parse(fieldId), fieldValue.parse(value));
+    await data.fireRobots(ws.id, { trigger: "field_changed", leadId, field: fieldId });
     return null;
   });
 }

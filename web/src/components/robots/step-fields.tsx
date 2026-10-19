@@ -357,6 +357,32 @@ export function StepBody({ step, onChange, ctx, port }: { step: RobotStep; onCha
       );
     case "close":
       return <p className="text-sm text-muted">Fecha a conversa (sai de “abertas” na caixa de entrada).</p>;
+    case "ai":
+      return (
+        <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+          Agente de IA
+          <select value={step.on ? "on" : "off"} onChange={(e) => onChange({ ...step, on: e.target.value === "on" })} className={cn(selectCls, "font-normal")}>
+            <option value="on">Ligar nesta conversa</option>
+            <option value="off">Parar nesta conversa (a equipe assume)</option>
+          </select>
+          <span className="text-xs font-normal text-muted">Precisa do agente ligado em Configurações → Agente de IA.</span>
+        </label>
+      );
+    case "complete_tasks":
+      return <p className="text-sm text-muted">Marca como feitas todas as tarefas abertas do lead.</p>;
+    case "create_lead":
+      return (
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+            Etapa do lead novo
+            <select value={step.stageId} onChange={(e) => onChange({ ...step, stageId: e.target.value })} className={cn(selectCls, "font-normal")}>
+              <option value="">Escolha a etapa…</option>
+              {ctx.stageOptions}
+            </select>
+          </label>
+          <Field label="Nome do lead novo" value={step.name} onChange={(e) => onChange({ ...step, name: e.target.value })} maxLength={200} placeholder="{{lead}} (pós-venda)" />
+        </div>
+      );
     case "stop":
       return <p className="text-sm text-muted">O robô termina aqui.</p>;
   }

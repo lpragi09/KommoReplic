@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import type { ActiveHours, Pipeline, Robot, RobotInput, RobotStep, Stage, StageTriggerAction } from "@/data/types";
 import { applyStageTriggerAction, deleteRobotAction, saveRobotAction } from "@/app/actions";
-import { ArrowLeft, ArrowRightLeft, Bot, CalendarCheck, Globe, Mail, MessageCircle, Plus, Search, StickyNote, TagIcon, UserGear } from "@/components/ui/icons";
+import { ArrowLeft, ArrowRightLeft, Bot, CalendarCheck, CircleCheck, Globe, ListPlus, Mail, MessageCircle, Plus, Search, Sparkle, StickyNote, TagIcon, Textbox, UserGear, XCircle } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
@@ -28,18 +28,66 @@ const OPTIONS: Option[] = [
   { action: "responsible", label: "Mudar responsável", text: "Passa o lead para outra pessoa da equipe.", icon: <UserGear className="size-5" /> },
   { action: "note", label: "Nota interna", text: "Deixa um aviso no histórico do lead, só para a equipe.", icon: <StickyNote className="size-5" /> },
   { action: "webhook", label: "Enviar webhook", text: "Avisa outro sistema (planilha, ERP, Make, Zapier) com os dados do lead.", icon: <Globe className="size-5" /> },
+  { action: "ai_on", label: "Ligar agente de IA", text: "A IA passa a responder a conversa deste lead.", icon: <Sparkle className="size-5" /> },
+  { action: "ai_off", label: "Parar agente de IA", text: "A IA para nesta conversa e a equipe assume.", icon: <XCircle className="size-5" /> },
+  { action: "complete_tasks", label: "Concluir tarefas", text: "Marca como feitas as tarefas abertas do lead.", icon: <CircleCheck className="size-5" /> },
+  { action: "field", label: "Alterar campo", text: "Grava um valor no valor da venda ou num campo personalizado.", icon: <Textbox className="size-5" /> },
+  { action: "create_lead", label: "Criar lead", text: "Abre um lead novo para o mesmo contato, em outra etapa ou funil (ex.: pós-venda).", icon: <ListPlus className="size-5" /> },
 ];
 /** nome curto do gatilho no card: "Tarefa: Ligar para o cliente" */
-const SHORT: Record<StageTriggerAction, string> = { robot: "Robô", message: "Mensagem", email: "Email", task: "Tarefa", tag: "Etiqueta", stage: "Mudar etapa", responsible: "Responsável", note: "Nota", webhook: "Webhook" };
+const SHORT: Record<StageTriggerAction, string> = {
+  robot: "Robô",
+  message: "Mensagem",
+  email: "Email",
+  task: "Tarefa",
+  tag: "Etiqueta",
+  stage: "Mudar etapa",
+  responsible: "Responsável",
+  note: "Nota",
+  webhook: "Webhook",
+  ai_on: "Ligar IA",
+  ai_off: "Parar IA",
+  complete_tasks: "Concluir tarefas",
+  field: "Alterar campo",
+  create_lead: "Criar lead",
+};
 const SOON = [{ label: "Gerar formulário", icon: <StickyNote className="size-5" /> }];
 
-type When = "created" | "moved" | "both" | "owner";
-const WHEN: { v: When; label: string }[] = [
-  { v: "both", label: "Quando criado ou movido para esta etapa" },
-  { v: "moved", label: "Quando movido para esta etapa" },
-  { v: "created", label: "Quando criado nesta etapa" },
-  { v: "owner", label: "Quando o responsável muda (lead nesta etapa)" },
+type When = "created" | "moved" | "both" | "owner" | "tag" | "field" | "daily" | "message" | "no_reply";
+/** como no Kommo, em grupos: do funil, programados e de conversa. Tudo vale para leads desta etapa. */
+const WHEN_GROUPS: { label: string; items: { v: When; label: string }[] }[] = [
+  {
+    label: "Gatilhos do funil",
+    items: [
+      { v: "both", label: "Quando criado ou movido para esta etapa" },
+      { v: "moved", label: "Quando movido para esta etapa" },
+      { v: "created", label: "Quando criado nesta etapa" },
+      { v: "owner", label: "Quando o responsável muda" },
+      { v: "tag", label: "Quando uma etiqueta é adicionada" },
+      { v: "field", label: "Quando um campo do lead muda" },
+    ],
+  },
+  { label: "Gatilhos programados", items: [{ v: "daily", label: "Todo dia, num horário" }] },
+  {
+    label: "Gatilhos de conversa",
+    items: [
+      { v: "message", label: "Quando o cliente manda mensagem" },
+      { v: "no_reply", label: "Quando o cliente fica um tempo sem responder" },
+    ],
+  },
 ];
+const TRIGGER_OF: Record<When, RobotInput["trigger"]> = {
+  both: "stage_enter",
+  moved: "stage_enter",
+  created: "stage_enter",
+  owner: "responsible_changed",
+  tag: "tag_added",
+  field: "field_changed",
+  daily: "schedule_daily",
+  message: "message_in",
+  no_reply: "no_reply",
+};
+const SILENCE = [60, 180, 1440, 2880, 4320];
 const DELAYS = [0, 5, 10, 60, 1440];
 const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const DUE = [
@@ -71,6 +119,18 @@ type Form = {
   hours: ActiveHours;
   once: boolean;
   applyExisting: boolean;
+  /** gatilhos novos */
+  tagTrigger: string;
+  fieldTrigger: string;
+  dailyAt: string;
+  keywords: string;
+  silence: number;
+  stayInStage: boolean;
+  /** ações novas */
+  fieldId: string;
+  fieldValue: string;
+  newStage: string;
+  newName: string;
 };
 
 const blank = (action: StageTriggerAction): Form => ({
@@ -92,6 +152,16 @@ const blank = (action: StageTriggerAction): Form => ({
   hours: { from: "08:00", to: "18:00", days: [1, 2, 3, 4, 5] },
   once: true,
   applyExisting: false,
+  tagTrigger: "",
+  fieldTrigger: "",
+  dailyAt: "09:00",
+  keywords: "",
+  silence: 1440,
+  stayInStage: true,
+  fieldId: "",
+  fieldValue: "",
+  newStage: "",
+  newName: "{{lead}}",
 });
 
 /** gatilho salvo → formulário */
@@ -100,8 +170,18 @@ function fromRobot(r: Robot): Form {
   const f = blank(c.action ?? "robot");
   const first = r.steps[0];
   const act = r.steps[r.steps.length - 1];
-  f.when = r.trigger === "responsible_changed" ? "owner" : (c.when ?? "both");
+  const byTrigger: Partial<Record<RobotInput["trigger"], When>> = { responsible_changed: "owner", tag_added: "tag", field_changed: "field", schedule_daily: "daily", message_in: "message", no_reply: "no_reply" };
+  f.when = byTrigger[r.trigger] ?? c.when ?? "both";
   f.delay = first?.type === "wait" ? first.minutes : 0;
+  if (f.when === "no_reply") {
+    f.silence = f.delay || 1440;
+    f.delay = 0;
+  }
+  f.tagTrigger = c.tagTrigger ?? "";
+  f.fieldTrigger = c.fieldTrigger ?? "";
+  f.dailyAt = c.dailyAt ?? "09:00";
+  f.keywords = r.keywords.join(", ");
+  f.stayInStage = c.stayInStage ?? false;
   f.tags = (c.tags ?? []).join(", ");
   f.ownerId = c.ownerId ?? "";
   if (c.hours) {
@@ -138,6 +218,14 @@ function fromRobot(r: Robot): Form {
     case "webhook":
       f.url = act.url;
       break;
+    case "set_field":
+      f.fieldId = act.fieldId;
+      f.fieldValue = act.value;
+      break;
+    case "create_lead":
+      f.newStage = act.stageId;
+      f.newName = act.name;
+      break;
   }
   return f;
 }
@@ -155,6 +243,7 @@ export function StageTriggerDialog({
   open,
   onOpenChange,
   leadsInStage,
+  fields = [],
 }: {
   slug: string;
   pipeline: Pipeline;
@@ -166,7 +255,10 @@ export function StageTriggerDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   leadsInStage?: number;
+  /** campos personalizados do lead (para "quando um campo muda" e "alterar campo") */
+  fields?: { id: string; name: string }[];
 }) {
+  const fieldOptions = [{ id: "price", name: "Valor da venda" }, ...fields];
   const [form, setForm] = useState<Form | null>(existing ? fromRobot(existing) : null);
   const [q, setQ] = useState("");
   const [customDelay, setCustomDelay] = useState(existing ? !DELAYS.includes(fromRobot(existing).delay) : false);
@@ -244,28 +336,61 @@ export function StageTriggerDialog({
         step = { id: sid(), type: "webhook", url: f.url.trim() };
         detail = new URL(f.url.trim()).hostname;
         break;
+      case "ai_on":
+      case "ai_off":
+        step = { id: sid(), type: "ai", on: f.action === "ai_on" };
+        detail = "";
+        break;
+      case "complete_tasks":
+        step = { id: sid(), type: "complete_tasks" };
+        detail = "";
+        break;
+      case "field": {
+        const fd = fieldOptions.find((x) => x.id === f.fieldId);
+        if (!fd) return "Escolha o campo.";
+        step = { id: sid(), type: "set_field", fieldId: fd.id, value: f.fieldValue.trim() };
+        detail = `${fd.name} = ${f.fieldValue.trim() || "vazio"}`.slice(0, 40);
+        break;
+      }
+      case "create_lead": {
+        const st = pipelines.flatMap((p) => p.stages).find((s) => s.id === f.newStage);
+        if (!st) return "Escolha a etapa do lead novo.";
+        step = { id: sid(), type: "create_lead", stageId: st.id, name: f.newName.trim() };
+        detail = `em ${st.name}`;
+        break;
+      }
     }
+    if (f.when === "daily" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(f.dailyAt)) return "Escolha o horário do gatilho diário.";
+    if (f.when === "no_reply" && f.silence < 1) return "Escolha depois de quanto tempo sem resposta.";
     if (f.limitHours && (!f.hours.days.length || f.hours.from === f.hours.to)) return "Confira o horário de atividade: escolha os dias e um início diferente do fim.";
     const tags = f.tags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean)
       .slice(0, 10);
-    const steps: RobotStep[] = f.delay > 0 ? [{ id: sid(), type: "wait", minutes: f.delay }, step] : [step];
+    // "sem responder": a espera é o próprio silêncio do cliente; se ele escrever antes, o motor cancela
+    const wait = f.when === "no_reply" ? f.silence : f.delay;
+    const steps: RobotStep[] = wait > 0 ? [{ id: sid(), type: "wait", minutes: wait }, step] : [step];
+    const stageWhen = f.when === "both" || f.when === "moved" || f.when === "created";
+    const keywords = f.when === "message" ? f.keywords.split(",").map((k) => k.trim()).filter(Boolean).slice(0, 20) : [];
     return {
-      name: `${SHORT[f.action]}: ${detail}`.slice(0, 80),
+      name: (detail ? `${SHORT[f.action]}: ${detail}` : SHORT[f.action]).slice(0, 80),
       active: existing ? existing.active : true,
-      trigger: f.when === "owner" ? "responsible_changed" : "stage_enter",
+      trigger: TRIGGER_OF[f.when],
       pipelineId: pipeline.id,
       stageId: stage.id,
       channels: [],
-      keywords: [],
-      once: f.once,
+      keywords,
+      once: f.when === "no_reply" || f.when === "message" || f.when === "daily" ? false : f.once,
       steps,
       conditions: {
         origin: "stage_trigger",
         action: f.action,
-        ...(f.when !== "owner" ? { when: f.when } : {}),
+        ...(stageWhen ? { when: f.when as "both" | "moved" | "created" } : {}),
+        ...(f.when === "tag" && f.tagTrigger.trim() ? { tagTrigger: f.tagTrigger.trim() } : {}),
+        ...(f.when === "field" && f.fieldTrigger ? { fieldTrigger: f.fieldTrigger } : {}),
+        ...(f.when === "daily" ? { dailyAt: f.dailyAt, ...(existing?.conditions?.dailyDone ? { dailyDone: existing.conditions.dailyDone } : {}) } : {}),
+        ...(f.delay > 0 && f.when !== "no_reply" && f.stayInStage ? { stayInStage: true } : {}),
         ...(tags.length ? { tags } : {}),
         ...(f.ownerId ? { ownerId: f.ownerId } : {}),
         ...(f.limitHours ? { hours: f.hours } : {}),
@@ -525,6 +650,53 @@ export function StageTriggerDialog({
             </label>
           )}
           {form.action === "webhook" && <Field label="Endereço (https://)" value={form.url} onChange={(e) => set({ url: e.target.value })} placeholder="https://hook.make.com/…" inputMode="url" />}
+          {(form.action === "ai_on" || form.action === "ai_off") && (
+            <p className="rounded-md bg-surface px-3 py-2 text-sm text-muted">
+              {form.action === "ai_on"
+                ? "A IA volta a responder a conversa deste lead (precisa do agente ligado em Configurações → Agente de IA). Bom para leads que esfriaram."
+                : "A IA para nesta conversa e ela aparece como sem resposta para a equipe. Bom para etapas de negociação e fechamento."}
+            </p>
+          )}
+          {form.action === "complete_tasks" && <p className="rounded-md bg-surface px-3 py-2 text-sm text-muted">Todas as tarefas abertas do lead são marcadas como feitas (ex.: ao chegar em Ganho).</p>}
+          {form.action === "field" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Campo
+                <select value={form.fieldId} onChange={(e) => set({ fieldId: e.target.value })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal">
+                  <option value="">Escolha o campo…</option>
+                  {fieldOptions.map((fd) => (
+                    <option key={fd.id} value={fd.id}>
+                      {fd.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Novo valor" value={form.fieldValue} onChange={(e) => set({ fieldValue: e.target.value })} maxLength={500} placeholder={form.fieldId === "price" ? "1500,00" : "Aceita {{utm_campaign}}, {{nome}}…"} />
+            </div>
+          )}
+          {form.action === "create_lead" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Etapa do lead novo
+                <select value={form.newStage} onChange={(e) => set({ newStage: e.target.value })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal">
+                  <option value="">Escolha a etapa…</option>
+                  {pipelines.map((p) => (
+                    <optgroup key={p.id} label={p.name}>
+                      {[...p.stages]
+                        .sort((a, b) => a.sort - b.sort)
+                        .filter((s) => s.kind === "open")
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+              <Field label="Nome do lead novo" value={form.newName} onChange={(e) => set({ newName: e.target.value })} maxLength={200} placeholder="{{lead}} (pós-venda)" />
+            </div>
+          )}
 
           {/* ---------- executar ---------- */}
           <section aria-labelledby="t-exec" className="grid gap-3 rounded-md bg-surface p-3 shadow-[inset_0_0_0_1px_var(--border)] sm:grid-cols-2">
@@ -534,13 +706,54 @@ export function StageTriggerDialog({
             <label className="flex flex-col gap-1 text-sm font-medium text-fg">
               Quando
               <select value={form.when} onChange={(e) => set({ when: e.target.value as When })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal">
-                {WHEN.map((w) => (
-                  <option key={w.v} value={w.v}>
-                    {w.label}
-                  </option>
+                {WHEN_GROUPS.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.items.map((w) => (
+                      <option key={w.v} value={w.v}>
+                        {w.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
+              <span className="text-xs font-normal text-muted">Vale para os leads que estão em “{stage.name}”.</span>
             </label>
+            {form.when === "tag" && <Field label="Etiqueta que dispara" value={form.tagTrigger} onChange={(e) => set({ tagTrigger: e.target.value })} maxLength={40} placeholder="Vazio = qualquer etiqueta" />}
+            {form.when === "field" && (
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Campo que dispara
+                <select value={form.fieldTrigger} onChange={(e) => set({ fieldTrigger: e.target.value })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal">
+                  <option value="">Qualquer campo</option>
+                  {fieldOptions.map((fd) => (
+                    <option key={fd.id} value={fd.id}>
+                      {fd.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {form.when === "daily" && (
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Horário (Brasília)
+                <input type="time" value={form.dailyAt} onChange={(e) => set({ dailyAt: e.target.value })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal" />
+                <span className="text-xs font-normal text-muted">Roda uma vez por dia para cada lead que estiver na etapa.</span>
+              </label>
+            )}
+            {form.when === "message" && <Field label="Só com estas palavras (opcional)" value={form.keywords} onChange={(e) => set({ keywords: e.target.value })} placeholder="preço, orçamento" hint="Separe por vírgula. Vazio = qualquer mensagem." />}
+            {form.when === "no_reply" && (
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Depois de
+                <select value={form.silence} onChange={(e) => set({ silence: Number(e.target.value) })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal">
+                  {SILENCE.map((m) => (
+                    <option key={m} value={m}>
+                      {humanMinutes(m)} sem o cliente escrever
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal text-muted">Se ele escrever antes, o gatilho é cancelado e o relógio recomeça.</span>
+              </label>
+            )}
+            {form.when !== "no_reply" && (
             <div className="flex flex-col gap-1 text-sm font-medium text-fg">
               <span id="t-atraso">Atraso</span>
               <div role="radiogroup" aria-labelledby="t-atraso" className="flex flex-wrap gap-1">
@@ -584,7 +797,13 @@ export function StageTriggerDialog({
                   minutos {form.delay > 0 && <span className="text-muted">({humanMinutes(form.delay)})</span>}
                 </label>
               )}
+              {form.delay > 0 && (
+                <label className="mt-1 flex items-center gap-2 text-sm font-normal text-fg">
+                  <input type="checkbox" checked={form.stayInStage} onChange={(e) => set({ stayInStage: e.target.checked })} /> Só se o lead ainda estiver nesta etapa
+                </label>
+              )}
             </div>
+            )}
           </section>
 
           {/* ---------- para quais leads ---------- */}
@@ -652,13 +871,18 @@ export function StageTriggerDialog({
           </section>
 
           <div className="flex flex-col gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={form.once} onChange={(e) => set({ once: e.target.checked })} /> Rodar só uma vez por lead
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={form.applyExisting} onChange={(e) => set({ applyExisting: e.target.checked })} />
-              Aplicar também aos leads que já estão nesta etapa{typeof leadsInStage === "number" ? ` (${leadsInStage})` : ""}
-            </label>
+            {form.when !== "no_reply" && form.when !== "message" && form.when !== "daily" && (
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={form.once} onChange={(e) => set({ once: e.target.checked })} /> Rodar só uma vez por lead
+              </label>
+            )}
+            {(["both", "moved", "created", "owner", "daily"] as When[]).includes(form.when) && (
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={form.applyExisting} onChange={(e) => set({ applyExisting: e.target.checked })} />
+                {form.when === "daily" ? "Rodar agora também" : "Aplicar também aos leads que já estão nesta etapa"}
+                {typeof leadsInStage === "number" ? ` (${leadsInStage})` : ""}
+              </label>
+            )}
           </div>
 
           {error && (

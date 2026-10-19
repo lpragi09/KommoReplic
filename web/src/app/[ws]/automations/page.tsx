@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPipelines, listRobots, listUsers } from "@/data";
+import { listFields, listPipelines, listRobots, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { RobotsBoard } from "@/components/robots/board";
@@ -12,7 +12,7 @@ export const metadata = { title: "Automações" };
 export default async function AutomationsPage({ params }: PageProps<"/[ws]/automations">) {
   const { ws: slug } = await params;
   const { ws } = await requireWorkspace(slug);
-  const [pipelines, robots, users] = await Promise.all([listPipelines(ws.id), listRobots(ws.id), listUsers(ws.id)]);
+  const [pipelines, robots, users, fields] = await Promise.all([listPipelines(ws.id), listRobots(ws.id), listUsers(ws.id), listFields(ws.id).catch(() => [])]);
   return (
     <>
       <PageHeader
@@ -34,7 +34,7 @@ export default async function AutomationsPage({ params }: PageProps<"/[ws]/autom
           </>
         }
       />
-      <RobotsBoard slug={slug} pipelines={pipelines} robots={robots} users={users.map((u) => ({ id: u.id, name: u.name }))} />
+      <RobotsBoard slug={slug} pipelines={pipelines} robots={robots} users={users.map((u) => ({ id: u.id, name: u.name }))} fields={fields.map((f) => ({ id: f.id, name: f.name }))} />
     </>
   );
 }
