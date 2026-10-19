@@ -68,7 +68,7 @@ export function NavRail({
     { href: `${base}/calendar`, label: "Calendário", icon: CalendarDays },
     { href: `${base}/contacts`, label: "Contatos e empresas", icon: Contact, match: [`${base}/companies`] },
     { href: `${base}/automations`, label: "Automações", icon: Bot, match: [`${base}/templates`, `${base}/broadcasts`] },
-    { href: `${base}/reports`, label: "Relatórios", icon: ChartColumn },
+    { href: `${base}/reports`, label: "Estatísticas", icon: ChartColumn },
   ];
   const isOn = (it: Item) => [it.href, ...(it.match ?? [])].some((h) => path === h || path.startsWith(h + "/"));
   const footer: Item[] = [

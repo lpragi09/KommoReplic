@@ -368,6 +368,35 @@ export type AiWallet = {
   ownKeyHint: string | null;
 };
 
+/* ---------- estatísticas ---------- */
+/** uma linha do registro de atividade (eventos do lead, notas e tarefas), com os campos já normalizados */
+export type ActivityEvent = {
+  id: ID;
+  at: ISO;
+  kind: EventKind | "note_added" | "task_created" | "task_done";
+  leadId: ID | null;
+  /** null = robô/sistema */
+  actorUserId: ID | null;
+  stageFrom?: ID | null;
+  stageTo?: ID | null;
+  userFrom?: ID | null;
+  userTo?: ID | null;
+  centsFrom?: number | null;
+  centsTo?: number | null;
+  nameFrom?: string | null;
+  nameTo?: string | null;
+  /** robô que fez (automation_ran) */
+  robot?: string | null;
+  /** texto livre: nota, tarefa, o que o robô fez */
+  text?: string | null;
+};
+/** mensagens no período por canal */
+export type MessageStats = { kind: ChannelKind; received: number; sent: number; delivered: number; read: number; failed: number; byAi: number };
+/** meta do mês por pessoa (valor em centavos e/ou quantidade de vendas) */
+export type SalesGoal = { userId: ID; cents: number; count: number };
+/** relatório de ROI: quanto investiu numa origem (UTM) num período, contra o que vendeu */
+export type RoiReport = { id: ID; name: string; investmentCents: number; utmSource: string | null; utmCampaign: string | null; from: string; to: string; createdAt: ISO };
+
 /** contagens para a aba Uso do plano */
 export type UsageCounts = { leads: number; contacts: number; companies: number; pipelines: number; users: number; socialChannels: number; activeRobots: number; trackingLinks: number; customFields: number };
 

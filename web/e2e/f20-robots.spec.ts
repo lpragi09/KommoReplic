@@ -67,7 +67,7 @@ test.describe("F20 robôs e telas novas", () => {
     const { slug } = await signUp(page);
 
     await page.goto(`/${slug}/reports`);
-    await expect(page.getByRole("heading", { name: "Relatórios", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Estatísticas", level: 1 })).toBeVisible();
     await axe(page);
 
     // modelo de mensagem

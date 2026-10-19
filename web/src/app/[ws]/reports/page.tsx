@@ -1,16 +1,30 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { getDashboard, listLeads, listLossReasons, listPipelines, listRobots, listUsers } from "@/data";
+import { getActivity, getDashboard, getMessageStats, listGoals, listLeads, listLossReasons, listMembers, listPipelines, listRoiReports, listRobots, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { money } from "@/lib/format";
 import { VIA_LABEL } from "@/lib/utm";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/shell/page-header";
-import { Bot, TrendingDown, TrendingUp, Trophy, Users, type LucideIcon } from "@/components/ui/icons";
+import type { ReactNode } from "react";
+import { Bot, TrendingDown, TrendingUp, Trophy, Users } from "@/components/ui/icons";
+import { Bars, Card, Kpi } from "@/components/reports/ui";
+import { ActivityLog, ByActivity, Consolidated, Goals, Messages, Roi, SalesAnalysis } from "@/components/reports/sections";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
-export const metadata = { title: "Relatórios" };
+export const metadata = { title: "Estatísticas" };
+
+const SECTIONS = [
+  { v: "geral", label: "Visão geral" },
+  { v: "vendas", label: "Análise de vendas" },
+  { v: "consolidado", label: "Relatório consolidado" },
+  { v: "atividades", label: "Por atividades" },
+  { v: "registro", label: "Registro de atividade" },
+  { v: "metas", label: "Metas" },
+  { v: "roi", label: "ROI" },
+  { v: "mensagens", label: "Mensagens por canal" },
+] as const;
+type Section = (typeof SECTIONS)[number]["v"];
 
 const periods = [
   { v: "7", label: "7 dias" },
@@ -25,20 +39,114 @@ const sourceLabel: Record<string, string> = { manual: "Criado à mão", chat: "C
 
 export default async function ReportsPage({ params, searchParams }: PageProps<"/[ws]/reports">) {
   const { ws: slug } = await params;
-  const sp = (await searchParams) as { p?: string; pipeline?: string };
+  const sp = (await searchParams) as { p?: string; pipeline?: string; aba?: string; mes?: string; por?: string };
   const period = periods.find((p) => p.v === sp.p) ?? periods[1];
-  const { ws } = await requireWorkspace(slug);
+  const section: Section = SECTIONS.find((x) => x.v === sp.aba)?.v ?? "geral";
+  const { user, ws } = await requireWorkspace(slug);
   const from = daysAgo(Number(period.v));
-  const [pipelines, leads, users, reasons, dash, robots] = await Promise.all([
-    listPipelines(ws.id),
-    listLeads(ws.id),
-    listUsers(ws.id),
-    listLossReasons(ws.id),
-    getDashboard(ws.id, { from }),
-    listRobots(ws.id).catch(() => []), // antes de rodar a atualização do banco, a tabela de robôs ainda não existe
-  ]);
+  const [pipelines, leads, users] = await Promise.all([listPipelines(ws.id), listLeads(ws.id), listUsers(ws.id)]);
   const pipeline = pipelines.find((p) => p.id === sp.pipeline) ?? pipelines[0];
   const inPipe = leads.filter((l) => l.pipelineId === pipeline?.id);
+  const label = `nos últimos ${period.label}`;
+  const usesPeriod = section !== "metas" && section !== "roi";
+  const usesPipeline = section === "geral" || section === "vendas" || section === "consolidado";
+  const href = (p: Partial<{ p: string; pipeline: string; aba: string }>) => `/${slug}/reports?${new URLSearchParams({ aba: section, p: period.v, ...(pipeline ? { pipeline: pipeline.id } : {}), ...p })}`;
+  const isAdmin = async () => !!(await listMembers(ws.id)).members.find((m) => m.userId === user.id)?.isAdmin;
+
+  let body: ReactNode;
+  switch (section) {
+    case "vendas":
+      body = pipeline ? <SalesAnalysis pipeline={pipeline} leads={inPipe} activity={await getActivity(ws.id, from)} label={label} /> : null;
+      break;
+    case "consolidado":
+      body = <Consolidated leads={inPipe} users={users} from={from} days={Number(period.v)} label={label} />;
+      break;
+    case "atividades":
+      body = <ByActivity users={users} leads={leads} activity={await getActivity(ws.id, from)} from={from} label={label} />;
+      break;
+    case "registro":
+      body = <ActivityLog slug={slug} activity={await getActivity(ws.id, from)} leads={leads} users={users} pipelines={pipelines} />;
+      break;
+    case "metas": {
+      const mes = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }).slice(0, 7);
+      const [goals, admin] = await Promise.all([listGoals(ws.id, mes), isAdmin()]);
+      body = <Goals slug={slug} users={users} leads={leads} goals={goals} month={mes} by={sp.por === "qtd" ? "qtd" : "valor"} canEdit={admin} />;
+      break;
+    }
+    case "roi": {
+      const [reports, admin] = await Promise.all([listRoiReports(ws.id), isAdmin()]);
+      body = <Roi slug={slug} reports={reports} leads={leads} canEdit={admin} />;
+      break;
+    }
+    case "mensagens":
+      body = <Messages stats={await getMessageStats(ws.id, from)} label={label} />;
+      break;
+    default:
+      body = await Overview({ slug, wsId: ws.id, from, period, pipeline, inPipe, users });
+  }
+
+  return (
+    <>
+      <PageHeader title="Estatísticas">
+        {usesPeriod && (
+          <nav aria-label="Período" className="flex gap-1">
+            {periods.map((p) => (
+              <Link
+                key={p.v}
+                href={href({ p: p.v })}
+                aria-current={p.v === period.v ? "page" : undefined}
+                className={cn("h-8 rounded-pill px-3 text-sm leading-8 transition-colors duration-fast", p.v === period.v ? "bg-inverse-bg text-on-inverse" : "text-muted hover:bg-surface hover:text-fg")}
+              >
+                {p.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+        {usesPipeline && pipelines.length > 1 && (
+          <nav aria-label="Funil" className="flex gap-1">
+            {pipelines.map((p) => (
+              <Link key={p.id} href={href({ pipeline: p.id })} aria-current={p.id === pipeline?.id ? "page" : undefined} className={cn("h-8 rounded-sm px-2 text-sm leading-8", p.id === pipeline?.id ? "font-medium text-fg" : "text-muted hover:text-fg")}>
+                {p.name}
+              </Link>
+            ))}
+          </nav>
+        )}
+      </PageHeader>
+      <div className="flex min-h-0 flex-1 flex-col bg-surface lg:flex-row">
+        <nav aria-label="Seções das estatísticas" className="shrink-0 overflow-x-auto border-b border-border bg-bg lg:w-56 lg:overflow-visible lg:border-b-0 lg:border-r">
+          <p className="hidden px-5 pb-2 pt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted lg:block">Análise de dados</p>
+          <ul className="flex gap-1 p-2 lg:flex-col lg:p-3 lg:pt-0">
+            {SECTIONS.map((x) => (
+              <li key={x.v}>
+                <Link
+                  href={href({ aba: x.v })}
+                  aria-current={x.v === section ? "page" : undefined}
+                  className={cn("block whitespace-nowrap rounded-sm px-3 py-2 text-sm transition-colors duration-fast", x.v === section ? "bg-accent-soft font-medium text-accent-text" : "text-fg hover:bg-surface")}
+                >
+                  {x.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 sm:p-6">{body}</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+type Users = Awaited<ReturnType<typeof listUsers>>;
+type Leads = Awaited<ReturnType<typeof listLeads>>;
+type Pipe = Awaited<ReturnType<typeof listPipelines>>[number];
+
+async function Overview({ slug, wsId, from, period, pipeline, inPipe, users }: { slug: string; wsId: string; from: string; period: (typeof periods)[number]; pipeline: Pipe | undefined; inPipe: Leads; users: Users }) {
+  const [reasons, dash, robots] = await Promise.all([
+    listLossReasons(wsId),
+    getDashboard(wsId, { from }),
+    listRobots(wsId).catch(() => []), // antes de rodar a atualização do banco, a tabela de robôs ainda não existe
+  ]);
   const created = inPipe.filter((l) => l.createdAt >= from);
   const won = inPipe.filter((l) => l.stage.kind === "won" && l.closedAt && l.closedAt >= from);
   const lost = inPipe.filter((l) => l.stage.kind === "lost" && l.closedAt && l.closedAt >= from);
@@ -81,35 +189,8 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
   const byCampaign = [...camp.entries()].map(([name, c]) => ({ name, ...c })).sort((a, b) => b.cents - a.cents || b.leads - a.leads).slice(0, 12);
   const bySource = [...sources.entries()].map(([k, count]) => ({ name: sourceLabel[k] ?? k, count })).sort((a, b) => b.count - a.count);
 
-  const href = (p: Partial<{ p: string; pipeline: string }>) => `/${slug}/reports?${new URLSearchParams({ p: period.v, ...(pipeline ? { pipeline: pipeline.id } : {}), ...p })}`;
-
   return (
     <>
-      <PageHeader title="Relatórios">
-        <nav aria-label="Período" className="flex gap-1">
-          {periods.map((p) => (
-            <Link
-              key={p.v}
-              href={href({ p: p.v })}
-              aria-current={p.v === period.v ? "page" : undefined}
-              className={cn("h-8 rounded-pill px-3 text-sm leading-8 transition-colors duration-fast", p.v === period.v ? "bg-inverse-bg text-on-inverse" : "text-muted hover:bg-surface hover:text-fg")}
-            >
-              {p.label}
-            </Link>
-          ))}
-        </nav>
-        {pipelines.length > 1 && (
-          <nav aria-label="Funil" className="flex gap-1">
-            {pipelines.map((p) => (
-              <Link key={p.id} href={href({ pipeline: p.id })} aria-current={p.id === pipeline?.id ? "page" : undefined} className={cn("h-8 rounded-sm px-2 text-sm leading-8", p.id === pipeline?.id ? "font-medium text-fg" : "text-muted hover:text-fg")}>
-                {p.name}
-              </Link>
-            ))}
-          </nav>
-        )}
-      </PageHeader>
-      <div className="flex-1 overflow-y-auto bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 sm:p-6">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Kpi icon={Users} label="Leads novos" value={String(created.length)} sub={`nos últimos ${period.label}`} />
             <Kpi icon={Trophy} label="Vendas ganhas" value={money(wonCents)} sub={`${won.length} ${won.length === 1 ? "negócio" : "negócios"} · ticket ${money(avg)}`} tone="success" />
@@ -203,59 +284,6 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
               </dl>
             </Card>
           </div>
-        </div>
-      </div>
     </>
-  );
-}
-
-function Kpi({ icon: Icon, label, value, sub, tone }: { icon: LucideIcon; label: string; value: string; sub: string; tone?: "success" }) {
-  return (
-    <div className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <span className={cn("grid size-7 place-items-center rounded-sm", tone === "success" ? "bg-success-soft text-success" : "bg-accent-soft text-accent-text")} aria-hidden>
-          <Icon className="size-4" />
-        </span>
-        {label}
-      </div>
-      <p className="mt-2 truncate text-2xl font-semibold tracking-tight tabular-nums text-fg">{value}</p>
-      <p className="mt-0.5 truncate text-xs text-muted">{sub}</p>
-    </div>
-  );
-}
-
-function Card({ title, sub, children, icon: Icon }: { title: string; sub?: string; children: ReactNode; icon?: LucideIcon }) {
-  return (
-    <section className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]" aria-label={title}>
-      <header className="mb-3 flex items-center gap-2">
-        {Icon && <Icon className="size-4 text-muted" aria-hidden />}
-        <div>
-          <h2 className="text-sm font-semibold text-fg">{title}</h2>
-          {sub && <p className="text-xs text-muted">{sub}</p>}
-        </div>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function Bars({ rows, empty, tone }: { rows: { label: string; value: number; extra?: string }[]; empty: string; tone?: "danger" }) {
-  if (!rows.length || rows.every((r) => r.value === 0)) return <p className="text-sm text-muted">{empty}</p>;
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return (
-    <ul className="flex flex-col gap-2.5">
-      {rows.map((r) => (
-        <li key={r.label}>
-          <div className="mb-1 flex items-baseline gap-2 text-sm">
-            <span className="min-w-0 flex-1 truncate text-fg">{r.label}</span>
-            {r.extra && <span className="text-xs tabular-nums text-muted">{r.extra}</span>}
-            <span className="w-8 text-right font-medium tabular-nums text-fg">{r.value}</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-pill bg-surface">
-            <div className={cn("h-full rounded-pill", tone === "danger" ? "bg-danger" : "bg-[linear-gradient(90deg,var(--accent),var(--stage-4))]")} style={{ width: `${Math.max(3, (r.value / max) * 100)}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
   );
 }

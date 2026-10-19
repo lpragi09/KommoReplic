@@ -1390,3 +1390,55 @@ export async function setLogoAction(slug: string, logo: string | null) {
     return null;
   });
 }
+
+// ---------------------------------------------------------------------------
+// estatísticas: metas e ROI (só administradores)
+// ---------------------------------------------------------------------------
+const month = z.string().regex(/^\d{4}-\d{2}$/, "Mês inválido.");
+const goalRow = z.object({ userId: id, cents: z.number().int().min(0).max(1e13), count: z.number().int().min(0).max(1e6) });
+
+export async function saveGoalsAction(slug: string, m: string, goals: z.input<typeof goalRow>[]) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    await data.saveGoals(ws.id, month.parse(m), z.array(goalRow).max(500).parse(goals));
+    refresh();
+    return null;
+  });
+}
+
+const roiInput = z
+  .object({
+    name: z.string().trim().min(1, "Dê um nome ao relatório.").max(80),
+    investment: z.string().max(30),
+    utmSource: z.string().trim().max(80),
+    utmCampaign: z.string().trim().max(120),
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Escolha a data inicial."),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Escolha a data final."),
+  })
+  .refine((r) => r.to >= r.from, "A data final vem depois da inicial.");
+
+export async function saveRoiReportAction(slug: string, reportId: string | null, input: z.input<typeof roiInput>) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    const v = roiInput.parse(input);
+    await data.saveRoiReport(ws.id, reportId ? id.parse(reportId) : null, {
+      name: v.name,
+      investmentCents: parseBRL(v.investment),
+      utmSource: v.utmSource || null,
+      utmCampaign: v.utmCampaign || null,
+      from: v.from,
+      to: v.to,
+    });
+    refresh();
+    return null;
+  });
+}
+
+export async function deleteRoiReportAction(slug: string, reportId: string) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    await data.deleteRoiReport(ws.id, id.parse(reportId));
+    refresh();
+    return null;
+  });
+}
