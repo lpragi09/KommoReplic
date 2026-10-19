@@ -7,7 +7,9 @@ test.describe("F22 agente de IA", () => {
     test.setTimeout(120_000);
     const { slug } = await signUp(page);
 
-    await page.goto(`/${slug}/settings/ai`);
+    // atalho no menu lateral, logo abaixo de Automações
+    await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Agente de IA" }).click();
+    await expect(page).toHaveURL(new RegExp(`/${slug}/settings/ai`));
     await axe(page);
     await page.getByLabel("Nome do agente").fill("Bia");
     await page.getByRole("textbox", { name: "Base de conhecimento" }).fill("Entregamos em todo o Brasil em até 5 dias úteis.\nPix ou cartão.");

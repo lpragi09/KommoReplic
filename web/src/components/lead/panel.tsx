@@ -531,10 +531,21 @@ function TagEditor({
   onChange: (t: string[]) => void;
 }) {
   const [v, setV] = useState("");
+  // a etiqueta aparece e some na hora; o servidor grava por trás e, quando responde, a lista se alinha com ele
+  const [local, setLocal] = useState(tags);
+  const [prev, setPrev] = useState(tags.join(" "));
+  if (prev !== tags.join(" ")) {
+    setPrev(tags.join(" "));
+    setLocal(tags);
+  }
+  const commit = (next: string[]) => {
+    setLocal(next);
+    onChange(next);
+  };
   return (
     <div className="flex flex-wrap items-center gap-1 px-1">
-      {tags.map((t) => (
-        <Tag key={t} onRemove={() => onChange(tags.filter((x) => x !== t))}>
+      {local.map((t) => (
+        <Tag key={t} onRemove={() => commit(local.filter((x) => x !== t))}>
           {t}
         </Tag>
       ))}
@@ -549,7 +560,8 @@ function TagEditor({
         onKeyDown={(e) => {
           if (e.key === "Enter" && v.trim()) {
             e.preventDefault();
-            onChange([...tags, v.trim()]);
+            const t = v.trim();
+            if (!local.some((x) => x.toLowerCase() === t.toLowerCase())) commit([...local, t]);
             setV("");
           }
         }}

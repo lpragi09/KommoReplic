@@ -4,7 +4,7 @@ import { Fragment, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle, Moon, Sun } from "@/components/ui/icons";
+import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle, Moon, Sun, Sparkle } from "@/components/ui/icons";
 import { applyTheme, useTheme } from "@/components/theme/theme";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
@@ -69,9 +69,12 @@ export function NavRail({
     { href: `${base}/calendar`, label: "Calendário", icon: CalendarDays },
     { href: `${base}/contacts`, label: "Contatos e empresas", icon: Contact, match: [`${base}/companies`] },
     { href: `${base}/automations`, label: "Automações", icon: Bot, match: [`${base}/templates`, `${base}/broadcasts`] },
+    { href: `${base}/settings/ai`, label: "Agente de IA", icon: Sparkle },
     { href: `${base}/reports`, label: "Estatísticas", icon: ChartColumn },
   ];
-  const isOn = (it: Item) => [it.href, ...(it.match ?? [])].some((h) => path === h || path.startsWith(h + "/"));
+  // o Agente de IA mora dentro de Configurações, mas acende só o próprio item
+  const isOn = (it: Item) =>
+    [it.href, ...(it.match ?? [])].some((h) => path === h || path.startsWith(h + "/")) && !(it.href === `${base}/settings` && path.startsWith(`${base}/settings/ai`));
   const footer: Item[] = [
     { href: `${base}/search`, label: "Buscar", icon: Search },
     { href: `${base}/notifications`, label: "Notificações", icon: Bell, badge: notifications },

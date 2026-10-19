@@ -25,7 +25,7 @@ test.describe("F25 convite e notificações", () => {
     await guest.getByLabel("Seu nome").fill("Bia Convidada");
     await guest.getByLabel("Crie uma senha").fill("senha-convite-1");
     await guest.getByRole("button", { name: "Criar acesso e entrar" }).click();
-    await expect(guest).toHaveURL(new RegExp(`/${slug}/leads`));
+    await expect(guest).toHaveURL(new RegExp(`/${slug}/home`));
 
     // o mesmo link não vale mais
     await guest.goto(new URL(url).pathname);
