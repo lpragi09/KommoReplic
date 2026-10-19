@@ -4,10 +4,11 @@ import { useEffect, useOptimistic, useRef, useState, useTransition } from "react
 import type { TeamMessage } from "@/data/types";
 import { sendTeamAttachmentAction, sendTeamMessageAction } from "@/app/actions";
 import { AttachmentView } from "@/components/chat/attachment";
-import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
+import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
+import { AttachMenu } from "@/components/chat/attach-menu";
 import { Avatar, EmptyState } from "@/components/ui/bits";
 import { IconButton } from "@/components/ui/button";
-import { MessageSquare, Paperclip, Send } from "@/components/ui/icons";
+import { MessageSquare, Send } from "@/components/ui/icons";
 import { dayLabel, timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { EmojiButton, insertAt } from "@/components/chat/emoji";
@@ -17,7 +18,6 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const fileInput = useRef<HTMLInputElement>(null);
   const [list, addOptimistic] = useOptimistic(messages, (cur, m: TeamMessage) => [...cur, m]);
   const end = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -111,28 +111,7 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
           <label htmlFor="team-msg" className="sr-only">
             Mensagem para a equipe
           </label>
-          <input
-            ref={fileInput}
-            type="file"
-            accept={ACCEPT_ATTR}
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(e) => {
-              upload(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            aria-label="Mandar arquivo (foto, áudio, vídeo ou documento)"
-            title="Mandar arquivo (até 4 MB)"
-            disabled={pending}
-            onClick={() => fileInput.current?.click()}
-            className="grid size-10 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg disabled:opacity-40"
-          >
-            <Paperclip className="size-5" aria-hidden />
-          </button>
+          <AttachMenu className="size-10" disabled={pending} onFile={upload} label="Mandar foto ou arquivo" />
           <EmojiButton className="size-10" onPick={(e) => setText((t) => insertAt(textRef.current, t, e))} />
           <textarea
             ref={textRef}

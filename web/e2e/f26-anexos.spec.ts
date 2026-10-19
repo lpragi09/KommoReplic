@@ -22,10 +22,10 @@ test("F26-H1 foto com legenda sai do cartão do lead e aparece para o visitante"
   await expect(page).toHaveURL(new RegExp(`/${slug}/leads/[0-9a-f-]{36}`));
 
   // tipo não aceito é recusado antes de enviar
-  await page.locator('input[type="file"]').setInputFiles({ name: "virus.exe", mimeType: "application/x-msdownload", buffer: Buffer.from("MZ") });
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "virus.exe", mimeType: "application/x-msdownload", buffer: Buffer.from("MZ") });
   await expect(page.getByRole("alert").filter({ hasText: "não é aceito" })).toBeVisible();
 
-  await page.locator('input[type="file"]').setInputFiles({ name: "cardapio.png", mimeType: "image/png", buffer: PNG });
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "cardapio.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByText("cardapio.png")).toBeVisible();
   await page.getByLabel("Mensagem para o cliente").fill("Segue o cardápio!");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
@@ -46,7 +46,7 @@ test("F26-H2 visitante manda foto pelo chat do site e a equipe vê no cartão do
   await visitor.goto(`/chat/${key}`);
   await visitor.getByLabel("Seu nome (opcional)").fill("Caio Anexo");
   await visitor.getByLabel("Mensagem", { exact: true }).fill("Olha o defeito");
-  await visitor.locator('input[type="file"]').setInputFiles({ name: "defeito.png", mimeType: "image/png", buffer: PNG });
+  await visitor.locator('input[type="file"]').first().setInputFiles({ name: "defeito.png", mimeType: "image/png", buffer: PNG });
   await expect(visitor.getByRole("img", { name: "defeito.png" })).toBeVisible();
   await expect(visitor.getByText("Olha o defeito")).toBeVisible();
 

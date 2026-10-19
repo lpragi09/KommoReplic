@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { Paperclip, Send } from "@/components/ui/icons";
+import { Send } from "@/components/ui/icons";
 import { visitorSendAction, visitorThreadAction, visitorUploadAction } from "@/app/actions";
-import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
+import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
+import { AttachMenu } from "@/components/chat/attach-menu";
 import { fromSearch } from "@/lib/utm";
 import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -51,7 +52,6 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   const end = useRef<HTMLLIElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -151,21 +151,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
           </>
         )}
         <div className="flex gap-2">
-          <input
-            ref={fileInput}
-            type="file"
-            accept={ACCEPT_ATTR}
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(e) => {
-              upload(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-          <Button type="button" variant="secondary" size="lg" disabled={!vid || pending} aria-label="Mandar arquivo (foto, áudio, vídeo ou PDF)" title="Mandar arquivo (até 4 MB)" onClick={() => fileInput.current?.click()}>
-            <Paperclip className="size-4" aria-hidden />
-          </Button>
+          <AttachMenu className="size-10" disabled={!vid || pending} onFile={upload} label="Mandar foto ou arquivo" />
           <label htmlFor="vmsg" className="sr-only">
             Mensagem
           </label>

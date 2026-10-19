@@ -3,7 +3,8 @@
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { AlertTriangle, FileText, Paperclip, Send, X } from "@/components/ui/icons";
 import { addNoteAction, createTaskAction, sendAttachmentAction, sendMessageAction } from "@/app/actions";
-import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf, sizeText } from "@/lib/attachments";
+import { MAX_ATTACHMENT, kindOf, sizeText } from "@/lib/attachments";
+import { AttachMenu } from "@/components/chat/attach-menu";
 import { EmojiButton, insertAt } from "@/components/chat/emoji";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,6 @@ export function Composer({
   const due = useRef<HTMLInputElement>(null);
   const [taskType, setTaskType] = useState(taskTypes[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const [owner, setOwner] = useState(me);
 
@@ -194,32 +194,7 @@ export function Composer({
           className={cn("block max-h-48 w-full resize-y bg-transparent px-3 py-2 text-base text-fg outline-none placeholder:text-muted disabled:bg-surface", mode === "note" && "bg-bubble-note")}
         />
         <div className="flex items-center gap-2 px-3 pb-2">
-          {mode === "chat" && (
-            <>
-              <input
-                ref={fileInput}
-                type="file"
-                accept={ACCEPT_ATTR}
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden
-                onChange={(e) => {
-                  pickFile(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-              <button
-                type="button"
-                aria-label="Anexar arquivo (foto, áudio, vídeo ou documento)"
-                title="Anexar arquivo (até 4 MB)"
-                disabled={blocked || pending}
-                onClick={() => fileInput.current?.click()}
-                className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg disabled:opacity-40"
-              >
-                <Paperclip className="size-4" aria-hidden />
-              </button>
-            </>
-          )}
+          {mode === "chat" && <AttachMenu disabled={blocked || pending} onFile={pickFile} label="Anexar foto ou arquivo" />}
           <EmojiButton disabled={blocked} onPick={(e) => setText((t) => insertAt(textRef.current, t, e))} />
           <span className="hidden text-xs text-muted sm:inline">Ctrl + Enter envia</span>
           {error && (

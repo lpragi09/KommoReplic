@@ -13,7 +13,7 @@ test("F28-H1 chat da equipe: emoji no texto e foto com legenda", async ({ page }
   await expect(page.getByText("Reunião às 15h 👍")).toBeVisible();
 
   await page.getByLabel("Mensagem para a equipe").fill("Print do problema");
-  await page.locator('input[type="file"]').setInputFiles({ name: "print.png", mimeType: "image/png", buffer: PNG });
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "print.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByRole("img", { name: "print.png" })).toBeVisible();
   await expect(page.getByText("Print do problema")).toBeVisible();
   await axe(page);
@@ -36,5 +36,14 @@ test("F28-H2 gatilho de etapa 'Enviar email' e disparo por email aparecem pronto
   await page.getByRole("radio", { name: /Email/ }).click();
   await expect(page.getByLabel("Assunto")).toBeVisible();
   await expect(page.getByLabel("Texto do email")).toBeVisible();
+  await axe(page);
+});
+
+test("F28-H3 o clipe abre o menu com Foto ou vídeo e Arquivo", async ({ page }) => {
+  const { slug } = await signUp(page);
+  await page.goto(`/${slug}/team-chat`);
+  await page.getByRole("button", { name: "Mandar foto ou arquivo" }).click();
+  await expect(page.getByRole("button", { name: /Foto ou vídeo/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Arquivo/ })).toBeVisible();
   await axe(page);
 });
