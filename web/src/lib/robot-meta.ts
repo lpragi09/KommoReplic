@@ -23,6 +23,7 @@ export const TRIGGERS: Record<RobotTrigger, { label: string; hint: string }> = {
   lead_created: { label: "Lead novo no funil", hint: "Quando qualquer lead for criado no funil (à mão ou aceito da entrada)." },
   message_in: { label: "Mensagem recebida", hint: "A cada mensagem que chegar, opcionalmente só com certas palavras." },
   new_contact: { label: "Primeiro contato", hint: "Quando alguém novo escreve pela primeira vez em um canal." },
+  responsible_changed: { label: "Responsável muda", hint: "Quando o responsável do lead é trocado (opcionalmente só para leads de uma etapa)." },
 };
 
 export const CHANNELS: { kind: ChannelKind; label: string }[] = [

@@ -167,7 +167,11 @@ export type FeedItem =
   | { type: "event"; at: ISO; event: LeadEvent; text: string };
 
 /* ---------- robôs (automações em passos, estilo Salesbot + funil digital) ---------- */
-export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact";
+export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact" | "responsible_changed";
+/** gatilho de etapa (estilo funil digital do Kommo): o que ele faz */
+export type StageTriggerAction = "robot" | "message" | "task" | "tag" | "stage" | "responsible" | "webhook" | "note";
+/** horário de atividade: só roda nesses dias/horas (fuso de Brasília) */
+export type ActiveHours = { from: string; to: string; days: number[] };
 /** posição no quadro e ligação para o próximo passo (null = termina; ausente = o seguinte da lista) */
 type StepBase = { id: string; x?: number; y?: number; next?: string | null };
 /** saída com rótulo (botão, regra de condição) que leva a um passo */
@@ -211,8 +215,23 @@ export type Robot = {
   steps: RobotStep[];
   /** quadro: posição do bloco de início */
   start?: { x: number; y: number; next?: string | null };
-  /** filtro opcional: só roda para leads cuja UTM contém o texto */
-  conditions?: { utmField?: (typeof UTM_KEYS)[number]; utmContains?: string };
+  /** filtros opcionais e regras do gatilho de etapa */
+  conditions?: {
+    /** só para leads cuja UTM contém o texto */
+    utmField?: (typeof UTM_KEYS)[number];
+    utmContains?: string;
+    /** entrou na etapa: só quando o lead nasce nela, só quando é movido para ela, ou os dois (padrão) */
+    when?: "created" | "moved" | "both";
+    /** só para leads com alguma destas etiquetas */
+    tags?: string[];
+    /** só para leads deste responsável */
+    ownerId?: string;
+    /** só roda nesse horário; fora dele, pula */
+    hours?: ActiveHours;
+    /** criado pelo "Adicionar" de uma etapa do funil digital (aparece como gatilho, não como robô) */
+    origin?: "stage_trigger";
+    action?: StageTriggerAction;
+  };
   runCount: number;
   lastRunAt: ISO | null;
   createdAt: ISO;
@@ -237,8 +256,9 @@ export type RobotRun = {
   createdAt: ISO;
 };
 export type RobotEvent =
-  | { trigger: "stage_enter"; leadId: ID; stageId: ID; depth?: number }
+  | { trigger: "stage_enter"; leadId: ID; stageId: ID; depth?: number; via?: "created" | "moved"; robotId?: ID }
   | { trigger: "lead_created"; leadId: ID; depth?: number }
+  | { trigger: "responsible_changed"; leadId: ID; depth?: number; robotId?: ID }
   | { trigger: "message_in" | "new_contact"; conversationId: ID; text: string };
 
 export type Template = {

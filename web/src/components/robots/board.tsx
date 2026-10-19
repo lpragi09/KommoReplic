@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/bits";
 import { PRESETS, TRIGGERS, channelLabel, humanMinutes } from "@/lib/robot-meta";
 import { cn } from "@/lib/cn";
 import { StepBadge, Switch, channelIcon } from "./parts";
+import { StageTriggerDialog, isStageTrigger } from "./stage-trigger";
 
 const dot: Record<Stage["color"], string> = {
   "1": "bg-stage-1", "2": "bg-stage-2", "3": "bg-stage-3", "4": "bg-stage-4", "5": "bg-stage-5",
@@ -18,7 +19,9 @@ const dot: Record<Stage["color"], string> = {
 type View = "funil" | "lista" | "prontos";
 
 /** Painel de robôs: funil digital (robôs por etapa), lista completa e modelos prontos. */
-export function RobotsBoard({ slug, pipelines, robots }: { slug: string; pipelines: Pipeline[]; robots: Robot[] }) {
+export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: string; pipelines: Pipeline[]; robots: Robot[]; users?: { id: string; name: string }[] }) {
+  // "Adicionar" de uma etapa: janela de gatilhos (como no funil digital do Kommo)
+  const [trigger, setTrigger] = useState<{ stage: Stage; existing: Robot | null } | null>(null);
   const [view, setView] = useState<View>(robots.length ? "funil" : "prontos");
   const [pid, setPid] = useState(pipelines[0]?.id ?? "");
   const [, start] = useTransition();
@@ -36,12 +39,13 @@ export function RobotsBoard({ slug, pipelines, robots }: { slug: string; pipelin
   const stages = pipeline ? [...pipeline.stages].sort((a, b) => a.sort - b.sort) : [];
   const allStages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const inbound = list.filter((r) => r.trigger === "message_in" || r.trigger === "new_contact");
+  const onlyRobots = list.filter((r) => !isStageTrigger(r)); // a lista mostra robôs; gatilhos de etapa ficam no funil
   const created = list.filter((r) => r.trigger === "lead_created" && (!r.pipelineId || r.pipelineId === pipeline?.id));
   const base = `/${slug}/automations`;
 
   const tabs: { v: View; label: string; count?: number }[] = [
     { v: "funil", label: "Funil digital" },
-    { v: "lista", label: "Todos os robôs", count: list.length },
+    { v: "lista", label: "Todos os robôs", count: onlyRobots.length },
     { v: "prontos", label: "Modelos prontos" },
   ];
 
@@ -114,8 +118,10 @@ export function RobotsBoard({ slug, pipelines, robots }: { slug: string; pipelin
               key={s.id}
               title={s.name}
               head={<span className={cn("size-2.5 rounded-pill", dot[s.color])} aria-hidden />}
-              robots={list.filter((r) => r.trigger === "stage_enter" && r.stageId === s.id)}
+              robots={list.filter((r) => (r.trigger === "stage_enter" || r.trigger === "responsible_changed") && r.stageId === s.id)}
               addHref={`${base}/new?trigger=stage_enter&stage=${s.id}`}
+              onAdd={() => setTrigger({ stage: s, existing: null })}
+              onEdit={(r) => setTrigger({ stage: s, existing: r })}
               onToggle={toggle}
               base={base}
               stages={allStages}
@@ -126,11 +132,11 @@ export function RobotsBoard({ slug, pipelines, robots }: { slug: string; pipelin
 
       {view === "lista" && (
         <div className="flex-1 overflow-y-auto bg-surface p-4">
-          {list.length === 0 ? (
+          {onlyRobots.length === 0 ? (
             <EmptyState icon={Bot} title="Nenhum robô ainda" text="Comece por um modelo pronto ou crie do zero." action={<Link href={`${base}/new`} className="text-sm font-medium text-accent-text hover:underline">Criar robô</Link>} />
           ) : (
             <ul className="mx-auto flex max-w-4xl flex-col gap-2">
-              {list.map((r) => (
+              {onlyRobots.map((r) => (
                 <li key={r.id}>
                   <RobotRow robot={r} href={`${base}/${r.id}`} onToggle={toggle} stages={allStages} />
                 </li>
@@ -174,6 +180,21 @@ export function RobotsBoard({ slug, pipelines, robots }: { slug: string; pipelin
           </div>
         </div>
       )}
+
+      {trigger && pipeline && (
+        <StageTriggerDialog
+          key={(trigger.existing?.id ?? "novo") + trigger.stage.id}
+          open
+          onOpenChange={(o) => !o && setTrigger(null)}
+          slug={slug}
+          pipeline={pipelines.find((p) => p.stages.some((s) => s.id === trigger.stage.id)) ?? pipeline}
+          stage={trigger.stage}
+          pipelines={pipelines}
+          robots={list}
+          users={users}
+          existing={trigger.existing}
+        />
+      )}
     </div>
   );
 }
@@ -188,6 +209,8 @@ function Rail({
   onToggle,
   base,
   stages,
+  onAdd,
+  onEdit,
 }: {
   title: string;
   sub?: string;
@@ -198,7 +221,12 @@ function Rail({
   onToggle: (r: Robot, v: boolean) => void;
   base: string;
   stages: Map<string, Stage>;
+  /** etapa do funil: abre a janela de gatilhos em vez de ir para o editor */
+  onAdd?: () => void;
+  onEdit?: (r: Robot) => void;
 }) {
+  const addCls =
+    "mt-1.5 flex h-10 items-center justify-center gap-1.5 rounded-md border border-dashed border-border-input text-sm text-muted transition-colors duration-fast ease-out hover:border-accent hover:bg-bg hover:text-accent-text";
   return (
     <section
       aria-label={`${title}: ${robots.length} robôs`}
@@ -218,23 +246,36 @@ function Rail({
       <ul className="flex flex-col gap-1.5 overflow-y-auto">
         {robots.map((r) => (
           <li key={r.id}>
-            <RobotCard robot={r} href={`${base}/${r.id}`} onToggle={onToggle} stages={stages} />
+            <RobotCard robot={r} href={`${base}/${r.id}`} onToggle={onToggle} stages={stages} onEdit={onEdit && isStageTrigger(r) ? () => onEdit(r) : undefined} />
           </li>
         ))}
       </ul>
-      <Link
-        href={addHref}
-        className="mt-1.5 flex h-10 items-center justify-center gap-1.5 rounded-md border border-dashed border-border-input text-sm text-muted transition-colors duration-fast ease-out hover:border-accent hover:bg-bg hover:text-accent-text"
-      >
-        <Plus className="size-4" aria-hidden /> Adicionar robô
-      </Link>
+      {onAdd ? (
+        <button type="button" onClick={onAdd} className={addCls} aria-label={`Adicionar gatilho em ${title}`}>
+          <Plus className="size-4" aria-hidden /> Adicionar
+        </button>
+      ) : (
+        <Link href={addHref} className={addCls}>
+          <Plus className="size-4" aria-hidden /> Adicionar robô
+        </Link>
+      )}
     </section>
   );
 }
 
+const WHEN_TEXT = { created: "quando criado aqui", moved: "quando movido para cá", both: "quando criado ou movido" } as const;
+const DAY = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
 function summary(r: Robot, stages: Map<string, Stage>) {
   const first = r.steps[0];
   const delay = first?.type === "wait" ? `depois de ${humanMinutes(first.minutes)}` : "na hora";
+  if (isStageTrigger(r)) {
+    const c = r.conditions ?? {};
+    const parts = [r.trigger === "responsible_changed" ? "quando o responsável muda" : WHEN_TEXT[c.when ?? "both"], delay];
+    if (c.tags?.length) parts.push(`etiqueta ${c.tags.join(" ou ")}`);
+    if (c.hours) parts.push(`${c.hours.days.map((d) => DAY[d]).join(", ")} ${c.hours.from}–${c.hours.to}`);
+    return parts.join(" · ");
+  }
   switch (r.trigger) {
     case "stage_enter":
       return `Entrou em ${stages.get(r.stageId ?? "")?.name ?? "—"} · ${delay}`;
@@ -244,6 +285,8 @@ function summary(r: Robot, stages: Map<string, Stage>) {
       return r.keywords.length ? `Mensagem com “${r.keywords.slice(0, 2).join("”, “")}”${r.keywords.length > 2 ? "…" : ""}` : "Qualquer mensagem recebida";
     case "new_contact":
       return "Primeira mensagem de alguém novo";
+    case "responsible_changed":
+      return `Responsável muda · ${delay}`;
   }
 }
 
@@ -259,7 +302,7 @@ function Channels({ robot }: { robot: Robot }) {
   );
 }
 
-function RobotCard({ robot: r, href, onToggle, stages }: { robot: Robot; href: string; onToggle: (r: Robot, v: boolean) => void; stages: Map<string, Stage> }) {
+function RobotCard({ robot: r, href, onToggle, stages, onEdit }: { robot: Robot; href: string; onToggle: (r: Robot, v: boolean) => void; stages: Map<string, Stage>; onEdit?: () => void }) {
   return (
     <div
       className={cn(
@@ -268,10 +311,17 @@ function RobotCard({ robot: r, href, onToggle, stages }: { robot: Robot; href: s
       )}
     >
       <div className="flex items-start gap-2">
-        <Link href={href} className="min-w-0 flex-1 after:absolute after:inset-0 after:content-['']">
-          <h3 className="truncate text-sm font-semibold text-fg">{r.name}</h3>
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted">{summary(r, stages)}</p>
-        </Link>
+        {onEdit ? (
+          <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left after:absolute after:inset-0 after:content-['']">
+            <h3 className="truncate text-sm font-semibold text-fg">{r.name}</h3>
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted">{summary(r, stages)}</p>
+          </button>
+        ) : (
+          <Link href={href} className="min-w-0 flex-1 after:absolute after:inset-0 after:content-['']">
+            <h3 className="truncate text-sm font-semibold text-fg">{r.name}</h3>
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted">{summary(r, stages)}</p>
+          </Link>
+        )}
         <span className="relative z-10">
           <Switch checked={r.active} onChange={(v) => onToggle(r, v)} label={r.active ? `Desligar ${r.name}` : `Ligar ${r.name}`} />
         </span>

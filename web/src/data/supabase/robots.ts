@@ -47,7 +47,7 @@ const fromRobot = (i: RobotInput) => ({
   is_active: i.active,
   trigger: i.trigger,
   pipeline_id: i.pipelineId,
-  stage_id: i.trigger === "stage_enter" ? i.stageId : null,
+  stage_id: i.trigger === "stage_enter" || i.trigger === "responsible_changed" ? i.stageId : null,
   channels: i.channels,
   keywords: i.keywords,
   once: i.once,

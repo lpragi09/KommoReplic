@@ -206,7 +206,7 @@ const id = z.string().uuid();
 async function robotsForNewLead(wsId: string, leadId: string, stageId: string) {
   await data.syncLeadAttribution(wsId, leadId); // origem (UTM) da conversa passa para o lead antes dos robôs lerem
   await data.fireRobots(wsId, { trigger: "lead_created", leadId });
-  await data.fireRobots(wsId, { trigger: "stage_enter", leadId, stageId });
+  await data.fireRobots(wsId, { trigger: "stage_enter", leadId, stageId, via: "created" });
 }
 
 export async function moveLeadAction(slug: string, leadId: string, stageId: string, lossReasonId?: string | null) {
@@ -214,7 +214,7 @@ export async function moveLeadAction(slug: string, leadId: string, stageId: stri
     const { user, ws } = await requireActive(slug);
     await data.moveLead(ws.id, user.id, id.parse(leadId), id.parse(stageId), lossReasonId ? id.parse(lossReasonId) : null);
     // o quadro só chama ao mudar de etapa; "uma vez por lead" evita repetir se voltar e ir de novo
-    await data.fireRobots(ws.id, { trigger: "stage_enter", leadId, stageId });
+    await data.fireRobots(ws.id, { trigger: "stage_enter", leadId, stageId, via: "moved" });
     return null;
   });
 }
@@ -257,7 +257,10 @@ export async function updateLeadAction(slug: string, leadId: string, input: z.in
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     const { price, ...rest } = leadPatch.parse(input);
+    const before = rest.responsibleUserId !== undefined ? (await data.getLead(ws.id, id.parse(leadId))).lead.responsibleUserId : undefined;
     await data.updateLead(ws.id, user.id, id.parse(leadId), { ...rest, ...(price !== undefined ? { priceCents: parseBRL(price) } : {}) });
+    // trocou o responsável: gatilhos "quando o responsável muda"
+    if (rest.responsibleUserId !== undefined && rest.responsibleUserId !== before) await data.fireRobots(ws.id, { trigger: "responsible_changed", leadId });
     return null;
   });
 }
@@ -637,7 +640,7 @@ const robotInput = z
   .object({
     name: z.string().trim().min(1, "Dê um nome ao robô.").max(80),
     active: z.boolean(),
-    trigger: z.enum(["stage_enter", "lead_created", "message_in", "new_contact"]),
+    trigger: z.enum(["stage_enter", "lead_created", "message_in", "new_contact", "responsible_changed"]),
     pipelineId: id.nullable(),
     stageId: id.nullable(),
     channels: z.array(channelKind).max(4),
@@ -646,7 +649,19 @@ const robotInput = z
     steps: z.array(robotStep).min(1, "Adicione pelo menos um passo.").max(60, "No máximo 60 passos."),
     start: z.object({ x: z.number().finite(), y: z.number().finite(), next: nextRef }).optional(),
     conditions: z
-      .object({ utmField: z.enum(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]).optional(), utmContains: z.string().trim().max(80).optional() })
+      .object({
+        utmField: z.enum(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]).optional(),
+        utmContains: z.string().trim().max(80).optional(),
+        when: z.enum(["created", "moved", "both"]).optional(),
+        tags: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
+        ownerId: z.string().uuid().optional(),
+        hours: z
+          .object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/), days: z.array(z.number().int().min(0).max(6)).max(7) })
+          .refine((h) => h.from !== h.to, "O horário de início e de fim não podem ser iguais.")
+          .optional(),
+        origin: z.literal("stage_trigger").optional(),
+        action: z.enum(["robot", "message", "task", "tag", "stage", "responsible", "webhook", "note"]).optional(),
+      })
       .optional(),
   })
   .refine((r) => r.trigger !== "stage_enter" || !!r.stageId, "Escolha a etapa que dispara o robô.");
@@ -662,6 +677,20 @@ export async function saveRobotAction(slug: string, robotId: string | null, inpu
     }
     const r = await data.saveRobot(ws.id, user.id, robotId ? id.parse(robotId) : null, v);
     return { id: r.id };
+  });
+}
+
+/** "Aplicar também aos leads que já estão nesta etapa": roda só este gatilho para cada lead da etapa (até 300) */
+export async function applyStageTriggerAction(slug: string, robotId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    const r = (await data.listRobots(ws.id)).find((x) => x.id === id.parse(robotId));
+    if (!r || !r.stageId) throw new DomainError("invalid", "Gatilho não encontrado.");
+    if (!r.active) throw new DomainError("invalid", "Ligue o gatilho antes de aplicar aos leads da etapa.");
+    const leads = (await data.listLeads(ws.id, { stageId: r.stageId })).slice(0, 300);
+    for (const l of leads)
+      await data.fireRobots(ws.id, r.trigger === "responsible_changed" ? { trigger: "responsible_changed", leadId: l.id, robotId: r.id } : { trigger: "stage_enter", leadId: l.id, stageId: r.stageId, robotId: r.id });
+    return { count: leads.length };
   });
 }
 

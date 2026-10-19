@@ -107,6 +107,8 @@ export function RobotEditor({
           : "Qualquer mensagem recebida";
       case "new_contact":
         return "Alguém novo escreve pela 1ª vez";
+      case "responsible_changed":
+        return st ? `Responsável muda (lead em “${st.name}”)` : "Responsável do lead muda";
     }
   })();
 

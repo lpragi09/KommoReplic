@@ -74,17 +74,37 @@ export function renderText(text: string, ctx: RobotCtx) {
   return text.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k: string) => vars[k.toLowerCase()] ?? m).trim();
 }
 
+/** dentro do horário de atividade? (fuso de Brasília; "até" menor que "de" atravessa a meia-noite) */
+export function inHours(h: { from: string; to: string; days: number[] } | undefined, now = new Date()) {
+  if (!h) return true;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+  const hm = `${get("hour").replace("24", "00")}:${get("minute")}`;
+  if (h.days.length && !h.days.includes(day)) return false;
+  return h.from <= h.to ? hm >= h.from && hm < h.to : hm >= h.from || hm < h.to;
+}
+
 function matches(r: Robot, ev: RobotEvent, ctx: RobotCtx) {
   if (r.trigger !== ev.trigger) return false;
+  if ("robotId" in ev && ev.robotId && r.id !== ev.robotId) return false; // "aplicar aos leads que já estão na etapa"
   const c = r.conditions;
+  if (c?.tags?.length && !c.tags.some((t) => ctx.lead?.tags.some((x) => x.toLowerCase() === t.toLowerCase()))) return false;
+  if (c?.ownerId && ctx.lead?.responsibleUserId !== c.ownerId) return false;
+  if (!inHours(c?.hours)) return false;
   if (c?.utmField && c.utmContains?.trim()) {
     const v = attrOf(ctx)?.[c.utmField];
     if (!v || !v.toLowerCase().includes(c.utmContains.trim().toLowerCase())) return false;
   }
   if (r.channels.length && !(ctx.channelKind && r.channels.includes(ctx.channelKind))) return false;
   switch (ev.trigger) {
-    case "stage_enter":
-      return r.stageId === ev.stageId;
+    case "stage_enter": {
+      if (r.stageId !== ev.stageId) return false;
+      const when = c?.when ?? "both";
+      return when === "both" || !ev.via || when === ev.via;
+    }
+    case "responsible_changed":
+      return !r.stageId || r.stageId === ctx.lead?.stageId;
     case "lead_created":
       return !r.pipelineId || r.pipelineId === ctx.lead?.pipelineId;
     case "message_in": {
@@ -216,7 +236,7 @@ export async function fireRobots(port: RobotPort, wsId: ID, ev: RobotEvent) {
       for (const run of waiting) {
         if (!(await port.claim(run))) continue;
         const r = await port.robot(wsId, run.robotId);
-        if (!r || !r.active) continue;
+        if (!r || (!r.active && run.depth === 0)) continue; // robô chamado por outro (gatilho de etapa) segue mesmo desligado
         const ctx = await port.context(wsId, run.leadId, run.conversationId);
         await advance(port, r, run, ctx, ev.text);
         consumed = true;
@@ -249,7 +269,7 @@ export async function tickRobots(port: RobotPort, wsId: ID | null, limit = 25) {
     for (const run of due) {
       if (!(await port.claim(run))) continue;
       const r = await port.robot(run.workspaceId, run.robotId);
-      if (!r || !r.active) {
+      if (!r || (!r.active && run.depth === 0)) {
         run.status = "failed";
         run.log.push({ at: nowIso(), text: "Robô desligado antes de terminar.", ok: false });
         await port.saveRun(run);
@@ -429,10 +449,12 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
         }
         case "responsible": {
           const lead = needLead();
+          const changed = lead.responsibleUserId !== step.userId;
           await port.setResponsible(ws, lead, step.userId);
           lead.responsibleUserId = step.userId;
           log("Responsável alterado.");
           await port.logOnLead(ws, lead.id, r.name, "Responsável alterado.");
+          if (changed && run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "responsible_changed", leadId: lead.id, depth: run.depth + 1 });
           break;
         }
         case "stage": {
@@ -442,7 +464,7 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
             lead.stageId = step.stageId;
             log("Lead movido de etapa.");
             await port.logOnLead(ws, lead.id, r.name, "Lead movido de etapa.");
-            if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "stage_enter", leadId: lead.id, stageId: step.stageId, depth: run.depth + 1 });
+            if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "stage_enter", leadId: lead.id, stageId: step.stageId, depth: run.depth + 1, via: "moved" });
           } else log("Lead já estava nesta etapa.");
           break;
         }
@@ -479,7 +501,8 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
         }
         case "start_robot": {
           const other = await port.robot(ws, step.robotId);
-          if (!other || !other.active) throw new Error("Pulado: o outro robô está desligado ou foi apagado.");
+          // desligado = não dispara pelo próprio gatilho; chamado por outro robô (ou gatilho de etapa), roda
+          if (!other) throw new Error("Pulado: o outro robô foi apagado.");
           if (run.depth + 1 > MAX_DEPTH) throw new Error("Pulado: muitos robôs encadeados.");
           log(`Passou para o robô “${other.name}”.`);
           await advance(port, other, newRun(ws, other, ctx, run.depth + 1), ctx, undefined, msg);
