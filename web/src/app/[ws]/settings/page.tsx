@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Building2, UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
-import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
+import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
-import { PhotoPicker } from "@/components/settings/photo";
 import { cn } from "@/lib/cn";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
@@ -22,8 +21,9 @@ const curLabel: Record<string, string> = { BRL: "Real (R$)", USD: "Dólar (US$)"
 
 export default async function SettingsPage({ params }: PageProps<"/[ws]/settings">) {
   const { ws: slug } = await params;
-  const { ws } = await requireWorkspace(slug);
-  const [channels, team, fields, links, pipelines, access, agent] = await Promise.all([
+  const { user, ws } = await requireWorkspace(slug);
+  const [me, channels, team, fields, links, pipelines, access, agent] = await Promise.all([
+    listUsers(ws.id).then((us) => us.find((u) => u.id === user.id)),
     listChannels(ws.id),
     listMembers(ws.id),
     listFields(ws.id),
@@ -58,15 +58,18 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
           {/* empresa */}
           <section aria-label="Sua empresa" className="fx-aurora overflow-hidden rounded-xl p-6 sm:p-8">
             <div className="relative z-10 flex flex-wrap items-center gap-5">
-              <PhotoPicker
-                slug={slug}
-                kind="logo"
-                current={ws.logo ?? null}
-                label="Trocar o logo da empresa"
-                caption={<span className="text-xs text-on-night-muted">Logo da empresa</span>}
-                className="fx-glow size-16 rounded-lg bg-accent"
-                fallback={<span className="text-2xl font-bold text-on-accent">{ws.name.slice(0, 1).toUpperCase()}</span>}
-              />
+              {/* a mesma foto de Meu perfil: troca só lá */}
+              <Link href={`/${slug}/settings/profile`} className="group flex flex-col items-center gap-1.5" aria-label="Trocar a foto em Meu perfil">
+                <span className="fx-glow grid size-16 place-items-center overflow-hidden rounded-lg bg-accent">
+                  {me?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- foto pequena guardada como data URL
+                    <img src={me.avatar} alt="" className="size-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-bold text-on-accent">{(me?.name || ws.name).slice(0, 1).toUpperCase()}</span>
+                  )}
+                </span>
+                <span className="text-xs text-on-night-muted group-hover:text-on-night group-hover:underline">Trocar em Meu perfil</span>
+              </Link>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-on-night-muted">Sua empresa</p>
                 <h2 className="truncate text-2xl font-semibold tracking-tight text-on-night">{ws.name}</h2>

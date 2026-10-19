@@ -136,6 +136,9 @@ export function NavRail({
       <ul className="flex flex-col gap-0.5 px-2">
         {footer.map(link)}
         <li>
+          <ThemeButton expanded={expanded} />
+        </li>
+        <li>
           <button
             type="button"
             onClick={toggle}
@@ -181,6 +184,22 @@ export function NavRail({
         </li>
       </ul>
     </nav>
+  );
+}
+
+/** botão claro/escuro à vista no menu lateral */
+function ThemeButton({ expanded }: { expanded: boolean }) {
+  const { dark } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={() => applyTheme(dark ? "claro" : "escuro")}
+      aria-pressed={dark}
+      className="flex h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-nav-muted hover:bg-nav-hover hover:text-nav-text"
+    >
+      {dark ? <Sun className="size-5" aria-hidden /> : <Moon className="size-5" aria-hidden />}
+      <span className={cn(!expanded && "sr-only")}>Modo escuro</span>
+    </button>
   );
 }
 

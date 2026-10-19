@@ -1377,8 +1377,12 @@ export async function updateWorkspaceAction(slug: string, input: z.input<typeof 
 
 export async function setMyAvatarAction(slug: string, avatar: string | null) {
   return run(async () => {
-    const { user } = await requireWorkspace(slug);
-    await data.setMyAvatar(user.id, photo.parse(avatar));
+    const { user, ws } = await requireWorkspace(slug);
+    const pic = photo.parse(avatar);
+    await data.setMyAvatar(user.id, pic);
+    const admin = (await data.listMembers(ws.id)).members.find((m) => m.userId === user.id)?.isAdmin;
+    if (admin) await data.setWorkspaceLogo(ws.id, pic).catch(() => undefined);
+    refresh();
     return null;
   });
 }
