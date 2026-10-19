@@ -1,5 +1,6 @@
 "use client";
 
+import { daysLeftText } from "@/data/access";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,7 +19,7 @@ export function AccessGate({ slug, access, children }: { slug: string; access: A
 
   if (access.state === "locked" && !onBilling) return <Paywall billing={billing} access={access} />;
 
-  const urgent = access.state === "trial" && access.daysLeft !== null && access.daysLeft <= 3;
+  const urgent = access.state === "trial" && access.daysLeft !== null && access.daysLeft <= 2;
   return (
     <>
       {access.state === "trial" && access.daysLeft !== null && !onBilling && (
@@ -31,7 +32,7 @@ export function AccessGate({ slug, access, children }: { slug: string; access: A
         >
           <span className="inline-flex items-center gap-1.5">
             <Sparkle className="size-3.5" weight="fill" aria-hidden />
-            Teste grátis: {access.daysLeft === 1 ? "último dia" : `faltam ${access.daysLeft} dias`}
+            Teste grátis: {daysLeftText(access.daysLeft)}
           </span>
           <Link href={billing} className={cn("font-semibold underline underline-offset-2", urgent ? "text-on-accent" : "text-accent-text")}>
             Escolher meu plano

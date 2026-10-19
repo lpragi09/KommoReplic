@@ -1,5 +1,6 @@
 "use client";
 
+import { daysLeftText } from "@/data/access";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Sparkle, Trash2 } from "@/components/ui/icons";
@@ -86,7 +87,13 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
           </p>
           <p className="text-sm text-muted">
             {sub.seats} {sub.seats === 1 ? "usuário" : "usuários"}
-            {access.state === "trial" && access.daysLeft !== null && <> · faltam {access.daysLeft} {access.daysLeft === 1 ? "dia" : "dias"} de teste</>}
+            {access.state === "trial" && access.daysLeft !== null && (
+              <>
+                {" "}
+                · {daysLeftText(access.daysLeft)} de teste
+                {access.trialEndsAt && <> (até {new Date(access.trialEndsAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" })})</>}
+              </>
+            )}
           </p>
         </div>
         {sub.stripeCustomerId && (

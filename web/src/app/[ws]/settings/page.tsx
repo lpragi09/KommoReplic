@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { daysLeftText } from "@/data/access";
 import { headers } from "next/headers";
 import { Building2, UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
 import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks, listUsers } from "@/data";
@@ -36,7 +37,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
   // endereço real do painel (domínio próprio, prévia da Vercel ou localhost), não um fixo
   const appHost = (process.env.APP_URL ? new URL(process.env.APP_URL).host : (await headers()).get("host")) ?? "";
   const plan =
-    access.state === "trial" ? `Teste grátis · ${access.daysLeft ?? 14} ${access.daysLeft === 1 ? "dia" : "dias"}` : access.state === "active" ? "Plano ativo" : "Plano pausado";
+    access.state === "trial" ? `Teste grátis · ${access.daysLeft === null ? "14 dias" : daysLeftText(access.daysLeft)}` : access.state === "active" ? "Plano ativo" : "Plano pausado";
 
   const items: { href: string; icon: LucideIcon; title: string; text: string; stat: string; tone: string }[] = [
     { href: "channels", icon: MessageSquare, title: "Canais", text: "Chat do site, WhatsApp, Instagram e Messenger", stat: `${connected} ${connected === 1 ? "conectado" : "conectados"}`, tone: "from-[#25d366] to-[#128c4a]" },
