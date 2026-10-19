@@ -19,7 +19,7 @@ test.describe("conta e cobrança", () => {
     await page.getByLabel("Senha").fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
     // modo demonstração: o mesmo email entra de novo como conta NOVA, na Loja Demo
-    await expect(page).toHaveURL(/\/demo\/leads/);
+    await expect(page).toHaveURL(/\/demo\/home/);
     await page.goto(`/${slug}/leads`);
     await expect(page.getByText("Não encontramos esta página")).toBeVisible();
   });

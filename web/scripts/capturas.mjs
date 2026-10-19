@@ -10,7 +10,8 @@ await page.goto(`${base}/login`);
 await page.getByLabel("Email").fill("demo@exemplo.com");
 await page.getByLabel("Senha").fill("demo1234");
 await page.getByRole("button", { name: "Entrar", exact: true }).click();
-await page.waitForURL(/\/demo\/leads/);
+await page.waitForURL(/\/demo\/home/);
+await page.goto(`${base}/demo/leads`);
 await page.waitForTimeout(1500);
 
 // funil: só a faixa de cima (1440 × 560)

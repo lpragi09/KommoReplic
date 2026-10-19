@@ -36,7 +36,7 @@ export function RobotsBoard({
 }) {
   // "Adicionar" de uma etapa: janela de gatilhos (como no funil digital do Kommo)
   const [trigger, setTrigger] = useState<{ stage: Stage; existing: Robot | null } | null>(null);
-  const [view, setView] = useState<View>(robots.length ? "funil" : "prontos");
+  const [view, setView] = useState<View>("funil");
   const [pid, setPid] = useState(pipelines[0]?.id ?? "");
   const [, start] = useTransition();
   const [active, patch] = useOptimistic(robots, (cur, p: { id: string; set: Partial<Robot> }) => cur.map((r) => (r.id === p.id ? { ...r, ...p.set } : r)));

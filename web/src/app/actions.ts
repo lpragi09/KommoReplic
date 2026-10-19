@@ -69,7 +69,7 @@ async function setSession(token: string) {
 async function afterLogin() {
   const user = await currentUser();
   const wss = user ? await data.workspacesOf(user.id) : [];
-  redirect(wss[0] ? `/${wss[0].slug}/leads` : "/onboarding");
+  redirect(wss[0] ? `/${wss[0].slug}/home` : "/onboarding"); // quem entra cai no Início
 }
 
 export type FormState = { error?: string; values?: Record<string, string> };
@@ -899,7 +899,7 @@ export async function acceptInviteAction(token: string) {
     if (e instanceof DomainError || e instanceof z.ZodError) return { error: e instanceof DomainError ? e.message : "Convite inválido." };
     throw e;
   }
-  redirect(`/${slug}/leads`);
+  redirect(`/${slug}/home`);
 }
 
 const newAccount = z.object({
@@ -923,7 +923,7 @@ export async function acceptInviteNewAccountAction(token: string, _: FormState, 
     if (e instanceof z.ZodError) return { error: "Convite inválido.", values };
     throw e;
   }
-  redirect(`/${slug}/leads`);
+  redirect(`/${slug}/home`);
 }
 
 export async function addMemberAction(slug: string, input: z.input<typeof newMember>) {

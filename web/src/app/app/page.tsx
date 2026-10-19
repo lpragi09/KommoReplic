@@ -10,7 +10,7 @@ async function Go() {
   const user = await currentUser();
   if (!user) redirect("/sair"); // cookie de sessão vencido: limpa e mostra a landing
   const [first] = await workspacesOf(user.id);
-  redirect(first ? `/${first.slug}/leads` : "/onboarding");
+  redirect(first ? `/${first.slug}/home` : "/onboarding");
   return null;
 }
 

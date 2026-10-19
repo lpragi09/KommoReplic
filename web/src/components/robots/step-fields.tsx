@@ -279,11 +279,14 @@ export function StepBody({ step, onChange, ctx, port }: { step: RobotStep; onCha
     case "tag":
       return (
         <div className="flex items-end gap-2">
-          <select aria-label="Adicionar ou remover" value={step.remove ? "remove" : "add"} onChange={(e) => onChange({ ...step, remove: e.target.value === "remove" })} className={cn(selectCls, "w-32")}>
+          <select aria-label="Adicionar ou remover" value={step.remove ? "remove" : "add"} onChange={(e) => onChange({ ...step, remove: e.target.value === "remove" })} className={cn(selectCls, "w-32 shrink-0")}>
             <option value="add">Adicionar</option>
             <option value="remove">Remover</option>
           </select>
-          <Field label="Etiqueta" hideLabel value={step.tag} onChange={(e) => onChange({ ...step, tag: e.target.value })} maxLength={40} placeholder="Ex.: quente" className="flex-1" />
+          {/* min-w-0: o campo encolhe dentro do bloco do quadro em vez de vazar para fora */}
+          <div className="min-w-0 flex-1">
+            <Field label="Etiqueta" hideLabel value={step.tag} onChange={(e) => onChange({ ...step, tag: e.target.value })} maxLength={40} placeholder="Ex.: quente" className="w-full min-w-0" />
+          </div>
         </div>
       );
     case "responsible":

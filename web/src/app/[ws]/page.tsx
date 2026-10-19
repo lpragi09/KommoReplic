@@ -4,5 +4,5 @@ export const instant = false; // tela atrás de login: bloqueia no servidor (ver
 
 export default async function WorkspaceIndex({ params }: PageProps<"/[ws]">) {
   const { ws } = await params;
-  redirect(`/${ws}/leads`);
+  redirect(`/${ws}/home`);
 }

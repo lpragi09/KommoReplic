@@ -107,7 +107,7 @@ test.describe("F05/F06/F07/F12 funil, leads e tarefas", () => {
     await page.getByLabel("Email").fill("demo@exemplo.com");
     await page.getByLabel("Senha").fill("demo1234");
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/demo\/leads/);
+    await expect(page).toHaveURL(/\/demo\/home/);
     await page.goto("/demo/leads?view=list&task=none");
     await expect(page.getByRole("table", { name: "Leads do funil" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Rafael Torres — consultoria" })).toBeVisible();
@@ -122,7 +122,7 @@ test.describe("telas restantes: acessibilidade e sem erros", () => {
     await page.getByLabel("Email").fill("demo@exemplo.com");
     await page.getByLabel("Senha").fill("demo1234");
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/demo\/leads/);
+    await expect(page).toHaveURL(/\/demo\/home/);
     for (const p of ["inbox", "contacts", "companies", "calendar?who=all", "home", "settings/channels", "notifications", "search?q=cl", "settings"]) {
       await page.goto(`/demo/${p}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -135,7 +135,8 @@ test.describe("telas restantes: acessibilidade e sem erros", () => {
     await page.getByLabel("Email").fill("demo@exemplo.com");
     await page.getByLabel("Senha").fill("demo1234");
     await page.getByRole("button", { name: "Entrar" }).click();
-    await expect(page).toHaveURL(/\/demo\/leads/);
+    await expect(page).toHaveURL(/\/demo\/home/);
+    await page.goto("/demo/leads");
     const noHScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
     expect(await noHScroll()).toBe(true);
     await page.getByRole("link", { name: "Clínica Vida — 2 implantes" }).click();
