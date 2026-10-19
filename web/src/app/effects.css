@@ -489,3 +489,7 @@ textarea:not([data-plain]):focus {
 @media (prefers-reduced-motion: no-preference) {
   .fx-ring { animation: fx-ring 3.2s ease-in-out infinite; transform-origin: 50% 10%; }
 }
+
+/* troca em andamento (filtro, aba, período): o conteúdo apaga de leve depois de um instante, a tela segue clicável */
+#conteudo > * { transition: opacity 0.2s ease-out; }
+html[data-busy] #conteudo > *:not(header):not([role="status"]) { opacity: 0.55; transition-delay: 0.12s; }

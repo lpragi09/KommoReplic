@@ -57,7 +57,7 @@ test.describe("F25 convite e notificações", () => {
 
     await expect(page).toHaveURL(new RegExp(`/${slug}/notifications`));
     await expect(page.getByText("Novo contato: Rui Aviso")).toBeVisible();
-    await page.getByRole("link", { name: /Contatos novos/ }).click();
+    await page.getByRole("button", { name: /Contatos novos/ }).click();
     await expect(page.getByText("Novo contato: Rui Aviso")).toBeVisible();
     await page.getByRole("button", { name: "Marcar tudo como lido" }).click();
     await expect(page.getByRole("button", { name: "Marcar tudo como lido" })).toBeHidden();

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useInstantParams } from "@/components/ui/instant-link";
 import { Popover } from "radix-ui";
 import { AlarmClock, CalendarCheck, Check, Filter, Funnel, KanbanIcon, ListBullets, Search, Users, X } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/bits";
@@ -17,23 +18,15 @@ const TASKS: { v: string; label: string; icon: ReactNode }[] = [
 ];
 
 export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: string; pipelines: { id: string; name: string }[]; users: { id: string; name: string }[]; pipelineId: string }) {
-  const router = useRouter();
   const path = usePathname();
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
-
-  const set = (patch: Record<string, string | null>) => {
-    const next = new URLSearchParams(sp.toString());
-    for (const [k, v] of Object.entries(patch)) {
-      if (v) next.set(k, v);
-      else next.delete(k);
-    }
-    router.replace(`${path}?${next.toString()}`, { scroll: false });
-  };
+  // filtros acendem no clique; o funil filtrado chega do servidor por trás
+  const { params, set, pending } = useInstantParams();
   const view = (sp.get("view") as "kanban" | "list") ?? "kanban";
-  const owner = sp.get("owner") ?? "";
-  const task = sp.get("task") ?? "";
-  const activeFilters = [owner, task, sp.get("tag")].filter(Boolean).length;
+  const owner = params.get("owner") ?? "";
+  const task = params.get("task") ?? "";
+  const activeFilters = [owner, task, params.get("tag")].filter(Boolean).length;
   const ownerName = users.find((u) => u.id === owner)?.name;
   const current = pipelines.find((p) => p.id === pipelineId);
 

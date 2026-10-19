@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { getAccess, getAiWallet, getSubscription, getUsageCounts, listMembers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { AI_PACKS } from "@/lib/plans";
@@ -43,18 +44,13 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       <PageHeader title="Plano e cobrança" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-6">
-          <nav aria-label="Seções do plano" className="flex gap-1 border-b border-border">
+          <LinkGroup label="Seções do plano" className="flex gap-1 border-b border-border">
             {TABS.map((t) => (
-              <Link
-                key={t.v}
-                href={`/${slug}/settings/billing${t.v === "plano" ? "" : `?aba=${t.v}`}`}
-                aria-current={t.v === tab ? "page" : undefined}
-                className={cn("-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast", t.v === tab ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg")}
-              >
+              <InstantLink key={t.v} href={`/${slug}/settings/billing${t.v === "plano" ? "" : `?aba=${t.v}`}`} active={t.v === tab} className="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast" activeClassName="border-accent text-fg" inactiveClassName="border-transparent text-muted hover:text-fg">
                 {t.label}
-              </Link>
+              </InstantLink>
             ))}
-          </nav>
+          </LinkGroup>
           {tab === "plano" && (
             <>
               <Billing slug={slug} sub={sub} access={access} welcome={sp.semteste ? "no_trial" : sp.bemvindo ? "new" : null} />

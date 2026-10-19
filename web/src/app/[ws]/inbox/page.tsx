@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { Inbox, MessageSquare, Users } from "@/components/ui/icons";
 import { getAgent, getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
@@ -51,24 +52,16 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
           </Link>
         }
       >
-        <nav aria-label="Filtrar conversas" className="flex gap-1">
+        <LinkGroup label="Filtrar conversas" className="flex gap-1">
           {filters.map((x) => (
-            <Link
-              key={x.v}
-              href={href({ f: x.v, c: null })}
-              aria-current={x.v === f ? "page" : undefined}
-              className={cn("h-8 rounded-pill px-3 text-sm leading-8", x.v === f ? "bg-inverse-bg text-on-inverse" : "text-muted hover:bg-surface hover:text-fg")}
-            >
+            <InstantLink key={x.v} href={href({ f: x.v, c: null })} active={x.v === f} className="h-8 rounded-pill px-3 text-sm leading-8" activeClassName="bg-inverse-bg text-on-inverse" inactiveClassName="text-muted hover:bg-surface hover:text-fg">
               {x.label}
-            </Link>
+            </InstantLink>
           ))}
-        </nav>
+        </LinkGroup>
       </PageHeader>
       <div className="flex min-h-0 flex-1">
-        <ul
-          aria-label="Conversas"
-          className={cn("w-full shrink-0 divide-y divide-border overflow-y-auto border-r border-border bg-bg md:w-[var(--inbox-list)]", active && "hidden md:block")}
-        >
+        <LinkGroup as="ul" label="Conversas" className={cn("w-full shrink-0 divide-y divide-border overflow-y-auto border-r border-border bg-bg md:w-[var(--inbox-list)]", active && "hidden md:block")}>
           {convs.length === 0 && (
             <li>
               <EmptyState icon={Inbox} title="Nenhuma conversa aqui" text={f === "all" ? "Quando alguém mandar mensagem por um canal conectado, aparece nesta lista." : "Nada com este filtro agora."} />
@@ -78,11 +71,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
             const on = c.id === activeId;
             return (
               <li key={c.id}>
-                <Link
-                  href={href({ c: c.id })}
-                  aria-current={on ? "true" : undefined}
-                  className={cn("relative flex gap-3 px-4 py-3 hover:bg-surface", on && "bg-accent-soft hover:bg-accent-soft")}
-                >
+                <InstantLink href={href({ c: c.id })} active={on} current="true" className="relative flex gap-3 px-4 py-3 hover:bg-surface" activeClassName="bg-accent-soft hover:bg-accent-soft">
                   {on && <span className="absolute inset-y-0 left-0 w-[3px] bg-accent" aria-hidden />}
                   <Avatar name={c.contact.name} size={40} />
                   <div className="min-w-0 flex-1">
@@ -107,11 +96,11 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
                       )}
                     </div>
                   </div>
-                </Link>
+                </InstantLink>
               </li>
             );
           })}
-        </ul>
+        </LinkGroup>
 
         {active ? (
           <section aria-label={`Conversa com ${active.contact.name}`} className="flex min-w-0 flex-1 flex-col">

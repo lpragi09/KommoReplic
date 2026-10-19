@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import type { ReactNode } from "react";
 import { getBoard, getDashboard, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
@@ -79,33 +80,23 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
   return (
     <>
       <PageHeader title="Painel">
-        <nav aria-label="Período" className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
+        <LinkGroup label="Período" className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
           {periods.map((p) => (
-            <Link
-              key={p.v}
-              href={q({ p: p.v })}
-              aria-current={p.v === period.v ? "page" : undefined}
-              className={cn("inline-flex h-8 items-center rounded-pill px-3.5 text-sm font-medium transition-colors", p.v === period.v ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" : "text-muted hover:text-fg")}
-            >
+            <InstantLink key={p.v} href={q({ p: p.v })} active={p.v === period.v} className="inline-flex h-8 items-center rounded-pill px-3.5 text-sm font-medium transition-colors" activeClassName="bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" inactiveClassName="text-muted hover:text-fg">
               {p.label}
-            </Link>
+            </InstantLink>
           ))}
-        </nav>
-        <nav aria-label="Pessoa" className="flex flex-wrap items-center gap-1.5">
-          <Link href={q({ u: "" })} aria-current={!sp.u ? "page" : undefined} className={cn("inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium", !sp.u ? "bg-accent text-on-accent" : "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg")}>
+        </LinkGroup>
+        <LinkGroup label="Pessoa" className="flex flex-wrap items-center gap-1.5">
+          <InstantLink href={q({ u: "" })} active={!sp.u} className="inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium" activeClassName="bg-accent text-on-accent" inactiveClassName="bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg">
             Equipe toda
-          </Link>
+          </InstantLink>
           {users.map((u) => (
-            <Link
-              key={u.id}
-              href={q({ u: u.id })}
-              aria-current={sp.u === u.id ? "page" : undefined}
-              className={cn("inline-flex h-9 items-center gap-2 rounded-pill pl-1 pr-3.5 text-sm font-medium", sp.u === u.id ? "bg-accent text-on-accent" : "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg")}
-            >
+            <InstantLink key={u.id} href={q({ u: u.id })} active={sp.u === u.id} className="inline-flex h-9 items-center gap-2 rounded-pill pl-1 pr-3.5 text-sm font-medium" activeClassName="bg-accent text-on-accent" inactiveClassName="bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg">
               <Avatar name={u.name || u.email} size={24} /> {(u.name || u.email).split(/[ @]/)[0]}
-            </Link>
+            </InstantLink>
           ))}
-        </nav>
+        </LinkGroup>
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto bg-surface">

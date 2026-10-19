@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { ByParam, ParamTabs } from "@/components/pipeline/views";
 import { CalendarCheck } from "@/components/ui/icons";
 import { listMarks, listTasks } from "@/data";
@@ -109,18 +110,9 @@ export default async function CalendarPage({
   ].filter((g) => g.items.length);
 
   const tab = (v: string, label: string, on: boolean, cur: "mes" | "lista") => (
-    <Link
-      href={q({ who: v }, cur)}
-      aria-current={on ? "page" : undefined}
-      className={cn(
-        "h-8 rounded-pill px-3 text-sm leading-8",
-        on
-          ? "bg-inverse-bg text-on-inverse"
-          : "text-muted hover:bg-surface hover:text-fg",
-      )}
-    >
+    <InstantLink href={q({ who: v }, cur)} active={on} className="h-8 rounded-pill px-3 text-sm leading-8" activeClassName="bg-inverse-bg text-on-inverse" inactiveClassName="text-muted hover:bg-surface hover:text-fg">
       {label}
-    </Link>
+    </InstantLink>
   );
 
   return (
@@ -141,10 +133,10 @@ export default async function CalendarPage({
           nodes={{
             lista: (
               <>
-                <nav aria-label="De quem" className="flex gap-1">
+                <LinkGroup label="De quem" className="flex gap-1">
                   {tab("me", "Minhas", who === "me", "lista")}
                   {tab("all", "Da equipe", who === "all", "lista")}
-                </nav>
+                </LinkGroup>
                 <Link href={q({ done: done ? undefined : "1" }, "lista")} className="text-sm text-accent-text underline">
                   {done ? "Esconder concluídas" : "Mostrar concluídas"}
                 </Link>
@@ -152,10 +144,10 @@ export default async function CalendarPage({
             ),
             mes: (
               <>
-                <nav aria-label="De quem" className="flex gap-1">
+                <LinkGroup label="De quem" className="flex gap-1">
                   {tab("me", "Minhas", who === "me", "mes")}
                   {tab("all", "Da equipe", who === "all", "mes")}
-                </nav>
+                </LinkGroup>
                 <nav aria-label="Mês" className="ml-auto flex items-center gap-1">
                   <Link href={q({ m: shiftMonth(month, -1) }, "mes")} aria-label="Mês anterior" className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg">
                     <ChevronRight className="size-4 rotate-180" aria-hidden />

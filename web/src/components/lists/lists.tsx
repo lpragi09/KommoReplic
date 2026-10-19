@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ChangeEvent, type FormEvent } from "react";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { At, Building2, Contact, Download, Phone, Plus, Search, Upload, UserCircle, UserPlus } from "@/components/ui/icons";
@@ -18,26 +19,18 @@ export function ListsTabs({ slug, active, counts }: { slug: string; active: "con
     { v: "companies", label: "Empresas", icon: Building2, href: `/${slug}/companies`, n: counts?.companies },
   ] as const;
   return (
-    <nav aria-label="Listas" className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
+    <LinkGroup label="Listas" className="inline-flex h-10 items-center gap-0.5 rounded-pill bg-surface p-1 shadow-[inset_0_0_0_1px_var(--border)]">
       {tabs.map((t) => {
         const on = t.v === active;
         return (
-          <Link
-            key={t.v}
-            href={t.href}
-            aria-current={on ? "page" : undefined}
-            className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-colors",
-              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" : "text-muted hover:text-fg",
-            )}
-          >
+          <InstantLink key={t.v} href={t.href} active={on} className="inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-colors" activeClassName="bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" inactiveClassName="text-muted hover:text-fg">
             <t.icon className={cn("size-4", on && "text-accent")} aria-hidden />
             {t.label}
             {t.n !== undefined && <span className="rounded-pill bg-surface px-1.5 text-xs tabular-nums text-muted">{t.n}</span>}
-          </Link>
+          </InstantLink>
         );
       })}
-    </nav>
+    </LinkGroup>
   );
 }
 

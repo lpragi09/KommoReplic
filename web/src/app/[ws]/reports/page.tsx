@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { getActivity, getDashboard, getMessageStats, listGoals, listLeads, listLossReasons, listMembers, listPipelines, listRoiReports, listRobots, listUsers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { money } from "@/lib/format";
@@ -89,46 +90,37 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
     <>
       <PageHeader title="Estatísticas">
         {usesPeriod && (
-          <nav aria-label="Período" className="flex gap-1">
+          <LinkGroup label="Período" className="flex gap-1">
             {periods.map((p) => (
-              <Link
-                key={p.v}
-                href={href({ p: p.v })}
-                aria-current={p.v === period.v ? "page" : undefined}
-                className={cn("h-8 rounded-pill px-3 text-sm leading-8 transition-colors duration-fast", p.v === period.v ? "bg-inverse-bg text-on-inverse" : "text-muted hover:bg-surface hover:text-fg")}
-              >
+              <InstantLink key={p.v} href={href({ p: p.v })} active={p.v === period.v} className="h-8 rounded-pill px-3 text-sm leading-8 transition-colors duration-fast" activeClassName="bg-inverse-bg text-on-inverse" inactiveClassName="text-muted hover:bg-surface hover:text-fg">
                 {p.label}
-              </Link>
+              </InstantLink>
             ))}
-          </nav>
+          </LinkGroup>
         )}
         {usesPipeline && pipelines.length > 1 && (
-          <nav aria-label="Funil" className="flex gap-1">
+          <LinkGroup label="Funil" className="flex gap-1">
             {pipelines.map((p) => (
-              <Link key={p.id} href={href({ pipeline: p.id })} aria-current={p.id === pipeline?.id ? "page" : undefined} className={cn("h-8 rounded-sm px-2 text-sm leading-8", p.id === pipeline?.id ? "font-medium text-fg" : "text-muted hover:text-fg")}>
+              <InstantLink key={p.id} href={href({ pipeline: p.id })} active={p.id === pipeline?.id} className="h-8 rounded-sm px-2 text-sm leading-8" activeClassName="font-medium text-fg" inactiveClassName="text-muted hover:text-fg">
                 {p.name}
-              </Link>
+              </InstantLink>
             ))}
-          </nav>
+          </LinkGroup>
         )}
       </PageHeader>
       <div className="flex min-h-0 flex-1 flex-col bg-surface lg:flex-row">
-        <nav aria-label="Seções das estatísticas" className="shrink-0 overflow-x-auto border-b border-border bg-bg lg:w-56 lg:overflow-visible lg:border-b-0 lg:border-r">
+        <LinkGroup label="Seções das estatísticas" className="shrink-0 overflow-x-auto border-b border-border bg-bg lg:w-56 lg:overflow-visible lg:border-b-0 lg:border-r">
           <p className="hidden px-5 pb-2 pt-5 text-xs font-semibold uppercase tracking-[0.14em] text-muted lg:block">Análise de dados</p>
           <ul className="flex gap-1 p-2 lg:flex-col lg:p-3 lg:pt-0">
             {SECTIONS.map((x) => (
               <li key={x.v}>
-                <Link
-                  href={href({ aba: x.v })}
-                  aria-current={x.v === section ? "page" : undefined}
-                  className={cn("block whitespace-nowrap rounded-sm px-3 py-2 text-sm transition-colors duration-fast", x.v === section ? "bg-accent-soft font-medium text-accent-text" : "text-fg hover:bg-surface")}
-                >
+                <InstantLink href={href({ aba: x.v })} active={x.v === section} className="block whitespace-nowrap rounded-sm px-3 py-2 text-sm transition-colors duration-fast" activeClassName="bg-accent-soft font-medium text-accent-text" inactiveClassName="text-fg hover:bg-surface">
                   {x.label}
-                </Link>
+                </InstantLink>
               </li>
             ))}
           </ul>
-        </nav>
+        </LinkGroup>
         <div className="min-w-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 sm:p-6">{body}</div>
         </div>

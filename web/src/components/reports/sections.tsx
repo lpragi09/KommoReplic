@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import type { ActivityEvent, Lead, MessageStats, Pipeline, RoiReport, SalesGoal, Stage, User } from "@/data/types";
 import { leadTitle, money } from "@/lib/format";
 import { stageBar } from "@/lib/stage-colors";
@@ -441,18 +442,18 @@ export function Goals({ slug, users, leads, goals, month, by, canEdit }: { slug:
         <Link href={q({ mes: shift(1) })} className="grid size-8 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg" aria-label="Próximo mês">
           ›
         </Link>
-        <nav aria-label="Medir por" className="ml-auto flex rounded-sm bg-surface p-0.5 shadow-[inset_0_0_0_1px_var(--border)]">
+        <LinkGroup label="Medir por" className="ml-auto flex rounded-sm bg-surface p-0.5 shadow-[inset_0_0_0_1px_var(--border)]">
           {(
             [
               ["valor", "Por venda"],
               ["qtd", "Por quantidade"],
             ] as const
           ).map(([v, l]) => (
-            <Link key={v} href={q({ por: v })} aria-current={by === v ? "page" : undefined} className={cn("h-8 rounded-[6px] px-3 text-sm leading-8", by === v ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--border)]" : "text-muted hover:text-fg")}>
+            <InstantLink key={v} href={q({ por: v })} active={by === v} className="h-8 rounded-[6px] px-3 text-sm leading-8" activeClassName="bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--border)]" inactiveClassName="text-muted hover:text-fg">
               {l}
-            </Link>
+            </InstantLink>
           ))}
-        </nav>
+        </LinkGroup>
         {canEdit && <GoalsEditor slug={slug} month={month} users={users.map((u) => ({ id: u.id, name: u.name || u.email }))} goals={goals} />}
       </div>
       <Card title="Metas do mês" sub="Verde: no ritmo ou à frente. Vermelho: abaixo do ritmo do mês (a linha fina marca onde deveria estar hoje).">
