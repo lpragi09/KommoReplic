@@ -93,6 +93,7 @@ export function inHours(h: { from: string; to: string; days: number[] } | undefi
 
 function matches(r: Robot, ev: RobotEvent, ctx: RobotCtx) {
   if (r.trigger !== ev.trigger) return false;
+  if (r.conditions?.detached) return false; // fora do funil: só roda quando outro robô ou gatilho chama
   if ("robotId" in ev && ev.robotId && r.id !== ev.robotId) return false; // "aplicar aos leads que já estão na etapa"
   const c = r.conditions;
   if (c?.tags?.length && !c.tags.some((t) => ctx.lead?.tags.some((x) => x.toLowerCase() === t.toLowerCase()))) return false;

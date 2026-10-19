@@ -234,6 +234,8 @@ export type Robot = {
     /** criado pelo "Adicionar" de uma etapa do funil digital (aparece como gatilho, não como robô) */
     origin?: "stage_trigger";
     action?: StageTriggerAction;
+    /** tirado do funil: não dispara sozinho, mas continua salvo e pode ser chamado por um gatilho de etapa */
+    detached?: boolean;
   };
   runCount: number;
   lastRunAt: ISO | null;
@@ -337,6 +339,23 @@ export type Broadcast = {
 
 /* ---------- cadastro e acesso (teste grátis / plano) ---------- */
 export type SignupInfo = { company: string; docType: "cpf" | "cnpj" | null; document: string; phone: string };
+/** créditos de IA da empresa no mês */
+export type AiWallet = {
+  /** AAAA-MM */
+  month: string;
+  /** respostas da IA gastas neste mês (plano + avulsos) */
+  used: number;
+  /** quanto o plano inclui por mês */
+  included: number;
+  /** créditos avulsos comprados que ainda sobram (não vencem) */
+  extra: number;
+  /** chave própria da Anthropic: só o final, para mostrar; com ela a IA não gasta crédito */
+  ownKeyHint: string | null;
+};
+
+/** contagens para a aba Uso do plano */
+export type UsageCounts = { leads: number; contacts: number; companies: number; pipelines: number; users: number; socialChannels: number; activeRobots: number; trackingLinks: number; customFields: number };
+
 export type Access = {
   state: "trial" | "active" | "locked";
   /** plano contratado (no teste, "trial": tudo liberado) */

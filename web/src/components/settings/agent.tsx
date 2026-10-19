@@ -1,8 +1,10 @@
 "use client";
 
+import { AiCreditsMeter } from "./addons";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import type { AgentConfig, AgentTone, ChannelKind } from "@/data/types";
+import type { AgentConfig, AiWallet, AgentTone, ChannelKind } from "@/data/types";
 import { saveAgentAction, testAgentAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -40,7 +42,7 @@ Perguntas frequentes:
 
 type Turn = { role: "cliente" | "empresa"; text: string; handoff?: string | null };
 
-export function AgentSettings({ slug, company, agent, hasKey, blockedPlan }: { slug: string; company: string; agent: AgentConfig; hasKey: boolean; blockedPlan: string | null }) {
+export function AgentSettings({ slug, company, agent, hasKey, blockedPlan, wallet }: { slug: string; company: string; agent: AgentConfig; hasKey: boolean; blockedPlan: string | null; wallet: AiWallet }) {
   const [cfg, setCfg] = useState(agent);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,16 +88,28 @@ export function AgentSettings({ slug, company, agent, hasKey, blockedPlan }: { s
 
           {blockedPlan && (
             <p className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-fg">
-              O agente de IA está no plano <strong>{blockedPlan}</strong>.{" "}
-              <Link href={`/${slug}/settings/billing`} className="font-medium text-accent-text underline">
-                Ver planos
+              O agente de IA está no plano <strong>{blockedPlan}</strong>, ou funciona com créditos avulsos ou a sua chave da Anthropic.{" "}
+              <Link href={`/${slug}/settings/billing?aba=complementos`} className="font-medium text-accent-text underline">
+                Ver complementos
               </Link>
             </p>
           )}
           {!hasKey && (
             <p className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-fg">
-              Para a IA funcionar, falta colocar a chave da Anthropic na Vercel: variável <code className="font-semibold">ANTHROPIC_API_KEY</code> (crie em console.anthropic.com → API Keys). Dá para preencher tudo agora e ligar depois.
+              A IA ainda não está ligada no servidor. Coloque a sua chave da Anthropic em{" "}
+              <Link href={`/${slug}/settings/billing?aba=complementos`} className="font-medium text-accent-text underline">
+                Plano e cobrança → Complementos
+              </Link>
+              . Dá para preencher tudo agora e ligar depois.
             </p>
+          )}
+          {!blockedPlan && (
+            <section className={card} aria-label="Créditos de IA">
+              <AiCreditsMeter wallet={wallet} />
+              <Link href={`/${slug}/settings/billing?aba=complementos`} className="mt-3 inline-block text-sm font-medium text-accent-text hover:underline">
+                Comprar créditos ou usar a sua chave
+              </Link>
+            </section>
           )}
 
           {/* identidade */}

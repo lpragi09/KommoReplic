@@ -15,15 +15,17 @@ export type Limits = {
   reportsFull: boolean;
   /** agente de IA respondendo os clientes */
   aiAgent: boolean;
+  /** respostas da IA incluídas por mês (1 crédito = 1 resposta). Passou disso, usa os créditos comprados ou a chave própria */
+  aiCredits: number;
 };
 
 const INF = Number.POSITIVE_INFINITY;
 
 export const LIMITS: Record<PlanKey, Limits> = {
-  trial: { name: "Teste grátis", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true },
-  basic: { name: "Autônomo", pipelines: 1, users: 2, socialChannels: 1, activeRobots: 3, trackingLinks: 3, broadcasts: false, reportsFull: false, aiAgent: false },
-  advanced: { name: "Equipe", pipelines: INF, users: INF, socialChannels: 3, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true },
-  pro: { name: "Operação", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true },
+  trial: { name: "Teste grátis", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 100 },
+  basic: { name: "Autônomo", pipelines: 1, users: 2, socialChannels: 1, activeRobots: 3, trackingLinks: 3, broadcasts: false, reportsFull: false, aiAgent: false, aiCredits: 0 },
+  advanced: { name: "Equipe", pipelines: INF, users: INF, socialChannels: 3, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 500 },
+  pro: { name: "Operação", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 2000 },
 };
 
 export const limitsOf = (plan: PlanKey | null | undefined) => LIMITS[plan ?? "trial"] ?? LIMITS.trial;
@@ -34,3 +36,14 @@ export function upgradeFor(check: (l: Limits) => boolean): string {
 }
 
 export const fmtLimit = (n: number) => (Number.isFinite(n) ? String(n) : "ilimitado");
+
+/** pacotes avulsos de créditos de IA (lookup_key do preço no Stripe → créditos). Não vencem; o plano gasta primeiro. */
+export const AI_PACKS = [
+  { key: "ia_500", credits: 500 },
+  { key: "ia_2000", credits: 2000 },
+  { key: "ia_5000", credits: 5000 },
+] as const;
+export type AiPackKey = (typeof AI_PACKS)[number]["key"];
+
+/** mês corrente no fuso de Brasília (créditos do plano zeram na virada) */
+export const aiMonth = (d = new Date()) => d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }).slice(0, 7);

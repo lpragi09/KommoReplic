@@ -11,17 +11,17 @@ import { Dialog } from "@/components/ui/overlay";
 import { Switch } from "@/components/robots/parts";
 
 const plans = [
-  { key: "autonomo", name: "Autônomo", who: "1 a 2 pessoas", m: 59, a: 49, items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel", "Robôs de boas-vindas"] },
+  { key: "autonomo", name: "Autônomo", who: "1 a 2 pessoas", m: 59, a: 49, items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel", "Robôs de boas-vindas", "IA com créditos avulsos"] },
   {
     key: "equipe",
     name: "Equipe",
     who: "o time de vendas",
     m: 99,
     a: 82,
-    items: ["Funis ilimitados", "3 canais", "Papéis: todos, equipe ou só os meus", "Robôs ilimitados e disparos", "Agente de IA no atendimento"],
+    items: ["Funis ilimitados", "3 canais", "Papéis: todos, equipe ou só os meus", "Robôs ilimitados e disparos", "Agente de IA: 500 respostas/mês"],
     hot: true,
   },
-  { key: "operacao", name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Canais ilimitados", "Agente de IA no atendimento", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
+  { key: "operacao", name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Canais ilimitados", "Agente de IA: 2.000 respostas/mês", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
 ] as const;
 const planOf = { trial: "Teste grátis", basic: "Autônomo", advanced: "Equipe", pro: "Operação" };
 const statusOf = { trialing: "em teste", active: "ativo", past_due: "pagamento pendente", canceled: "cancelado", unpaid: "não pago" };

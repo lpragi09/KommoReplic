@@ -13,6 +13,7 @@ export const {
   fireRobots, tickRobots, fireRobotsForMessage, listRobots, getRobot, saveRobot, setRobotActive, deleteRobot, listTemplates, saveTemplate, deleteTemplate,
   listMembers, addMember, createInvite, listInvites, revokeInvite, getInvite, acceptInvite, acceptInviteNewAccount, setMemberRole, removeMember, listFields, saveField, deleteField, getLeadCustom, setLeadCustom, listTeamMessages, sendTeamMessage, sendTeamAttachment, previewBroadcast, sendBroadcast, listBroadcasts, optOutContact,
   getAccess, getNotificationsSeen, markNotificationsSeen, signupInfo, listMarks, saveMark, deleteMark, connectChannel, disconnectChannel, deliverQueued, updateDeliveryStatus, getAgent, saveAgent, setConversationAi, answerWithAgent, createPipeline, renamePipeline, deletePipeline, addStage, updateStage, deleteStage, setMyAvatar, setWorkspaceLogo, updateMyName, changeMyEmail, changeMyPassword, updateWorkspace,
+  getAiWallet, setAiOwnKey, addAiCredits, spendAiCredit, refundAiCredit, getAiOwnKey, getUsageCounts,
   attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink,
 } = impl;
 export type { ConvFilter, LeadFilter } from "./fake/repo";

@@ -78,19 +78,20 @@ export function toMessages(turns: Turn[]): Anthropic.Beta.BetaMessageParam[] {
 
 let client: Anthropic | null = null;
 
-export async function askAgent(cfg: AgentConfig, ctx: { company: string; channel: ChannelKind; contactName: string; today: string }, turns: Turn[]): Promise<AgentAnswer> {
+/** `apiKey`: chave própria da empresa; sem ela, usa a da plataforma (ANTHROPIC_API_KEY) */
+export async function askAgent(cfg: AgentConfig, ctx: { company: string; channel: ChannelKind; contactName: string; today: string }, turns: Turn[], apiKey?: string | null): Promise<AgentAnswer> {
   const messages = toMessages(turns);
   if (!messages.length || messages[messages.length - 1].role !== "user") return { reply: "", handoff: null };
 
   // modo de teste local (sem chave): respostas previsíveis para os testes automáticos
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY && (!apiKey || (process.env.AI_FAKE === "1" && apiKey.startsWith("sk-ant-teste")))) {
     const last = (messages[messages.length - 1].content as string).toLowerCase();
     if (/humano|pessoa|atendente/.test(last)) return { reply: cfg.handoffMessage, handoff: "cliente pediu uma pessoa" };
     return { reply: `[${cfg.name}] ${cfg.knowledge.trim().split("\n")[0] || "Olá! Como posso ajudar?"}`, handoff: null };
   }
 
-  client ??= new Anthropic();
-  const res = await client.beta.messages.create({
+  const api = apiKey ? new Anthropic({ apiKey }) : (client ??= new Anthropic());
+  const res = await api.beta.messages.create({
     model: MODEL,
     max_tokens: 2048,
     betas: ["server-side-fallback-2026-07-01"],
@@ -118,6 +119,12 @@ export async function askAgent(cfg: AgentConfig, ctx: { company: string; channel
     return { reply: reply || cfg.handoffMessage, handoff: motivo.slice(0, 300) || "pediu atendimento humano" };
   }
   return { reply: reply.slice(0, 1500), handoff: null };
+}
+
+/** confere uma chave própria antes de salvar (chamada mínima, sem gastar quase nada) */
+export async function checkApiKey(apiKey: string) {
+  if (process.env.AI_FAKE === "1" && apiKey.startsWith("sk-ant-teste")) return;
+  await new Anthropic({ apiKey }).models.list({ limit: 1 });
 }
 
 /** erro da API em texto para a tela de teste (sem expor detalhes internos) */

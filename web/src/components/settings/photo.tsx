@@ -17,7 +17,7 @@ async function shrink(file: File): Promise<string> {
 }
 
 /** quadrado clicável que troca a foto. kind: "me" (minha foto) ou "logo" (empresa) */
-export function PhotoPicker({ slug, kind, current, fallback, className, label }: { slug: string; kind: "me" | "logo"; current: string | null; fallback: ReactNode; className?: string; label: string }) {
+export function PhotoPicker({ slug, kind, current, fallback, className, label, caption }: { slug: string; kind: "me" | "logo"; current: string | null; fallback: ReactNode; className?: string; label: string; caption?: ReactNode }) {
   const input = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState(current);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +68,7 @@ export function PhotoPicker({ slug, kind, current, fallback, className, label }:
           }
         }}
       />
+      {caption}
       {photo && (
         <button type="button" onClick={() => save(null)} className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-danger">
           <Trash2 className="size-3.5" aria-hidden /> Remover

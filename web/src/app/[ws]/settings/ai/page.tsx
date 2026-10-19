@@ -1,7 +1,8 @@
-import { getAccess, getAgent } from "@/data";
+import { getAccess, getAgent, getAiWallet } from "@/data";
+import { agentAllowed } from "@/data/ai/runner";
 import { requireWorkspace } from "@/data/session";
 import { aiAvailable } from "@/lib/ai-agent";
-import { limitsOf, upgradeFor } from "@/lib/plans";
+import { upgradeFor } from "@/lib/plans";
 import { PageHeader } from "@/components/shell/page-header";
 import { AgentSettings } from "@/components/settings/agent";
 
@@ -12,12 +13,12 @@ export const metadata = { title: "Agente de IA" };
 export default async function AgentPage({ params }: PageProps<"/[ws]/settings/ai">) {
   const { ws: slug } = await params;
   const { ws } = await requireWorkspace(slug);
-  const [agent, access] = await Promise.all([getAgent(ws.id), getAccess(ws.id)]);
-  const allowed = limitsOf(access.plan).aiAgent;
+  const [agent, access, wallet] = await Promise.all([getAgent(ws.id), getAccess(ws.id), getAiWallet(ws.id)]);
+  const allowed = agentAllowed(access, wallet.extra, !!wallet.ownKeyHint);
   return (
     <>
       <PageHeader title="Agente de IA" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
-      <AgentSettings slug={slug} company={ws.name} agent={agent} hasKey={aiAvailable()} blockedPlan={allowed ? null : upgradeFor((x) => x.aiAgent)} />
+      <AgentSettings slug={slug} company={ws.name} agent={agent} hasKey={aiAvailable() || !!wallet.ownKeyHint} blockedPlan={allowed ? null : upgradeFor((x) => x.aiAgent)} wallet={wallet} />
     </>
   );
 }

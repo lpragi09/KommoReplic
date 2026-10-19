@@ -13,9 +13,10 @@ import { cleanAttribution } from "@/lib/utm";
 import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { emailOn, inviteEmail, sendEmail } from "@/lib/email";
 import { checkTemplate } from "@/lib/template-rules";
-import { limitsOf, upgradeFor, type Limits } from "@/lib/plans";
+import { AI_PACKS, aiMonth, limitsOf, upgradeFor, type Limits } from "@/lib/plans";
 import { MetaError, verifyAccount } from "@/lib/meta";
-import { aiAvailable, aiErrorText, askAgent } from "@/lib/ai-agent";
+import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
+import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
 import { after } from "next/server";
 
 async function clientIp() {
@@ -573,6 +574,56 @@ export async function startCheckoutAction(slug: string, lookupKey: string, seats
   });
 }
 
+async function requireAdmin(slug: string) {
+  const ctx = await requireWorkspace(slug);
+  const me = (await data.listMembers(ctx.ws.id)).members.find((m) => m.userId === ctx.user.id);
+  if (!me?.isAdmin) throw new DomainError("forbidden", "Só administradores mexem nisso.");
+  return ctx;
+}
+
+/** compra avulsa de créditos de IA (pagamento único no Stripe; o webhook soma os créditos) */
+export async function buyAiCreditsAction(slug: string, pack: string) {
+  return run(async () => {
+    const { user, ws } = await requireAdmin(slug);
+    const p = AI_PACKS.find((x) => x.key === pack);
+    if (!p) throw new DomainError("invalid", "Pacote não encontrado.");
+    const s = await stripe();
+    const prices = await s.prices.list({ lookup_keys: [p.key], limit: 1 });
+    if (!prices.data[0]) throw new DomainError("invalid", "Este pacote ainda não foi criado no Stripe.");
+    const { stripeCustomerId } = await data.getSubscription(ws.id);
+    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
+    const session = await s.checkout.sessions.create({
+      mode: "payment",
+      client_reference_id: ws.id,
+      ...(stripeCustomerId ? { customer: stripeCustomerId } : { customer_email: user.email }),
+      line_items: [{ price: prices.data[0].id, quantity: 1 }],
+      // quantos créditos: definido aqui no servidor, nunca pela tela
+      metadata: { kind: "ai_credits", workspace_id: ws.id, credits: String(p.credits) },
+      success_url: `${origin}/${slug}/settings/billing?aba=complementos&creditos=1`,
+      cancel_url: `${origin}/${slug}/settings/billing?aba=complementos`,
+    });
+    return { url: session.url };
+  });
+}
+
+/** chave própria da Anthropic: a empresa paga a IA direto, sem gastar crédito. null tira. */
+export async function saveAiKeyAction(slug: string, key: string | null) {
+  return run(async () => {
+    const { user, ws } = await requireAdmin(slug);
+    if (!(await rateLimit(`ai-key:${user.id}`, 10, 60_000))) throw new DomainError("invalid", "Muitas tentativas. Espere um minuto.");
+    const k = key === null ? null : z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]{20,200}$/, "Essa não parece uma chave da Anthropic (começa com sk-ant-).").parse(key);
+    if (k) {
+      try {
+        await checkApiKey(k);
+      } catch (e) {
+        throw new DomainError("invalid", aiErrorText(e));
+      }
+    }
+    await data.setAiOwnKey(ws.id, k);
+    return null;
+  });
+}
+
 /** Portal do Stripe: trocar plano, cartão, usuários — e cancelar em um clique. */
 export async function openBillingPortalAction(slug: string) {
   return run(async () => {
@@ -662,6 +713,7 @@ const robotInput = z
           .optional(),
         origin: z.literal("stage_trigger").optional(),
         action: z.enum(["robot", "message", "email", "task", "tag", "stage", "responsible", "webhook", "note"]).optional(),
+        detached: z.boolean().optional(),
       })
       .optional(),
   })
@@ -704,6 +756,19 @@ export async function setRobotActiveAction(slug: string, robotId: string, active
       if (on + 1 > l.activeRobots) throw over("robôs ligados", l.activeRobots, (x) => x.activeRobots > on);
     }
     await data.setRobotActive(ws.id, id.parse(robotId), z.boolean().parse(active));
+    return null;
+  });
+}
+
+/** tira o robô do funil (ou põe de volta) sem apagar: ele some da coluna e para de disparar sozinho */
+export async function detachRobotAction(slug: string, robotId: string, detached: boolean) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const { robot: r } = await data.getRobot(ws.id, id.parse(robotId));
+    const { id: _i, workspaceId: _w, runCount: _c, lastRunAt: _l, createdAt: _a, ...input } = r;
+    const conditions = { ...(r.conditions ?? {}), detached: z.boolean().parse(detached) || undefined };
+    await data.saveRobot(ws.id, user.id, r.id, { ...input, conditions });
+    refresh();
     return null;
   });
 }
@@ -1124,9 +1189,10 @@ export async function saveAgentAction(slug: string, input: z.input<typeof agentI
     const { ws } = await requireActive(slug);
     const v = agentInput.parse(input);
     if (v.enabled) {
-      const { l } = await planLimits(ws.id);
-      if (!l.aiAgent) throw new DomainError("invalid", `O agente de IA está no plano ${upgradeFor((x) => x.aiAgent)}. Mude em Configurações → Plano e cobrança.`);
-      if (!aiAvailable()) throw new DomainError("invalid", "Falta a chave da Anthropic (ANTHROPIC_API_KEY) nas variáveis da Vercel. Salve desligado por enquanto.");
+      const [access, wallet, own] = await Promise.all([data.getAccess(ws.id), data.getAiWallet(ws.id), data.getAiOwnKey(ws.id)]);
+      if (!agentAllowed(access, wallet.extra, !!own))
+        throw new DomainError("invalid", `O agente de IA está no plano ${upgradeFor((x) => x.aiAgent)}, ou compre créditos de IA em Configurações → Plano e cobrança → Complementos.`);
+      if (!own && !aiAvailable()) throw new DomainError("invalid", "A IA ainda não está configurada no servidor. Use a sua chave da Anthropic abaixo ou salve desligado por enquanto.");
       if (!v.channels.length) throw new DomainError("invalid", "Marque pelo menos um canal para o agente atender.");
     }
     await data.saveAgent(ws.id, v);
@@ -1141,13 +1207,19 @@ export async function testAgentAction(slug: string, input: z.input<typeof agentI
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     if (!(await rateLimit(`ai-test:${user.id}`, 20, 60_000))) throw new DomainError("invalid", "Muitos testes seguidos. Espere um minuto.");
-    if (!aiAvailable()) throw new DomainError("invalid", "Falta a chave da Anthropic (ANTHROPIC_API_KEY) nas variáveis da Vercel.");
+    const own = await data.getAiOwnKey(ws.id);
+    if (!own && !aiAvailable()) throw new DomainError("invalid", "A IA ainda não está configurada no servidor. Use a sua chave da Anthropic.");
     const v = agentInput.parse(input);
     const t = z.array(testTurn).min(1).max(30).parse(turns);
+    // o teste também é uma resposta da IA: gasta crédito (com chave própria, a conta é da empresa)
+    const included = limitsOf((await data.getAccess(ws.id)).plan).aiCredits;
+    const month = aiMonth();
+    if (!own && !(await data.spendAiCredit(ws.id, included, month))) throw new DomainError("invalid", `Sem créditos: ${OUT_OF_CREDITS}.`);
     try {
       const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
-      return await askAgent({ ...v, updatedAt: null }, { company: ws.name, channel: "webchat", contactName: "Cliente de teste", today }, t);
+      return await askAgent({ ...v, updatedAt: null }, { company: ws.name, channel: "webchat", contactName: "Cliente de teste", today }, t, own);
     } catch (e) {
+      if (!own) await data.refundAiCredit(ws.id, included, month);
       throw new DomainError("invalid", aiErrorText(e));
     }
   });

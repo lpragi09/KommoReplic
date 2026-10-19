@@ -39,9 +39,19 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const s = event.data.object;
         const ws = s.client_reference_id;
+        // créditos de IA avulsos: soma uma vez por sessão (Pix/boleto confirmam depois, no async_payment_succeeded)
+        if (ws && s.mode === "payment" && s.metadata?.kind === "ai_credits") {
+          const credits = Number(s.metadata.credits);
+          if (s.payment_status === "paid" && Number.isInteger(credits) && credits > 0) {
+            const { error } = await db.rpc("add_ai_credits", { p_session: s.id, p_ws: ws, p_credits: credits });
+            if (error) throw new Error(error.message);
+          }
+          break;
+        }
         if (ws && s.subscription) {
           const sub = await stripe.subscriptions.retrieve(String(s.subscription));
           await upsertSubscription(ws, sub, String(s.customer));

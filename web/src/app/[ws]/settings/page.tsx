@@ -63,6 +63,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
                 kind="logo"
                 current={ws.logo ?? null}
                 label="Trocar o logo da empresa"
+                caption={<span className="text-xs text-on-night-muted">Logo da empresa</span>}
                 className="fx-glow size-16 rounded-lg bg-accent"
                 fallback={<span className="text-2xl font-bold text-on-accent">{ws.name.slice(0, 1).toUpperCase()}</span>}
               />

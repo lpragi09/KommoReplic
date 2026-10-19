@@ -3,7 +3,7 @@
 import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Pipeline, Robot, Stage } from "@/data/types";
-import { deleteRobotAction, setRobotActiveAction } from "@/app/actions";
+import { deleteRobotAction, detachRobotAction, setRobotActiveAction } from "@/app/actions";
 import { Bot, ChevronRight, Lightning, MessageCircle, Plus, Sparkle, Trash2 } from "@/components/ui/icons";
 import { Button, IconButton } from "@/components/ui/button";
 import { Dialog, DialogClose } from "@/components/ui/overlay";
@@ -27,21 +27,30 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
   const [view, setView] = useState<View>(robots.length ? "funil" : "prontos");
   const [pid, setPid] = useState(pipelines[0]?.id ?? "");
   const [, start] = useTransition();
-  const [active, setActive] = useOptimistic(robots, (cur, p: { id: string; active: boolean }) => cur.map((r) => (r.id === p.id ? { ...r, active: p.active } : r)));
+  const [active, patch] = useOptimistic(robots, (cur, p: { id: string; set: Partial<Robot> }) => cur.map((r) => (r.id === p.id ? { ...r, ...p.set } : r)));
   const [error, setError] = useState<string | null>(null);
 
-  // lixeira do card: gatilho de etapa sai da etapa (o robô chamado continua); robô normal é excluído
+  // lixeira do card no funil: nunca apaga robô. Gatilho de etapa sai da etapa; robô sai do funil e fica em Todos os robôs.
+  // Excluir de vez só na lista Todos os robôs.
   const [gone, setGone] = useOptimistic(robots, (cur, id: string) => cur.filter((r) => r.id !== id));
-  const list = active.filter((r) => gone.some((g) => g.id === r.id));
-  const remove = (r: Robot) =>
+  const all = active.filter((r) => gone.some((g) => g.id === r.id));
+  const list = all.filter((r) => !r.conditions?.detached);
+  const destroy = (r: Robot) =>
     start(async () => {
       setGone(r.id);
       const res = await deleteRobotAction(slug, r.id);
       setError(res.ok ? null : res.error);
     });
+  const detach = (r: Robot, detached: boolean) =>
+    start(async () => {
+      patch({ id: r.id, set: { conditions: { ...r.conditions, detached: detached || undefined } } });
+      const res = await detachRobotAction(slug, r.id, detached);
+      setError(res.ok ? null : res.error);
+    });
+  const remove = (r: Robot) => (isStageTrigger(r) ? destroy(r) : detach(r, true));
   const toggle = (r: Robot, active: boolean) =>
     start(async () => {
-      setActive({ id: r.id, active });
+      patch({ id: r.id, set: { active } });
       const res = await setRobotActiveAction(slug, r.id, active);
       setError(res.ok ? null : res.error);
     });
@@ -50,7 +59,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
   const stages = pipeline ? [...pipeline.stages].sort((a, b) => a.sort - b.sort) : [];
   const allStages = new Map(pipelines.flatMap((p) => p.stages).map((s) => [s.id, s]));
   const inbound = list.filter((r) => r.trigger === "message_in" || r.trigger === "new_contact");
-  const onlyRobots = list.filter((r) => !isStageTrigger(r)); // a lista mostra robôs; gatilhos de etapa ficam no funil
+  const onlyRobots = all.filter((r) => !isStageTrigger(r)); // a lista mostra robôs; gatilhos de etapa ficam no funil
   const created = list.filter((r) => r.trigger === "lead_created" && (!r.pipelineId || r.pipelineId === pipeline?.id));
   const base = `/${slug}/automations`;
 
@@ -151,7 +160,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
             <ul className="mx-auto flex max-w-4xl flex-col gap-2">
               {onlyRobots.map((r) => (
                 <li key={r.id}>
-                  <RobotRow robot={r} href={`${base}/${r.id}`} onToggle={toggle} stages={allStages} />
+                  <RobotRow robot={r} href={`${base}/${r.id}`} onToggle={toggle} stages={allStages} onDetach={detach} onDelete={destroy} />
                 </li>
               ))}
             </ul>
@@ -360,10 +369,14 @@ function RobotCard({
               icon={<Trash2 className="size-5" />}
               tone="danger"
               size="sm"
-              title={trigger ? `Tirar da etapa “${stageName}”?` : `Excluir o robô “${r.name}”?`}
-              description={trigger ? "O gatilho sai desta etapa. O robô que ele chamava continua salvo em Todos os robôs." : "O robô é apagado e para de rodar. Não dá para desfazer."}
+              title={trigger ? `Tirar da etapa “${stageName}”?` : `Tirar “${r.name}” do funil?`}
+              description={
+                trigger
+                  ? "O gatilho sai desta etapa. O robô que ele chamava continua salvo em Todos os robôs."
+                  : "O robô sai desta coluna e para de disparar sozinho. Ele continua salvo em Todos os robôs, onde dá para pôr de volta ou excluir de vez."
+              }
               trigger={
-                <IconButton label={trigger ? `Tirar ${r.name} da etapa` : `Excluir ${r.name}`} tone="danger" size={28}>
+                <IconButton label={trigger ? `Tirar ${r.name} da etapa` : `Tirar ${r.name} do funil`} tone="danger" size={28}>
                   <Trash2 className="size-4" />
                 </IconButton>
               }
@@ -374,7 +387,7 @@ function RobotCard({
                   </DialogClose>
                   <DialogClose asChild>
                     <Button variant="danger" onClick={onRemove}>
-                      {trigger ? "Tirar da etapa" : "Excluir robô"}
+                      {trigger ? "Tirar da etapa" : "Tirar do funil"}
                     </Button>
                   </DialogClose>
                 </>
@@ -398,7 +411,22 @@ function RobotCard({
   );
 }
 
-function RobotRow({ robot: r, href, onToggle, stages }: { robot: Robot; href: string; onToggle: (r: Robot, v: boolean) => void; stages: Map<string, Stage> }) {
+function RobotRow({
+  robot: r,
+  href,
+  onToggle,
+  stages,
+  onDetach,
+  onDelete,
+}: {
+  robot: Robot;
+  href: string;
+  onToggle: (r: Robot, v: boolean) => void;
+  stages: Map<string, Stage>;
+  onDetach: (r: Robot, detached: boolean) => void;
+  onDelete: (r: Robot) => void;
+}) {
+  const out = !!r.conditions?.detached;
   return (
     <div className={cn("relative flex items-center gap-3 rounded-md bg-bg px-4 py-3 shadow-[0_0_0_1px_var(--border)] transition-shadow duration-fast hover:shadow-[0_0_0_1px_var(--border-input),0_4px_12px_-6px_rgba(31,122,85,.3)]", !r.active && "opacity-60")}>
       <span className="grid size-9 shrink-0 place-items-center rounded-sm bg-accent-soft text-accent-text" aria-hidden>
@@ -407,9 +435,14 @@ function RobotRow({ robot: r, href, onToggle, stages }: { robot: Robot; href: st
       <Link href={href} className="min-w-0 flex-1 after:absolute after:inset-0 after:content-['']">
         <h3 className="truncate text-sm font-semibold text-fg">{r.name}</h3>
         <p className="truncate text-xs text-muted">
-          {TRIGGERS[r.trigger].label} · {summary(r, stages)}
+          {out ? "Fora do funil (só roda quando um gatilho chama)" : `${TRIGGERS[r.trigger].label} · ${summary(r, stages)}`}
         </p>
       </Link>
+      {out && (
+        <button type="button" onClick={() => onDetach(r, false)} className="relative z-10 h-8 shrink-0 rounded-sm px-2.5 text-sm font-medium text-accent-text hover:bg-accent-soft">
+          Pôr no funil
+        </button>
+      )}
       <span className="hidden items-center gap-1 sm:flex">
         {r.steps.slice(0, 5).map((s) => (
           <StepBadge key={s.id} type={s.type} size="sm" />
@@ -419,7 +452,31 @@ function RobotRow({ robot: r, href, onToggle, stages }: { robot: Robot; href: st
         <Channels robot={r} />
       </span>
       <span className="hidden w-24 text-right text-xs tabular-nums text-muted md:block">{r.runCount ? `${r.runCount} execuções` : "—"}</span>
-      <span className="relative z-10">
+      <span className="relative z-10 flex items-center gap-1">
+        <Dialog
+          icon={<Trash2 className="size-5" />}
+          tone="danger"
+          size="sm"
+          title={`Excluir o robô “${r.name}” de vez?`}
+          description="O robô é apagado, para de rodar e sai dos gatilhos de etapa que o chamam. Não dá para desfazer."
+          trigger={
+            <IconButton label={`Excluir ${r.name}`} tone="danger" size={28}>
+              <Trash2 className="size-4" />
+            </IconButton>
+          }
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button variant="secondary">Cancelar</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button variant="danger" onClick={() => onDelete(r)}>
+                  Excluir de vez
+                </Button>
+              </DialogClose>
+            </>
+          }
+        />
         <Switch checked={r.active} onChange={(v) => onToggle(r, v)} label={r.active ? `Desligar ${r.name}` : `Ligar ${r.name}`} />
       </span>
     </div>
