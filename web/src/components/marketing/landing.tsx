@@ -137,7 +137,7 @@ export function Landing() {
               <div className="fx-bezel">
                 <div className="fx-core overflow-hidden">
                   <Image
-                    src="/produto-funil.png"
+                    src="/produto-funil-2.png"
                     alt={`Funil de vendas do ${BRAND.name}: coluna de leads de entrada e etapas com cards de negócios`}
                     width={1440}
                     height={560}
@@ -211,7 +211,7 @@ export function Landing() {
                       <span className="size-2.5 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_18%,transparent)]" />
                       <span className="size-2.5 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_18%,transparent)]" />
                     </div>
-                    <Image src="/produto-lead.png" alt="" width={2112} height={1260} sizes="(min-width: 768px) 560px, 100vw" className="rounded-xl" />
+                    <Image src="/produto-lead-2.png" alt="" width={2112} height={1260} sizes="(min-width: 768px) 560px, 100vw" className="rounded-xl" />
                   </div>
                 </div>
               }

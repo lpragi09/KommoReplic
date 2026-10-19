@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     siteName: BRAND.name,
     title: `${BRAND.name} — ${BRAND.tagline}`,
     description: "Funil de vendas, conversas e tarefas no mesmo lugar. Mensal, sem fidelidade.",
-    images: [{ url: "/produto-funil.png", width: 1440, height: 560, alt: `Funil de vendas do ${BRAND.name}` }],
+    images: [{ url: "/produto-funil-2.png", width: 1440, height: 560, alt: `Funil de vendas do ${BRAND.name}` }],
   },
   twitter: { card: "summary_large_image" },
 };
