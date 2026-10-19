@@ -476,3 +476,16 @@ textarea:not([data-plain]):focus {
     transform: translateY(-10px);
   }
 }
+
+/* notificações: prévia abre com um "pop"; o sino balança de leve quando tem novidade */
+.fx-pop { animation: fx-pop 0.16s var(--ease-out); }
+@keyframes fx-ring {
+  0%, 70%, 100% { transform: rotate(0); }
+  75% { transform: rotate(14deg); }
+  82% { transform: rotate(-12deg); }
+  89% { transform: rotate(8deg); }
+  95% { transform: rotate(-4deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fx-ring { animation: fx-ring 3.2s ease-in-out infinite; transform-origin: 50% 10%; }
+}

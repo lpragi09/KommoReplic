@@ -8,6 +8,7 @@ import { getAccess, listUsers } from "@/data";
 import { loadNotifications } from "@/data/notifications";
 import { AvatarSeed } from "@/components/ui/avatar";
 import { AccessGate } from "@/components/shell/access-gate";
+import { BrowserAlerts } from "@/components/shell/notify";
 
 // Telas atrás de login leem a sessão a cada pedido: a navegação bloqueia no servidor de propósito.
 // Revisitar com "use cache: private" quando os dados vierem do Supabase.
@@ -17,11 +18,12 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   const { ws: slug } = await params;
   const { user, ws } = await requireWorkspace(slug);
   if (mobile) return <MobileNav slug={slug} />;
-  const [{ unread: convs, board, unseen }, people] = await Promise.all([loadNotifications(slug, ws.id, user.id), listUsers(ws.id)]);
+  const [{ unread: convs, board, unseen, items }, people] = await Promise.all([loadNotifications(slug, ws.id, user.id), listUsers(ws.id)]);
   return (
     <>
       <AvatarSeed people={people} />
-      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} notifications={unseen} />
+      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} notifications={unseen} notificationItems={items.slice(0, 20)} />
+      <BrowserAlerts unseen={unseen} latest={items.find((n) => n.kind !== "today") ?? null} />
       <LiveRefresh wsId={ws.id} slug={ws.slug} />
       <NavTracker />
     </>

@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
 import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle, Moon, Sun, Sparkle } from "@/components/ui/icons";
 import { applyTheme, useTheme } from "@/components/theme/theme";
+import { NotificationBell } from "@/components/shell/notify";
+import type { NotificationItem } from "@/data/notifications";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
@@ -47,6 +49,7 @@ export function NavRail({
   unread = 0,
   incoming = 0,
   notifications = 0,
+  notificationItems = [],
 }: {
   slug: string;
   userName: string;
@@ -56,6 +59,8 @@ export function NavRail({
   incoming?: number;
   /** notificações que a pessoa ainda não viu */
   notifications?: number;
+  /** últimas notificações para a prévia do sino */
+  notificationItems?: NotificationItem[];
 }) {
   const path = usePathname();
   const expanded = useSyncExternalStore(subscribeNav, readNav, () => false);
@@ -77,7 +82,6 @@ export function NavRail({
     [it.href, ...(it.match ?? [])].some((h) => path === h || path.startsWith(h + "/")) && !(it.href === `${base}/settings` && path.startsWith(`${base}/settings/ai`));
   const footer: Item[] = [
     { href: `${base}/search`, label: "Buscar", icon: Search },
-    { href: `${base}/notifications`, label: "Notificações", icon: Bell, badge: notifications },
     { href: `${base}/settings`, label: "Configurações", icon: Settings },
   ];
 
@@ -137,7 +141,11 @@ export function NavRail({
       </ul>
 
       <ul className="flex flex-col gap-0.5 px-2">
-        {footer.map(link)}
+        {footer.slice(0, 1).map(link)}
+        <li>
+          <NotificationBell slug={slug} items={notificationItems} unseen={notifications} expanded={expanded} active={path.startsWith(`${base}/notifications`)} />
+        </li>
+        {footer.slice(1).map(link)}
         <li>
           <ThemeButton expanded={expanded} />
         </li>

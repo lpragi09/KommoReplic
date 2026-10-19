@@ -47,12 +47,21 @@ test.describe("F25 convite e notificações", () => {
     await visitor.getByRole("button", { name: "Enviar mensagem" }).click();
     await expect(visitor.getByText("Oi, vocês atendem hoje?")).toBeVisible();
 
-    await page.goto(`/${slug}/notifications`);
+    // sino do menu com a contagem e a prévia, sem sair da tela
+    await page.goto(`/${slug}/home`);
+    const bell = page.getByRole("button", { name: /^Notificações \(\d+ novas\)/ });
+    await expect(bell).toBeVisible();
+    await bell.click();
+    await expect(page.getByRole("dialog").getByText("Novo contato: Rui Aviso")).toBeVisible();
+    await page.getByRole("link", { name: /Ver todas/ }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/${slug}/notifications`));
     await expect(page.getByText("Novo contato: Rui Aviso")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Notificações/ }).first()).toContainText(/\d/); // contagem no menu
+    await page.getByRole("link", { name: /Contatos novos/ }).click();
+    await expect(page.getByText("Novo contato: Rui Aviso")).toBeVisible();
     await page.getByRole("button", { name: "Marcar tudo como lido" }).click();
     await expect(page.getByRole("button", { name: "Marcar tudo como lido" })).toBeHidden();
-    await expect(page.getByRole("heading", { name: /Já vistas/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Notificações", exact: true })).toBeVisible();
     await expect(page.getByText("Novo contato: Rui Aviso")).toBeVisible(); // continua até ser resolvida
     await axe(page);
   });

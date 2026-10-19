@@ -445,6 +445,7 @@ export async function markNotificationsSeenAction(slug: string) {
   return run(async () => {
     const { user, ws } = await requireWorkspace(slug);
     await data.markNotificationsSeen(ws.id, user.id);
+    refresh();
     return null;
   });
 }

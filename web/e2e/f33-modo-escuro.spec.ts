@@ -36,9 +36,10 @@ test("F33-H2 botão de modo escuro no menu e foto de Meu perfil no quadro de Con
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
   await page.goto(`/${slug}/settings/profile`);
+  await page.waitForLoadState("networkidle"); // o seletor de foto só reage depois que a página hidrata
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
   await page.locator('input[type="file"]').first().setInputFiles({ name: "eu.png", mimeType: "image/png", buffer: png });
-  await expect(page.getByRole("button", { name: /Remover/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Remover/ })).toBeVisible({ timeout: 20_000 });
   await page.goto(`/${slug}/settings`);
   const link = page.getByRole("link", { name: "Trocar a foto em Meu perfil" });
   await expect(link.locator("img")).toHaveAttribute("src", /^data:image\//);
