@@ -1,5 +1,5 @@
 -- =====================================================================
--- netzer tech · atualização de 16/10/2026: UTMs, links rastreáveis de WhatsApp, filtro de robô por campanha
+-- netzer · atualização de 16/10/2026: UTMs, links rastreáveis de WhatsApp, filtro de robô por campanha
 -- e modelos de mensagem por rede (WhatsApp, Instagram, Messenger, TikTok, chat do site)
 -- Rode no Supabase: SQL Editor → New query → cole tudo → Run. Pode rodar de novo.
 -- Ordem: atualizacao-robos.sql → atualizacao-cadastro.sql → esta.

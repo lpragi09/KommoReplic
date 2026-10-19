@@ -137,7 +137,7 @@ export function NewLeadButton({ slug, pipelineId, stages, defaultStageId }: { sl
               <span className={cn("size-2 rounded-pill", stage && stageBar[stage.color])} aria-hidden />
               {stage?.name}
             </p>
-            <div className="overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_10px_24px_-14px_rgba(14,26,58,.45)]">
+            <div className="overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_10px_24px_-14px_rgba(20,28,24,.45)]">
               <div className={cn("h-1", stage && stageBar[stage.color])} />
               <div className="p-3">
                 <p className={cn("line-clamp-2 break-words text-sm font-semibold", f.name.trim() ? "text-fg" : "text-muted")}>{f.name.trim() || "Lead #novo"}</p>

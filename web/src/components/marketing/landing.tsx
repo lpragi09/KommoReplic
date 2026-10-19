@@ -178,7 +178,7 @@ function IslandCTA({
         "fx-island group inline-flex items-center gap-3 rounded-pill py-1.5 pl-6 pr-1.5 text-md font-medium",
         light
           ? "bg-on-night text-night"
-          : "bg-accent text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.25),0_14px_40px_-12px_rgba(29,78,216,.8)]",
+          : "bg-accent text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.25),0_14px_40px_-12px_rgba(31,122,85,.8)]",
       )}
     >
       {children}
@@ -350,23 +350,27 @@ export function Landing() {
 
       <main id="conteudo" className="relative z-10">
         {/* ---------- faixa do que existe ---------- */}
+        {/* uma linha só que desliza (duas cópias, a segunda escondida do leitor de tela); para no hover.
+            Com "menos movimento" fica parada e rola com o dedo. Bordas somem num degradê. */}
         <div
-          className="overflow-hidden border-y border-night-line bg-[linear-gradient(90deg,transparent,color-mix(in_srgb,var(--aurora-1)_14%,transparent),transparent)] py-5"
+          className="group border-y border-night-line py-4 [mask-image:linear-gradient(90deg,transparent,#000_8%,#000_92%,transparent)] motion-reduce:overflow-x-auto overflow-hidden"
+          role="region"
+          tabIndex={0}
           aria-label={`O que o ${BRAND.name} faz`}
         >
-          <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-10 gap-y-3 px-4">
-            {ticker.map((t, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-10 whitespace-nowrap text-sm uppercase tracking-[0.18em] text-on-night-muted"
-              >
-                {t}
-                <Sparkle
-                  className="size-3 text-aurora-2"
-                  weight="fill"
-                  aria-hidden
-                />
-              </span>
+          <div className="fx-marquee gap-3 group-hover:[animation-play-state:paused]">
+            {[0, 1].map((copy) => (
+              <ul key={copy} className="flex shrink-0 gap-3 pr-3" aria-hidden={copy === 1 || undefined}>
+                {ticker.map((t) => (
+                  <li
+                    key={t}
+                    className="flex items-center gap-2 whitespace-nowrap rounded-pill border border-night-line bg-[color-mix(in_srgb,var(--on-night)_4%,transparent)] px-4 py-1.5 text-sm text-on-night-muted"
+                  >
+                    <Sparkle className="size-3 text-aurora-2" weight="fill" aria-hidden />
+                    {t}
+                  </li>
+                ))}
+              </ul>
             ))}
           </div>
         </div>

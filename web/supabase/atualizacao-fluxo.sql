@@ -1,4 +1,4 @@
--- netzer tech · robôs com caminhos + marcações do calendário. Rode depois de atualizacao-utm.sql. Pode rodar de novo.
+-- netzer · robôs com caminhos + marcações do calendário. Rode depois de atualizacao-utm.sql. Pode rodar de novo.
 
 -- Robôs com caminhos (botões, condição, esperar resposta, validação):
 -- cada execução guarda o passo atual (cursor) e o que espera (state: tempo ou resposta, tentativas).

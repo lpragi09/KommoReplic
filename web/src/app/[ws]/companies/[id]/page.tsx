@@ -24,8 +24,8 @@ export default async function CompanyPage({ params }: PageProps<"/[ws]/companies
         <Link href={`/${slug}/companies`} className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
           <ArrowLeft className="size-4" aria-hidden /> Empresas
         </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
-          <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#3b82f6,var(--accent))] text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3)]" aria-hidden>
+        <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
+          <span className="grid size-14 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#34a274,var(--accent))] text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3)]" aria-hidden>
             <Building2 className="size-7" weight="fill" />
           </span>
           <div className="min-w-0 flex-1">

@@ -1,6 +1,6 @@
 # KommoReplic
 
-CRM conversacional (funil Kanban + caixa de entrada + chat do site) em Next.js 16, React e TypeScript, com Supabase pronto para ligar. Marca: **netzer tech**, o ramo de software da netzer (logo em `web/src/components/brand/logo.tsx`). O nome antigo, Recadi, ficou só no histórico da pesquisa em `replica/`.
+CRM conversacional (funil Kanban + caixa de entrada + chat do site) em Next.js 16, React e TypeScript, com Supabase pronto para ligar. Marca: **netzer** (logo em `web/src/components/brand/logo.tsx`). O nome antigo, Recadi, ficou só no histórico da pesquisa em `replica/`.
 
 ## Rodar
 

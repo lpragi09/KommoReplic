@@ -116,8 +116,8 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
                 className={cn(
                   "relative flex flex-col rounded-xl p-6",
                   hot
-                    ? "bg-[linear-gradient(180deg,color-mix(in_srgb,var(--accent)_10%,var(--bg)),var(--bg)_55%)] shadow-[0_0_0_2px_var(--accent),0_20px_40px_-24px_rgba(29,78,216,.6)]"
-                    : "bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]",
+                    ? "bg-[linear-gradient(180deg,color-mix(in_srgb,var(--accent)_10%,var(--bg)),var(--bg)_55%)] shadow-[0_0_0_2px_var(--accent),0_20px_40px_-24px_rgba(31,122,85,.6)]"
+                    : "bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]",
                 )}
               >
                 {hot && <span className="absolute -top-3 left-6 rounded-pill bg-accent px-2.5 py-0.5 text-xs font-semibold text-on-accent">Mais escolhido</span>}

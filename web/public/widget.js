@@ -1,4 +1,4 @@
-/* netzer tech · botão de chat para o site do cliente.
+/* netzer · botão de chat para o site do cliente.
    Uso: <script src="https://SEU-DOMINIO/widget.js" data-chat="CHAVE_DO_CHAT" async></script>
    Opcional: data-cor="#2563eb" (cor do botão), data-lado="esquerda".
    Abre o chat do sistema numa janelinha no canto, levando as UTMs da visita (as mesmas que o t.js guarda).

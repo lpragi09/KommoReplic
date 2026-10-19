@@ -40,6 +40,7 @@ export const STEP_TYPES: Record<RobotStepType, { label: string; hint: string; gr
   wait_reply: { label: "Esperar resposta", hint: "Pausa até o cliente responder (ou o tempo acabar).", group: "Conversa" },
   validate: { label: "Pergunta com validação", hint: "Pergunta e confere a resposta: email, telefone, CPF, número.", group: "Conversa" },
   close: { label: "Fechar conversa", hint: "Marca a conversa como encerrada.", group: "Conversa" },
+  email: { label: "Enviar email", hint: "Email para o contato principal do lead, com link de descadastro.", group: "Conversa" },
   condition: { label: "Condição (se / senão)", hint: "Segue por caminhos diferentes conforme a mensagem, a campanha ou a etiqueta.", group: "Fluxo" },
   wait: { label: "Esperar tempo", hint: "Pausa o robô antes do próximo passo.", group: "Fluxo" },
   start_robot: { label: "Iniciar outro robô", hint: "Passa o lead para outro robô.", group: "Fluxo" },
@@ -90,6 +91,8 @@ export function newStep(type: RobotStepType): RobotStep {
       return { id, type };
     case "webhook":
       return { id, type, url: "https://" };
+    case "email":
+      return { id, type, subject: "", text: "Olá, {{nome}}!\n\n" };
     case "start_robot":
       return { id, type, robotId: "" };
     case "stop":

@@ -1,4 +1,4 @@
--- netzer tech · foto de perfil e logo da empresa. Rode depois de atualizacao-canais.sql. Pode rodar de novo.
+-- netzer · foto de perfil e logo da empresa. Rode depois de atualizacao-canais.sql. Pode rodar de novo.
 
 -- Foto de perfil de cada pessoa e logo da empresa. A imagem chega já reduzida (160px, webp/jpeg) como data URL.
 alter table profiles add column if not exists avatar text;

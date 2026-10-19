@@ -39,7 +39,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-fast ease-out",
               compact && o.icon && "px-2.5 sm:px-3.5",
-              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(14,26,58,.25)]" : "text-muted hover:text-fg",
+              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" : "text-muted hover:text-fg",
             )}
           >
             {o.icon && <span className={cn("grid place-items-center", on && "text-accent")}>{o.icon}</span>}

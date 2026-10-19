@@ -18,7 +18,7 @@ const sample = (t: string) =>
 
 function Phone({ top, bg, children }: { top: ReactNode; bg: string; children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[300px] overflow-hidden rounded-[28px] bg-inverse-bg p-2 shadow-[0_20px_40px_-20px_rgba(14,26,58,.6)]">
+    <div className="mx-auto w-full max-w-[300px] overflow-hidden rounded-[28px] bg-inverse-bg p-2 shadow-[0_20px_40px_-20px_rgba(20,28,24,.6)]">
       <div className="overflow-hidden rounded-[22px]">
         {top}
         <div className={cn("flex min-h-[340px] flex-col justify-end gap-1.5 p-3", bg)}>{children}</div>

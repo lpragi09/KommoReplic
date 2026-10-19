@@ -1,4 +1,4 @@
--- netzer tech · anexos na conversa. Rode depois de atualizacao-notificacoes.sql. Pode rodar de novo.
+-- netzer · anexos na conversa. Rode depois de atualizacao-notificacoes.sql. Pode rodar de novo.
 
 -- Anexos no chat do site: o visitante também vê o arquivo que a equipe mandou.
 -- A função passa a devolver o tipo e o arquivo (o link temporário é gerado no servidor).

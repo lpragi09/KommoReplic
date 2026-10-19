@@ -5,6 +5,8 @@ import { isIP } from "node:net";
 import { humanMinutes } from "@/lib/robot-meta";
 import { validCPF } from "@/lib/document";
 import { UTM_KEYS } from "../types";
+import { emailOn, marketingEmail, sendEmailBatch } from "@/lib/email";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 import type { ChannelKind, Conversation, ID, Lead, Robot, RobotEvent, RobotRun, RobotStep } from "../types";
 
 /* Motor dos robôs. Um só para os dois bancos: cada repositório entrega um "Port"
@@ -17,6 +19,10 @@ export type RobotCtx = {
   wsName: string;
   lead: Lead | null;
   contactName: string;
+  /** contato principal: id e email (para o passo "Enviar email"); optOut = pediu para não receber */
+  contactId?: string | null;
+  contactEmail?: string | null;
+  emailOptOut?: boolean;
   conversation: Conversation | null;
   channelKind: ChannelKind | null;
   responsibleName: string;
@@ -196,7 +202,7 @@ async function postWebhook(url: string, payload: unknown) {
   if (!ips.length || ips.some(privateIp)) throw refuse();
   const res = await fetch(u, {
     method: "POST",
-    headers: { "content-type": "application/json", "user-agent": "NetzerTech-Robo/1.0" },
+    headers: { "content-type": "application/json", "user-agent": "Netzer-Robo/1.0" },
     body: JSON.stringify(payload),
     redirect: "manual", // um redirecionamento poderia levar para um endereço interno
     signal: AbortSignal.timeout(5000),
@@ -466,6 +472,20 @@ async function advance(port: RobotPort, r: Robot, run: RobotRun, ctx: RobotCtx, 
             await port.logOnLead(ws, lead.id, r.name, "Lead movido de etapa.");
             if (run.depth + 1 <= MAX_DEPTH) await fireRobots(port, ws, { trigger: "stage_enter", leadId: lead.id, stageId: step.stageId, depth: run.depth + 1, via: "moved" });
           } else log("Lead já estava nesta etapa.");
+          break;
+        }
+        case "email": {
+          if (!ctx.contactEmail) throw new Error("Pulado: o contato não tem email.");
+          if (ctx.emailOptOut) throw new Error("Pulado: o contato pediu para não receber emails.");
+          if (!emailOn()) throw new Error("Pulado: email não configurado (RESEND_API_KEY e EMAIL_FROM).");
+          const subject = renderText(step.subject, ctx) || ctx.wsName;
+          const body = renderText(step.text, ctx);
+          if (!body) throw new Error("Pulado: email vazio.");
+          const unsub = ctx.contactId ? unsubscribeUrl(ctx.contactId) : null;
+          const ok = await sendEmailBatch([{ to: ctx.contactEmail, subject, ...marketingEmail({ company: ctx.wsName, text: body, unsubscribe: unsub }), unsubscribe: unsub }]);
+          if (!ok) throw new Error("O email não saiu: o Resend recusou (confira o domínio e a chave).");
+          log(`Email enviado para ${ctx.contactEmail}.`);
+          if (ctx.lead) await port.logOnLead(ws, ctx.lead.id, r.name, `Email enviado: ${subject}`);
           break;
         }
         case "note": {

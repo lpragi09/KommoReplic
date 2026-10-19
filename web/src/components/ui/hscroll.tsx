@@ -93,7 +93,7 @@ export function HScroll({ children, className, label = "Rolagem das etapas" }: {
               onPointerMove={onThumbMove}
               onPointerUp={() => (drag.current = null)}
               onPointerCancel={() => (drag.current = null)}
-              className="absolute inset-y-0.5 cursor-grab rounded-pill bg-[linear-gradient(90deg,var(--accent),#3b82f6)] shadow-[0_2px_6px_-2px_rgba(29,78,216,.6)] transition-[filter] hover:brightness-110 active:cursor-grabbing"
+              className="absolute inset-y-0.5 cursor-grab rounded-pill bg-[linear-gradient(90deg,var(--accent),#34a274)] shadow-[0_2px_6px_-2px_rgba(31,122,85,.6)] transition-[filter] hover:brightness-110 active:cursor-grabbing"
               style={{ left: `${m.left * 100}%`, width: `${Math.max(m.width * 100, 6)}%` }}
             />
           </div>

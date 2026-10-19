@@ -545,7 +545,7 @@ export function LeadCard({
   return (
     <article
       className={cn(
-        "fx-lift group relative rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.05)] hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-8px_rgba(14,26,58,.25)]",
+        "fx-lift group relative rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.05)] hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-8px_rgba(20,28,24,.25)]",
         overlay && "rotate-[1.5deg] shadow-drag",
       )}
     >

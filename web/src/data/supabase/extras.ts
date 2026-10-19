@@ -3,6 +3,9 @@ import { createHash, randomBytes } from "node:crypto";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { renderText } from "../robots/engine";
+import { marketingEmail, sendEmailBatch, type OutEmail } from "@/lib/email";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { kindOf, safeName } from "@/lib/attachments";
 import {
   DomainError,
   type Broadcast,
@@ -247,10 +250,28 @@ export async function setLeadCustom(wsId: ID, _actor: ID, leadId: ID, fieldId: I
 // ---------------------------------------------------------------------------
 export async function listTeamMessages(wsId: ID): Promise<TeamMessage[]> {
   const sb = await userClient();
-  const rows = check(await sb.from("team_messages").select("id, user_id, body, created_at, profiles:user_id(full_name, email)").eq("workspace_id", wsId).order("created_at", { ascending: false }).limit(200));
-  return rows
-    .reverse()
-    .map((m: Row) => ({ id: m.id, userId: m.user_id, userName: m.profiles?.full_name || m.profiles?.email || "Alguém", body: m.body, createdAt: new Date(m.created_at).toISOString() }));
+  const q = (withFiles: boolean) =>
+    sb
+      .from("team_messages")
+      .select(`id, user_id, body, created_at, profiles:user_id(full_name, email)${withFiles ? ", files(id, name, mime, size_bytes, storage_path)" : ""}`)
+      .eq("workspace_id", wsId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+  let res = await q(true);
+  if (res.error) res = await q(false); // banco sem a coluna de anexo no chat da equipe
+  const rows: Row[] = check(res);
+  const paths = rows.map((m) => m.files?.storage_path).filter(Boolean) as string[];
+  const urls = new Map<string, string>();
+  if (paths.length) for (const d of (await sb.storage.from("attachments").createSignedUrls(paths, 3600)).data ?? []) if (d.signedUrl && d.path) urls.set(d.path, d.signedUrl);
+  return rows.reverse().map((m: Row) => ({
+    id: m.id,
+    userId: m.user_id,
+    userName: m.profiles?.full_name || m.profiles?.email || "Alguém",
+    body: m.body,
+    createdAt: new Date(m.created_at).toISOString(),
+    kind: m.files ? (kindOf(m.files.mime) ?? "file") : "text",
+    file: m.files ? { id: m.files.id, name: m.files.name, mime: m.files.mime, size: Number(m.files.size_bytes), url: urls.get(m.files.storage_path) ?? null } : null,
+  }));
 }
 
 export async function sendTeamMessage(wsId: ID, _actor: ID, body: string) {
@@ -259,44 +280,87 @@ export async function sendTeamMessage(wsId: ID, _actor: ID, body: string) {
   check(await sb.from("team_messages").insert({ workspace_id: wsId, user_id: uid, body: body.trim() }));
 }
 
+/** arquivo no chat da equipe: storage na pasta da empresa + registro em files + mensagem com file_id */
+export async function sendTeamAttachment(wsId: ID, _actor: ID, file: { name: string; mime: string; bytes: Uint8Array }, caption: string) {
+  const kind = kindOf(file.mime);
+  if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito.");
+  const { sb, uid } = await me();
+  const path = `${wsId}/equipe/${crypto.randomUUID()}/${safeName(file.name)}`;
+  const up = await sb.storage.from("attachments").upload(path, file.bytes, { contentType: file.mime, upsert: false });
+  if (up.error) throw new DomainError("invalid", "Não deu para guardar o arquivo. Tente de novo.");
+  const f = check(await sb.from("files").insert({ workspace_id: wsId, storage_path: path, name: file.name.slice(0, 200), mime: file.mime, size_bytes: file.bytes.byteLength, uploaded_by: uid }).select("id").single());
+  const body = caption.trim() || { image: "[foto]", audio: "[áudio]", video: "[vídeo]", file: "[arquivo]" }[kind];
+  check(await sb.from("team_messages").insert({ workspace_id: wsId, user_id: uid, body, file_id: f.id }));
+}
+
 // ---------------------------------------------------------------------------
 // disparos
 // ---------------------------------------------------------------------------
 async function audience(wsId: ID, f: BroadcastFilter) {
   const sb = await userClient();
-  let q = sb
-    .from("leads")
-    .select("*, lead_tags(tags(name)), lead_contacts(is_main, contacts(name)), conversations(id, channel_id, last_inbound_at, contacts(name), channels(kind)), profiles:responsible_user_id(full_name)")
-    .eq("workspace_id", wsId)
-    .is("deleted_at", null)
-    .limit(2000);
-  if (f.pipelineId) q = q.eq("pipeline_id", f.pipelineId);
-  if (f.stageIds.length) q = q.in("stage_id", f.stageIds);
-  const rows: Row[] = check(await q);
+  const query = (optOut: boolean) => {
+    let q = sb
+      .from("leads")
+      .select(
+        `*, lead_tags(tags(name)), lead_contacts(is_main, contacts(id, name, ${optOut ? "email_opt_out, " : ""}contact_identities(kind, value))), conversations(id, channel_id, last_inbound_at, contacts(name), channels(kind)), profiles:responsible_user_id(full_name)`,
+      )
+      .eq("workspace_id", wsId)
+      .is("deleted_at", null)
+      .limit(2000);
+    if (f.pipelineId) q = q.eq("pipeline_id", f.pipelineId);
+    if (f.stageIds.length) q = q.in("stage_id", f.stageIds);
+    return q;
+  };
+  let res = await query(true);
+  if (res.error) res = await query(false); // banco sem a coluna de descadastro
+  const rows: Row[] = check(res);
   return rows
     .map((r) => {
       const tags: string[] = (r.lead_tags ?? []).map((t: Row) => t.tags?.name).filter(Boolean);
       const conv: Row | undefined = (r.conversations ?? [])[0];
       const main = (r.lead_contacts ?? []).find((x: Row) => x.is_main) ?? (r.lead_contacts ?? [])[0];
       const lead = { id: r.id, name: r.name, number: Number(r.number), pipelineId: r.pipeline_id, stageId: r.stage_id, tags } as unknown as Lead;
-      return { lead, tags, conv, kind: (conv?.channels?.kind ?? null) as ChannelKind | null, contactName: conv?.contacts?.name ?? main?.contacts?.name ?? "", responsible: r.profiles?.full_name ?? "" };
+      const email: string | null = (main?.contacts?.contact_identities ?? []).find((i: Row) => i.kind === "email")?.value ?? null;
+      return {
+        lead,
+        tags,
+        conv,
+        kind: (conv?.channels?.kind ?? null) as ChannelKind | null,
+        contactName: conv?.contacts?.name ?? main?.contacts?.name ?? "",
+        responsible: r.profiles?.full_name ?? "",
+        contactId: (main?.contacts?.id ?? null) as string | null,
+        email,
+        optOut: !!main?.contacts?.email_opt_out,
+      };
     })
     .filter((x) => (!f.tag || x.tags.includes(f.tag)) && (!f.channels.length || (x.kind && f.channels.includes(x.kind))));
 }
 
 export async function previewBroadcast(wsId: ID, f: BroadcastFilter) {
   const a = await audience(wsId, f);
-  return { leads: a.length, reachable: a.filter((x) => x.conv).length };
+  return { leads: a.length, reachable: a.filter((x) => x.conv).length, emails: a.filter((x) => x.email && !x.optOut).length };
 }
 
-export async function sendBroadcast(wsId: ID, _actor: ID, input: { name: string; body: string; filter: BroadcastFilter }): Promise<Broadcast> {
+export async function sendBroadcast(wsId: ID, _actor: ID, input: { name: string; body: string; filter: BroadcastFilter; medium?: "message" | "email"; subject?: string }): Promise<Broadcast> {
   const { sb, uid } = await me();
   const ws = check(await sb.from("workspaces").select("name").eq("id", wsId).single());
   const targets = await audience(wsId, input.filter);
   let sent = 0;
   let failed = 0;
   const rows: Row[] = [];
-  for (const t of targets) {
+  if (input.medium === "email") {
+    // email: só quem tem email e não pediu descadastro; vai em lotes de 100 pelo Resend
+    const out: OutEmail[] = [];
+    for (const t of targets) {
+      if (!t.email || t.optOut) continue;
+      const ctx = { wsName: ws.name, lead: t.lead, contactName: t.contactName, conversation: null, channelKind: null, responsibleName: t.responsible };
+      const unsub = t.contactId ? unsubscribeUrl(t.contactId) : null;
+      out.push({ to: t.email, subject: renderText(input.subject ?? "", ctx) || ws.name, ...marketingEmail({ company: ws.name, text: renderText(input.body, ctx), unsubscribe: unsub }), unsubscribe: unsub });
+    }
+    sent = await sendEmailBatch(out);
+    failed = targets.length - sent;
+  }
+  for (const t of input.medium === "email" ? [] : targets) {
     if (!t.conv || !t.kind || (t.kind === "whatsapp" && (!t.conv.last_inbound_at || Date.now() - Date.parse(t.conv.last_inbound_at) > 864e5))) {
       failed++;
       continue;
@@ -309,14 +373,11 @@ export async function sendBroadcast(wsId: ID, _actor: ID, input: { name: string;
     if (error) failed += Math.min(200, rows.length - i);
     else sent += Math.min(200, rows.length - i);
   }
-  const b = check(
-    await sb
-      .from("broadcasts")
-      .insert({ workspace_id: wsId, name: input.name.trim(), body: input.body.trim(), filter: input.filter, total: targets.length, sent, failed, created_by: uid })
-      .select("*")
-      .single(),
-  );
-  return { id: b.id, name: b.name, body: b.body, filter: b.filter, total: b.total, sent: b.sent, failed: b.failed, createdBy: "", createdAt: new Date(b.created_at).toISOString() };
+  const row = { workspace_id: wsId, name: input.name.trim(), body: input.body.trim(), filter: input.filter, total: targets.length, sent, failed, created_by: uid };
+  let ins = await sb.from("broadcasts").insert({ ...row, medium: input.medium ?? "message", subject: input.subject?.trim() || null }).select("*").single();
+  if (ins.error) ins = await sb.from("broadcasts").insert(row).select("*").single(); // banco sem as colunas de email
+  const b = check(ins);
+  return { id: b.id, name: b.name, body: b.body, filter: b.filter, total: b.total, sent: b.sent, failed: b.failed, createdBy: "", createdAt: new Date(b.created_at).toISOString(), medium: b.medium ?? "message", subject: b.subject ?? null };
 }
 
 export async function listBroadcasts(wsId: ID): Promise<Broadcast[]> {
@@ -331,7 +392,18 @@ export async function listBroadcasts(wsId: ID): Promise<Broadcast[]> {
     failed: b.failed,
     createdBy: b.profiles?.full_name ?? "",
     createdAt: new Date(b.created_at).toISOString(),
+    medium: b.medium ?? "message",
+    subject: b.subject ?? null,
   }));
+}
+
+/** link de descadastro: marca o contato para não receber mais emails (página pública, chave secreta) */
+export async function optOutContact(contactId: ID): Promise<{ workspaceName: string } | null> {
+  const a = adminClient();
+  const c = check(await a.from("contacts").select("workspace_id, workspaces(name)").eq("id", contactId).maybeSingle());
+  if (!c) return null;
+  check(await a.from("contacts").update({ email_opt_out: true }).eq("id", contactId));
+  return { workspaceName: (c.workspaces as Row | null)?.name ?? "" };
 }
 
 // ---------------------------------------------------------------------------

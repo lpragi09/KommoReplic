@@ -16,7 +16,7 @@ import { stageBar } from "./kanban";
 
 const COLORS: StageColor[] = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
-const menuBox = "z-50 min-w-52 rounded-lg bg-bg p-1.5 shadow-[0_0_0_1px_var(--border),0_18px_40px_-14px_rgba(14,26,58,.4)] data-[state=open]:animate-[fx-pop_.14s_ease-out]";
+const menuBox = "z-50 min-w-52 rounded-lg bg-bg p-1.5 shadow-[0_0_0_1px_var(--border),0_18px_40px_-14px_rgba(20,28,24,.4)] data-[state=open]:animate-[fx-pop_.14s_ease-out]";
 const menuItem = "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-fg outline-none data-[highlighted]:bg-accent-soft";
 const menuDanger = "flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft";
 
@@ -317,7 +317,7 @@ export function AddStageColumn({ slug, pipelineId, onError }: { slug: string; pi
             e.preventDefault();
             save();
           }}
-          className="flex flex-col gap-2 rounded-lg bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_10px_24px_-14px_rgba(14,26,58,.4)]"
+          className="flex flex-col gap-2 rounded-lg bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_10px_24px_-14px_rgba(20,28,24,.4)]"
         >
           <label htmlFor="new-stage" className="text-sm font-medium text-fg">
             Nome da nova etapa

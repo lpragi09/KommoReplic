@@ -43,11 +43,11 @@ export default async function ContactsPage({ params, searchParams }: PageProps<"
           {!q && (
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { icon: Contact, label: "Pessoas", value: contacts.length, tone: "from-[#3b82f6] to-[var(--accent)]" },
+                { icon: Contact, label: "Pessoas", value: contacts.length, tone: "from-[#34a274] to-[var(--accent)]" },
                 { icon: Briefcase, label: "Com negócio aberto ou fechado", value: withDeals, tone: "from-[#34d399] to-[#059669]" },
                 { icon: Building2, label: "Ligadas a uma empresa", value: withCompany, tone: "from-[#a78bfa] to-[#6d28d9]" },
               ].map((k) => (
-                <div key={k.label} className="flex items-center gap-4 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+                <div key={k.label} className="flex items-center gap-4 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
                   <span className={`grid size-11 place-items-center rounded-lg bg-gradient-to-br text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3)] ${k.tone}`} aria-hidden>
                     <k.icon className="size-5" weight="fill" />
                   </span>
@@ -81,7 +81,7 @@ export default async function ContactsPage({ params, searchParams }: PageProps<"
                 <li key={c.id}>
                   <Link
                     href={`/${slug}/contacts/${c.id}`}
-                    className="group flex h-full flex-col gap-3 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(29,78,216,.45)]"
+                    className="group flex h-full flex-col gap-3 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(31,122,85,.45)]"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar name={c.name} size={40} />

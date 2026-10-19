@@ -2,7 +2,7 @@ import "server-only";
 import { BRAND } from "@/lib/brand";
 
 /* Email transacional pelo Resend (API REST). Precisa de RESEND_API_KEY e EMAIL_FROM
-   (ex.: "netzer tech <convites@seudominio.com.br>", com o domínio verificado no Resend).
+   (ex.: "netzer <convites@seudominio.com.br>", com o domínio verificado no Resend).
    Sem essas variáveis não envia nada e devolve false: quem chamou mostra o link para mandar à mão. */
 
 export const emailOn = () => !!process.env.RESEND_API_KEY && !!process.env.EMAIL_FROM;
@@ -45,4 +45,56 @@ Se você não esperava este convite, é só ignorar.`;
 <tr><td style="padding-top:20px;font-size:12px;color:#888">Se você não esperava este convite, é só ignorar.</td></tr>
 </table></td></tr></table></body></html>`;
   return { subject, text, html };
+}
+
+/** email escrito no CRM (texto simples com {{variáveis}} já trocadas) → HTML enxuto + rodapé com descadastro */
+export function marketingEmail(o: { company: string; text: string; unsubscribe: string | null }) {
+  const paras = o.text
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${esc(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const foot = o.unsubscribe
+    ? `Você recebe este email por ser contato de ${esc(o.company)}. <a href="${esc(o.unsubscribe)}" style="color:#888">Não quero mais receber</a>.`
+    : `Enviado por ${esc(o.company)}.`;
+  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f7f7f5;font-family:Segoe UI,Arial,sans-serif;color:#111">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 16px">
+<table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;padding:28px" cellpadding="0" cellspacing="0"><tr><td>${paras}</td></tr></table>
+<p style="max-width:560px;font-size:12px;color:#888;line-height:1.5;margin:14px auto 0">${foot}</p>
+</td></tr></table></body></html>`;
+  const text = o.unsubscribe ? `${o.text}\n\n—\nNão quer mais receber? ${o.unsubscribe}` : o.text;
+  return { html, text };
+}
+
+export type OutEmail = { to: string; subject: string; html: string; text: string; unsubscribe?: string | null };
+
+/** vários emails de uma vez (Resend: até 100 por pedido). Devolve quantos o Resend aceitou. */
+export async function sendEmailBatch(list: OutEmail[]) {
+  if (!emailOn() || !list.length) return 0;
+  let ok = 0;
+  for (let i = 0; i < list.length; i += 100) {
+    const chunk = list.slice(i, i + 100);
+    try {
+      const res = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify(
+          chunk.map((m) => ({
+            from: process.env.EMAIL_FROM,
+            to: [m.to],
+            subject: m.subject,
+            html: m.html,
+            text: m.text,
+            // descadastro em um clique (Gmail, Outlook): POST direto na rota da API
+            ...(m.unsubscribe ? { headers: { "List-Unsubscribe": `<${m.unsubscribe.replace("/descadastrar/", "/api/descadastrar/")}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } } : {}),
+          })),
+        ),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (res.ok) ok += chunk.length;
+      else console.error("[email] lote recusado", res.status, (await res.text().catch(() => "")).slice(0, 300));
+    } catch (e) {
+      console.error("[email] lote falhou", e instanceof Error ? e.message : e);
+    }
+  }
+  return ok;
 }

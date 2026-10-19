@@ -27,7 +27,7 @@ export default async function AutomationsPage({ params }: PageProps<"/[ws]/autom
             </Link>
             <Link
               href={`/${slug}/automations/new`}
-              className="fx-shine inline-flex h-9 items-center gap-2 rounded-sm bg-accent px-4 text-base font-medium text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_6px_16px_-6px_rgba(29,78,216,.6)] hover:bg-accent-hover"
+              className="fx-shine inline-flex h-9 items-center gap-2 rounded-sm bg-accent px-4 text-base font-medium text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_6px_16px_-6px_rgba(31,122,85,.6)] hover:bg-accent-hover"
             >
               <Plus className="size-4" aria-hidden /> Novo robô
             </Link>

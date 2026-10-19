@@ -40,7 +40,7 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
   const chip = (on: boolean) =>
     cn(
       "inline-flex h-9 items-center gap-2 rounded-pill px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-fast ease-out",
-      on ? "bg-accent text-on-accent shadow-[0_6px_14px_-8px_rgba(29,78,216,.8)]" : "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg hover:shadow-[inset_0_0_0_1px_var(--border-input)]",
+      on ? "bg-accent text-on-accent shadow-[0_6px_14px_-8px_rgba(31,122,85,.8)]" : "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-bg hover:shadow-[inset_0_0_0_1px_var(--border-input)]",
     );
 
   return (
@@ -79,7 +79,7 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
 
       <form
         role="search"
-        className="group flex h-10 min-w-0 flex-1 basis-40 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(37,99,235,.15)] sm:w-64 sm:flex-none"
+        className="group flex h-10 min-w-0 flex-1 basis-40 items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(31,122,85,.15)] sm:w-64 sm:flex-none"
         onSubmit={(e) => {
           e.preventDefault();
           set({ q: q.trim() || null });
@@ -129,7 +129,7 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
             align="start"
             sideOffset={8}
             collisionPadding={12}
-            className="z-50 w-[min(380px,calc(100vw-24px))] rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_24px_50px_-18px_rgba(14,26,58,.45)] data-[state=open]:animate-[fx-pop_.14s_ease-out]"
+            className="z-50 w-[min(380px,calc(100vw-24px))] rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_24px_50px_-18px_rgba(20,28,24,.45)] data-[state=open]:animate-[fx-pop_.14s_ease-out]"
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <p className="font-semibold text-fg">Filtrar leads</p>

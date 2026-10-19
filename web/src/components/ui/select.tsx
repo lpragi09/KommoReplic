@@ -59,8 +59,8 @@ export function Select({
         <S.Trigger
           id={id}
           className={cn(
-            "group inline-flex w-full items-center gap-2 rounded-md border border-border bg-[color-mix(in_srgb,var(--surface)_55%,var(--bg))] text-left text-fg shadow-[inset_0_1px_2px_rgba(14,26,58,.05)] outline-none transition-[border-color,box-shadow,background-color] duration-fast ease-out",
-            "hover:border-border-input hover:bg-bg focus-visible:border-focus focus-visible:bg-bg focus-visible:shadow-[0_0_0_4px_rgba(37,99,235,.15)] data-[state=open]:border-focus data-[state=open]:bg-bg data-[state=open]:shadow-[0_0_0_4px_rgba(37,99,235,.15)]",
+            "group inline-flex w-full items-center gap-2 rounded-md border border-border bg-[color-mix(in_srgb,var(--surface)_55%,var(--bg))] text-left text-fg shadow-[inset_0_1px_2px_rgba(20,28,24,.05)] outline-none transition-[border-color,box-shadow,background-color] duration-fast ease-out",
+            "hover:border-border-input hover:bg-bg focus-visible:border-focus focus-visible:bg-bg focus-visible:shadow-[0_0_0_4px_rgba(31,122,85,.15)] data-[state=open]:border-focus data-[state=open]:bg-bg data-[state=open]:shadow-[0_0_0_4px_rgba(31,122,85,.15)]",
             size === "sm" ? "h-9 px-3 text-sm" : "h-11 px-3.5 text-base",
             triggerClassName,
           )}
@@ -76,7 +76,7 @@ export function Select({
             position="popper"
             sideOffset={6}
             collisionPadding={12}
-            className="z-[60] max-h-[min(360px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg bg-bg p-1.5 shadow-[0_0_0_1px_var(--border),0_18px_40px_-14px_rgba(14,26,58,.4)] data-[state=open]:animate-[fx-pop_.14s_ease-out]"
+            className="z-[60] max-h-[min(360px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg bg-bg p-1.5 shadow-[0_0_0_1px_var(--border),0_18px_40px_-14px_rgba(20,28,24,.4)] data-[state=open]:animate-[fx-pop_.14s_ease-out]"
           >
             <S.Viewport className="flex flex-col gap-0.5">
               {options.map((o) => (

@@ -23,8 +23,8 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
       </label>
       <div
         className={cn(
-          "flex h-11 items-center gap-2 rounded-md border bg-[color-mix(in_srgb,var(--surface)_55%,var(--bg))] px-3.5 text-base shadow-[inset_0_1px_2px_rgba(14,26,58,.05)] transition-[border-color,box-shadow,background-color] duration-fast ease-out",
-          "hover:bg-bg focus-within:border-focus focus-within:bg-bg focus-within:shadow-[0_0_0_4px_rgba(37,99,235,.15)]",
+          "flex h-11 items-center gap-2 rounded-md border bg-[color-mix(in_srgb,var(--surface)_55%,var(--bg))] px-3.5 text-base shadow-[inset_0_1px_2px_rgba(20,28,24,.05)] transition-[border-color,box-shadow,background-color] duration-fast ease-out",
+          "hover:bg-bg focus-within:border-focus focus-within:bg-bg focus-within:shadow-[0_0_0_4px_rgba(31,122,85,.15)]",
           error ? "border-danger" : "border-border hover:border-border-input",
           props.disabled && "bg-surface opacity-70",
         )}

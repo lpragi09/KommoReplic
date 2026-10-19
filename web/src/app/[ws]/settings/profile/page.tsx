@@ -22,7 +22,7 @@ export default async function ProfilePage({ params }: PageProps<"/[ws]/settings/
       <PageHeader title="Meu perfil" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
       <div className="flex-1 overflow-y-auto bg-surface">
         <div className="mx-auto max-w-2xl p-4 sm:p-6">
-          <section className="flex flex-wrap items-center gap-6 rounded-xl bg-bg p-6 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+          <section className="flex flex-wrap items-center gap-6 rounded-xl bg-bg p-6 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
             <PhotoPicker
               slug={slug}
               kind="me"

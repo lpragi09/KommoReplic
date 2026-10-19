@@ -5,6 +5,7 @@ import {
   ChatText,
   CheckCheck,
   Link2,
+  Mail,
   MessageSquare,
   Textbox,
   Users,
@@ -50,6 +51,7 @@ export const stepIcon: Record<RobotStepType, LucideIcon> = {
   set_field: Textbox,
   close: XCircle,
   webhook: Link2,
+  email: Mail,
   start_robot: Bot,
   stop: X,
 };
@@ -71,6 +73,7 @@ export const stepTone: Record<RobotStepType, string> = {
   set_field: "bg-accent-soft text-accent-text",
   close: "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)]",
   webhook: "bg-inverse-bg text-on-inverse",
+  email: "bg-accent-soft text-accent-text",
   start_robot: "bg-inverse-bg text-on-inverse",
   stop: "bg-danger-soft text-danger",
 };
@@ -107,7 +110,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       <span
         aria-hidden
         className={cn(
-          "absolute left-0.5 size-5 rounded-pill bg-bg shadow-[0_1px_3px_rgba(14,26,58,.3)] transition-transform duration-fast ease-out",
+          "absolute left-0.5 size-5 rounded-pill bg-bg shadow-[0_1px_3px_rgba(20,28,24,.3)] transition-transform duration-fast ease-out",
           checked && "translate-x-4",
         )}
       />

@@ -3,6 +3,9 @@ import { connection } from "next/server";
 import { randomBytes } from "node:crypto";
 import { db, hash, now, uid } from "./store";
 import { renderText } from "../robots/engine";
+import { marketingEmail, sendEmailBatch, type OutEmail } from "@/lib/email";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
+import { kindOf } from "@/lib/attachments";
 import {
   DomainError,
   type Broadcast,
@@ -216,6 +219,15 @@ export async function sendTeamMessage(wsId: ID, actor: ID, body: string) {
   db.teamMessages.push({ id: uid(), workspaceId: wsId, userId: actor, body: body.trim(), createdAt: now() });
 }
 
+/** arquivo no chat da equipe: no banco em memória vira data URL (demonstração) */
+export async function sendTeamAttachment(wsId: ID, actor: ID, file: { name: string; mime: string; bytes: Uint8Array }, caption: string) {
+  const kind = kindOf(file.mime);
+  if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito.");
+  const body = caption.trim() || { image: "[foto]", audio: "[áudio]", video: "[vídeo]", file: "[arquivo]" }[kind];
+  const url = `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}`;
+  db.teamMessages.push({ id: uid(), workspaceId: wsId, userId: actor, body, createdAt: now(), kind, file: { id: uid(), name: file.name.slice(0, 200), mime: file.mime, size: file.bytes.byteLength, url } });
+}
+
 // ---------------------------------------------------------------------------
 // disparos
 // ---------------------------------------------------------------------------
@@ -233,7 +245,17 @@ function audience(wsId: ID, f: BroadcastFilter) {
       const ch = conv ? db.channels.find((c) => c.id === conv.channelId) : undefined;
       const link = db.leadContacts.find((x) => x.leadId === l.id && x.isMain) ?? db.leadContacts.find((x) => x.leadId === l.id);
       const contact = db.contacts.find((c) => c.id === (conv?.contactId ?? link?.contactId));
-      return { lead: l, conv, kind: ch?.kind ?? null, contactName: contact?.name ?? "", responsible: db.users.find((u) => u.id === l.responsibleUserId)?.name ?? "" };
+      const mainContact = db.contacts.find((c) => c.id === link?.contactId) ?? contact;
+      return {
+        lead: l,
+        conv,
+        kind: ch?.kind ?? null,
+        contactName: contact?.name ?? "",
+        responsible: db.users.find((u) => u.id === l.responsibleUserId)?.name ?? "",
+        contactId: mainContact?.id ?? null,
+        email: mainContact?.identities.find((i) => i.kind === "email")?.value ?? null,
+        optOut: !!mainContact?.emailOptOut,
+      };
     })
     .filter((x) => !f.channels.length || (x.kind && f.channels.includes(x.kind)));
 }
@@ -241,15 +263,26 @@ function audience(wsId: ID, f: BroadcastFilter) {
 export async function previewBroadcast(wsId: ID, f: BroadcastFilter) {
   await connection();
   const a = audience(wsId, f);
-  return { leads: a.length, reachable: a.filter((x) => x.conv).length };
+  return { leads: a.length, reachable: a.filter((x) => x.conv).length, emails: a.filter((x) => x.email && !x.optOut).length };
 }
 
-export async function sendBroadcast(wsId: ID, actor: ID, input: { name: string; body: string; filter: BroadcastFilter }): Promise<Broadcast> {
+export async function sendBroadcast(wsId: ID, actor: ID, input: { name: string; body: string; filter: BroadcastFilter; medium?: "message" | "email"; subject?: string }): Promise<Broadcast> {
   const ws = db.workspaces.find((w) => w.id === wsId)!;
   let sent = 0;
   let failed = 0;
   const targets = audience(wsId, input.filter);
-  for (const t of targets) {
+  if (input.medium === "email") {
+    const out: OutEmail[] = [];
+    for (const t of targets) {
+      if (!t.email || t.optOut) continue;
+      const ctx = { wsName: ws.name, lead: t.lead, contactName: t.contactName, conversation: null, channelKind: null, responsibleName: t.responsible };
+      const unsub = t.contactId ? unsubscribeUrl(t.contactId) : null;
+      out.push({ to: t.email, subject: renderText(input.subject ?? "", ctx) || ws.name, ...marketingEmail({ company: ws.name, text: renderText(input.body, ctx), unsubscribe: unsub }), unsubscribe: unsub });
+    }
+    sent = await sendEmailBatch(out);
+    failed = targets.length - sent;
+  }
+  for (const t of input.medium === "email" ? [] : targets) {
     if (!t.conv || !t.kind) {
       failed++;
       continue;
@@ -264,9 +297,16 @@ export async function sendBroadcast(wsId: ID, actor: ID, input: { name: string; 
     Object.assign(t.conv, { lastMessageAt: m.sentAt, lastMessagePreview: text, isUnanswered: false });
     sent++;
   }
-  const b = { id: uid(), workspaceId: wsId, name: input.name.trim(), body: input.body.trim(), filter: input.filter, total: targets.length, sent, failed, createdBy: actor, createdAt: now() };
+  const b = { id: uid(), workspaceId: wsId, name: input.name.trim(), body: input.body.trim(), filter: input.filter, total: targets.length, sent, failed, createdBy: actor, createdAt: now(), medium: input.medium ?? "message", subject: input.subject?.trim() || null };
   db.broadcasts.push(b);
   return { ...b, createdBy: db.users.find((u) => u.id === actor)?.name ?? "" };
+}
+
+export async function optOutContact(contactId: ID): Promise<{ workspaceName: string } | null> {
+  const c = db.contacts.find((x) => x.id === contactId);
+  if (!c) return null;
+  c.emailOptOut = true;
+  return { workspaceName: db.workspaces.find((w) => w.id === c.workspaceId)?.name ?? "" };
 }
 
 export async function listBroadcasts(wsId: ID): Promise<Broadcast[]> {

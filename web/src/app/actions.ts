@@ -11,7 +11,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { digits, isDisposableEmail, validDoc } from "@/lib/document";
 import { cleanAttribution } from "@/lib/utm";
 import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
-import { inviteEmail, sendEmail } from "@/lib/email";
+import { emailOn, inviteEmail, sendEmail } from "@/lib/email";
 import { checkTemplate } from "@/lib/template-rules";
 import { limitsOf, upgradeFor, type Limits } from "@/lib/plans";
 import { MetaError, verifyAccount } from "@/lib/meta";
@@ -170,7 +170,7 @@ const wsSchema = z
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9-]{3,40}$/, "Use de 3 a 40 letras minúsculas, números ou hífen.")
-    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite"].includes(s), "Esse endereço é reservado."),
+    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite", "descadastrar"].includes(s), "Esse endereço é reservado."),
   timezone: z.string().min(1),
   currency: z.enum(["BRL", "USD", "EUR"]),
   ...docFields,
@@ -634,6 +634,7 @@ const robotStep = z.discriminatedUnion("type", [
   z.object({ ...base, type: z.literal("close") }),
   z.object({ ...base, type: z.literal("webhook"), url: z.string().trim().regex(/^https:\/\/[^\s/]+\.[^\s]+$/, "O webhook precisa de um endereço https:// válido.").max(500) }),
   z.object({ ...base, type: z.literal("start_robot"), robotId: z.string().uuid("Escolha o robô.") }),
+  z.object({ ...base, type: z.literal("email"), subject: z.string().trim().min(1, "Escreva o assunto do email.").max(200), text: z.string().trim().min(1, "Escreva o texto do email.").max(5000) }),
   z.object({ ...base, type: z.literal("stop") }),
 ]);
 const robotInput = z
@@ -660,7 +661,7 @@ const robotInput = z
           .refine((h) => h.from !== h.to, "O horário de início e de fim não podem ser iguais.")
           .optional(),
         origin: z.literal("stage_trigger").optional(),
-        action: z.enum(["robot", "message", "task", "tag", "stage", "responsible", "webhook", "note"]).optional(),
+        action: z.enum(["robot", "message", "email", "task", "tag", "stage", "responsible", "webhook", "note"]).optional(),
       })
       .optional(),
   })
@@ -910,6 +911,22 @@ export async function setLeadFieldAction(slug: string, leadId: string, fieldId: 
 // ---------------------------------------------------------------------------
 // chat da equipe
 // ---------------------------------------------------------------------------
+/** arquivo (foto, áudio, vídeo, documento) no chat da equipe, com legenda opcional */
+export async function sendTeamAttachmentAction(slug: string, form: FormData) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    if (!(await rateLimit(`team-file:${user.id}`, 10, 60_000))) throw new DomainError("invalid", "Muitos arquivos seguidos. Espere um pouco.");
+    const file = form.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new DomainError("invalid", "Escolha um arquivo.");
+    if (file.size > MAX_ATTACHMENT) throw new DomainError("invalid", "Arquivo grande demais: o limite é 4 MB.");
+    const mime = file.type || "application/octet-stream";
+    if (!kindOf(mime)) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito. Use foto, áudio, vídeo, PDF ou documento do Office.");
+    const caption = z.string().max(1000).parse(String(form.get("caption") ?? ""));
+    await data.sendTeamAttachment(ws.id, user.id, { name: file.name || "arquivo", mime, bytes: new Uint8Array(await file.arrayBuffer()) }, caption);
+    return null;
+  });
+}
+
 export async function sendTeamMessageAction(slug: string, body: string) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
@@ -934,14 +951,23 @@ export async function previewBroadcastAction(slug: string, filter: z.input<typeo
   return data.previewBroadcast(ws.id, bcFilter.parse(filter));
 }
 
-export async function sendBroadcastAction(slug: string, input: { name: string; body: string; filter: z.input<typeof bcFilter> }) {
+export async function sendBroadcastAction(slug: string, input: { name: string; body: string; filter: z.input<typeof bcFilter>; medium?: "message" | "email"; subject?: string }) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     if (!(await planLimits(ws.id)).l.broadcasts) throw new DomainError("invalid", `Disparos fazem parte do plano ${upgradeFor((x) => x.broadcasts)} em diante. Mude em Configurações → Plano e cobrança.`);
     if (!(await rateLimit(`bc:${ws.id}`, 5, 60 * 60_000))) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
     const v = z
-      .object({ name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80), body: z.string().trim().min(1, "Escreva a mensagem.").max(2000), filter: bcFilter })
+      .object({
+        name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80),
+        medium: z.enum(["message", "email"]).default("message"),
+        subject: z.string().trim().max(200).optional(),
+        body: z.string().trim().min(1, "Escreva a mensagem.").max(5000),
+        filter: bcFilter,
+      })
+      .refine((x) => x.medium !== "email" || !!x.subject, "Escreva o assunto do email.")
+      .refine((x) => x.medium === "email" || x.body.length <= 2000, "Mensagem longa demais (máximo 2.000 caracteres).")
       .parse(input);
+    if (v.medium === "email" && !emailOn()) throw new DomainError("invalid", "Para disparar email, configure o Resend na Vercel (RESEND_API_KEY e EMAIL_FROM).");
     const b = await data.sendBroadcast(ws.id, user.id, v);
     await data.deliverQueued(ws.id).catch(() => 0);
     return { sent: b.sent, failed: b.failed, total: b.total };

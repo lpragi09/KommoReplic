@@ -10,7 +10,7 @@ import { open } from "@/lib/secret-box";
 /* Webhook da Meta (WhatsApp Cloud API).
    GET: handshake de verificação (hub.verify_token).
    POST: confere X-Hub-Signature-256, grava cada mensagem com o id da Meta (receive_inbound é idempotente)
-   e responde 200 rápido. A assinatura vale com a META_APP_SECRET (app da netzer tech) ou com a chave secreta do app
+   e responde 200 rápido. A assinatura vale com a META_APP_SECRET (app da netzer) ou com a chave secreta do app
    que a própria empresa cadastrou no canal; aviso de um canal só é aceito se a assinatura bater com uma delas. */
 
 export async function GET(req: Request) {

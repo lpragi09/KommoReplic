@@ -6,18 +6,22 @@ import { previewBroadcastAction, sendBroadcastAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog, DialogClose } from "@/components/ui/overlay";
-import { Megaphone, Send } from "@/components/ui/icons";
+import { Mail, Megaphone, MessageCircle, Send } from "@/components/ui/icons";
 import { CHANNELS, VARIABLES } from "@/lib/robot-meta";
 import { when } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { channelIcon } from "@/components/robots/parts";
 
-/** Disparo: uma mensagem para vários leads de uma vez, cada um no canal da própria conversa. */
-export function Broadcasts({ slug, pipelines, templates, history }: { slug: string; pipelines: Pipeline[]; templates: Template[]; history: Broadcast[] }) {
+/** Disparo: uma mensagem para vários leads de uma vez — no canal da conversa de cada um, ou por email. */
+export function Broadcasts({ slug, pipelines, templates, history, emailReady = false }: { slug: string; pipelines: Pipeline[]; templates: Template[]; history: Broadcast[]; emailReady?: boolean }) {
+  const [medium, setMedium] = useState<"message" | "email">("message");
+  const [subject, setSubject] = useState("");
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [filter, setFilter] = useState<BroadcastFilter>({ pipelineId: pipelines[0]?.id ?? null, stageIds: [], tag: null, channels: [] });
-  const [count, setCount] = useState<{ leads: number; reachable: number } | null>(null);
+  const [count, setCount] = useState<{ leads: number; reachable: number; emails: number } | null>(null);
+  const isEmail = medium === "email";
+  const reach = count ? (isEmail ? count.emails : count.reachable) : 0;
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -40,15 +44,20 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
 
   const send = () =>
     start(async () => {
-      const res = await sendBroadcastAction(slug, { name, body, filter });
+      const res = await sendBroadcastAction(slug, { name, body, filter: isEmail ? { ...filter, channels: [] } : filter, medium, subject });
       if (!res.ok) {
         setResult(null);
         return setError(res.error);
       }
       setError(null);
-      setResult(`Enviado para ${res.data.sent} de ${res.data.total}${res.data.failed ? ` · ${res.data.failed} sem conversa aberta ou fora da janela do WhatsApp` : ""}.`);
+      setResult(
+        isEmail
+          ? `Email enviado para ${res.data.sent} de ${res.data.total}${res.data.failed ? ` · ${res.data.failed} sem email, descadastrados ou recusados` : ""}.`
+          : `Enviado para ${res.data.sent} de ${res.data.total}${res.data.failed ? ` · ${res.data.failed} sem conversa aberta ou fora da janela do WhatsApp` : ""}.`,
+      );
       setBody("");
       setName("");
+      setSubject("");
     });
 
   const toggleStage = (id: string) => setFilter((f) => ({ ...f, stageIds: f.stageIds.includes(id) ? f.stageIds.filter((x) => x !== id) : [...f.stageIds, id] }));
@@ -57,10 +66,41 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
   return (
     <div className="flex-1 overflow-y-auto bg-surface">
       <div className="mx-auto grid max-w-5xl gap-4 p-4 sm:p-6 lg:grid-cols-[1fr_320px]">
-        <section aria-labelledby="novo-disparo" className="flex flex-col gap-4 rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+        <section aria-labelledby="novo-disparo" className="flex flex-col gap-4 rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
           <h2 id="novo-disparo" className="text-base font-semibold text-fg">
             Novo disparo
           </h2>
+          <div role="radiogroup" aria-label="Como enviar" className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { v: "message", label: "Mensagem", sub: "WhatsApp, Instagram, chat", icon: <MessageCircle className="size-5" aria-hidden /> },
+                { v: "email", label: "Email", sub: "Para o email do contato", icon: <Mail className="size-5" aria-hidden /> },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                role="radio"
+                aria-checked={medium === o.v}
+                onClick={() => setMedium(o.v)}
+                className={cn(
+                  "flex items-center gap-3 rounded-md p-3 text-left transition-shadow duration-fast",
+                  medium === o.v ? "bg-accent-soft shadow-[inset_0_0_0_2px_var(--accent)]" : "bg-surface shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--border-input)]",
+                )}
+              >
+                <span className={cn(medium === o.v ? "text-accent" : "text-muted")}>{o.icon}</span>
+                <span>
+                  <span className="block text-sm font-semibold text-fg">{o.label}</span>
+                  <span className="block text-xs text-muted">{o.sub}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {isEmail && !emailReady && (
+            <p className="rounded-sm bg-warning-soft px-3 py-2 text-sm text-warning">
+              O email ainda não está configurado: cadastre RESEND_API_KEY e EMAIL_FROM na Vercel (com o domínio verificado no Resend).
+            </p>
+          )}
           <Field label="Nome (só para você)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Ex.: Promoção de outubro" />
 
           <fieldset className="flex flex-col gap-2">
@@ -96,6 +136,7 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
               })}
             </div>
             <p className="text-xs text-muted">Nenhuma etapa marcada = todas.</p>
+            {!isEmail && (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Canais">
               {CHANNELS.map((c) => {
                 const on = filter.channels.includes(c.kind);
@@ -113,21 +154,23 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
                 );
               })}
             </div>
+            )}
             <Field label="Só com a etiqueta (opcional)" value={filter.tag ?? ""} onChange={(e) => setFilter((f) => ({ ...f, tag: e.target.value.trim() || null }))} maxLength={40} placeholder="Ex.: cliente-vip" />
           </fieldset>
 
+          {isEmail && <Field label="Assunto" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} placeholder="{{nome}}, novidade na {{empresa}}" />}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="bc-body" className="text-sm font-medium text-fg">
-              Mensagem
+              {isEmail ? "Texto do email" : "Mensagem"}
             </label>
             <textarea
               id="bc-body"
-              rows={5}
+              rows={isEmail ? 8 : 5}
               value={body}
-              maxLength={2000}
+              maxLength={isEmail ? 5000 : 2000}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Oi, {{nome}}! Temos novidade na {{empresa}}…"
-              className="resize-y rounded-sm border border-border bg-bg px-3 py-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(14,26,58,.06)] hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,.15)]"
+              className="resize-y rounded-sm border border-border bg-bg px-3 py-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(20,28,24,.06)] hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(31,122,85,.15)]"
             />
             <div className="flex flex-wrap items-center gap-1">
               <span className="mr-1 text-xs text-muted">Inserir:</span>
@@ -153,7 +196,7 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
             <p className="mr-auto text-sm text-muted" aria-live="polite">
               {count ? (
                 <>
-                  <strong className="font-semibold text-fg">{count.reachable}</strong> de {count.leads} leads têm conversa para receber
+                  <strong className="font-semibold text-fg">{reach}</strong> de {count.leads} leads {isEmail ? "têm email (descadastrados ficam de fora)" : "têm conversa para receber"}
                 </>
               ) : (
                 "Calculando…"
@@ -162,10 +205,10 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
             <Dialog
               icon={<Megaphone className="size-5" />}
               title="Enviar disparo?"
-              description={`A mensagem vai para ${count?.reachable ?? 0} conversas. Não dá para desfazer.`}
+              description={isEmail ? `O email vai para ${reach} contatos. Não dá para desfazer.` : `A mensagem vai para ${reach} conversas. Não dá para desfazer.`}
               size="sm"
               trigger={
-                <Button icon={<Send className="size-4" aria-hidden />} disabled={!body.trim() || !name.trim() || !count?.reachable}>
+                <Button icon={<Send className="size-4" aria-hidden />} disabled={!body.trim() || !name.trim() || !reach || (isEmail && (!subject.trim() || !emailReady))}>
                   Enviar
                 </Button>
               }
@@ -194,7 +237,9 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
             </p>
           )}
           <p className="text-xs text-muted">
-            WhatsApp só deixa mandar texto livre para quem falou com você nas últimas 24h; os demais ficam de fora. Disparos para muita gente fria pedem modelos aprovados pela Meta.
+            {isEmail
+              ? "Cada email leva um link de descadastro no rodapé; quem clicar não recebe mais. Mande só para quem é seu contato: lista comprada vira spam e derruba a entrega."
+              : "WhatsApp só deixa mandar texto livre para quem falou com você nas últimas 24h; os demais ficam de fora. Disparos para muita gente fria pedem modelos aprovados pela Meta."}
           </p>
         </section>
 
@@ -212,12 +257,13 @@ export function Broadcasts({ slug, pipelines, templates, history }: { slug: stri
               {history.map((b) => (
                 <li key={b.id} className="rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border)]">
                   <div className="flex items-center gap-2">
+                    {b.medium === "email" ? <Mail className="size-4 shrink-0 text-muted" aria-label="Email" /> : <MessageCircle className="size-4 shrink-0 text-muted" aria-label="Mensagem" />}
                     <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{b.name}</p>
                     <time className="text-xs text-muted" dateTime={b.createdAt} suppressHydrationWarning>
                       {when(b.createdAt)}
                     </time>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted">{b.body}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted">{b.subject ? `${b.subject} — ${b.body}` : b.body}</p>
                   <p className="mt-1.5 text-xs tabular-nums text-fg">
                     <span className="text-success">{b.sent} enviados</span>
                     {b.failed > 0 && <span className="text-muted"> · {b.failed} de fora</span>}

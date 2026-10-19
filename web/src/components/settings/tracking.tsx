@@ -61,7 +61,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
     return `${origin}/chat/${chatKey}${p.size ? `?${p}` : ""}`;
   }, [origin, chatKey, chatUtm]);
 
-  const card = "rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]";
+  const card = "rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]";
   return (
     <div className="flex-1 overflow-y-auto bg-surface">
       <div className="mx-auto flex max-w-3xl flex-col gap-5 p-4 sm:p-6">

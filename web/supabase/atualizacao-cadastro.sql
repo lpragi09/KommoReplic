@@ -1,5 +1,5 @@
 -- =====================================================================
--- netzer tech · atualização de 16/10/2026: cadastro com CPF/CNPJ e trava do teste grátis
+-- netzer · atualização de 16/10/2026: cadastro com CPF/CNPJ e trava do teste grátis
 -- Rode UMA vez no Supabase: SQL Editor → New query → cole tudo → Run.
 -- Pode rodar de novo sem problema. Rode DEPOIS da atualizacao-robos.sql.
 -- =====================================================================

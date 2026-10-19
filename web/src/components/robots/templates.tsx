@@ -116,7 +116,7 @@ export function TemplatesManager({ slug, company, templates }: { slug: string; c
             {shown.map((t) => {
               const n = netIcon(t.network);
               return (
-                <li key={t.id} className="flex flex-col gap-2 rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-shadow duration-fast hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-12px_rgba(29,78,216,.35)]">
+                <li key={t.id} className="flex flex-col gap-2 rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-shadow duration-fast hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-12px_rgba(31,122,85,.35)]">
                   <div className="flex items-center gap-2">
                     <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", n.tint)} aria-hidden>
                       <n.icon className="size-4" weight="fill" />
@@ -243,7 +243,7 @@ function Editor({ draft, setDraft, company, error }: { draft: Draft; setDraft: (
                   }}
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-md bg-bg px-2 py-3 text-xs font-medium transition-[box-shadow,transform] duration-fast ease-out active:scale-[0.98]",
-                    on ? "text-fg shadow-[0_0_0_2px_var(--accent),0_6px_16px_-8px_rgba(29,78,216,.5)]" : "text-muted shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--border-input)]",
+                    on ? "text-fg shadow-[0_0_0_2px_var(--accent),0_6px_16px_-8px_rgba(31,122,85,.5)]" : "text-muted shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--border-input)]",
                   )}
                 >
                   <span className={cn("grid size-9 place-items-center rounded-md", n.tint)}>
@@ -327,7 +327,7 @@ function Editor({ draft, setDraft, company, error }: { draft: Draft; setDraft: (
                 value={draft.body}
                 onChange={(e) => set({ body: e.target.value })}
                 placeholder="Oi, {{nome}}! Aqui é da {{empresa}}…"
-                className="resize-y rounded-md border border-border bg-bg px-3 py-2.5 text-base text-fg shadow-[inset_0_1px_2px_rgba(14,26,58,.06)] transition-[border-color,box-shadow] duration-fast hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,.15)]"
+                className="resize-y rounded-md border border-border bg-bg px-3 py-2.5 text-base text-fg shadow-[inset_0_1px_2px_rgba(20,28,24,.06)] transition-[border-color,box-shadow] duration-fast hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(31,122,85,.15)]"
               />
               <div className="flex flex-wrap items-center gap-1">
                 <span className="mr-1 text-xs text-muted">Inserir:</span>

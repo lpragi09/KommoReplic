@@ -106,7 +106,7 @@ export function TeamManager({ slug, roles, members, invites = [], meId, canManag
             {rowError}
           </p>
         )}
-        <ul className="divide-y divide-border overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+        <ul className="divide-y divide-border overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
           {members.map((m) => (
             <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <Avatar name={m.name || m.email} size={40} />
@@ -287,7 +287,7 @@ export function TeamManager({ slug, roles, members, invites = [], meId, canManag
               </Button>
             </div>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Oi! Te convidei para a equipe no netzer tech: ${inviteUrl}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Oi! Te convidei para a equipe no netzer: ${inviteUrl}`)}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-[#0b6b38] px-3 text-sm font-medium text-white hover:brightness-110"

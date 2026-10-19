@@ -2,20 +2,25 @@
 
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import type { TeamMessage } from "@/data/types";
-import { sendTeamMessageAction } from "@/app/actions";
+import { sendTeamAttachmentAction, sendTeamMessageAction } from "@/app/actions";
+import { AttachmentView } from "@/components/chat/attachment";
+import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { Avatar, EmptyState } from "@/components/ui/bits";
 import { IconButton } from "@/components/ui/button";
-import { MessageSquare, Send } from "@/components/ui/icons";
+import { MessageSquare, Paperclip, Send } from "@/components/ui/icons";
 import { dayLabel, timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { EmojiButton, insertAt } from "@/components/chat/emoji";
 
 /** Conversa interna da equipe: combinar quem atende quem, avisar de reunião, pedir ajuda. O cliente nunca vê. */
 export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId: string; meName: string; messages: TeamMessage[] }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
+  const fileInput = useRef<HTMLInputElement>(null);
   const [list, addOptimistic] = useOptimistic(messages, (cur, m: TeamMessage) => [...cur, m]);
   const end = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
@@ -32,6 +37,22 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
         setError(res.error);
         setText(body);
       } else setError(null);
+    });
+  };
+
+  /** arquivo sai na hora, com o texto digitado como legenda */
+  const upload = (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > MAX_ATTACHMENT) return setError("Arquivo grande demais: o limite é 4 MB.");
+    if (!kindOf(f.type)) return setError("Esse tipo de arquivo não é aceito. Use foto, áudio, vídeo, PDF ou documento do Office.");
+    const fd = new FormData();
+    fd.set("file", f);
+    fd.set("caption", text);
+    start(async () => {
+      const res = await sendTeamAttachmentAction(slug, fd);
+      if (!res.ok) return setError(res.error);
+      setError(null);
+      setText("");
     });
   };
 
@@ -56,9 +77,14 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
                     <span className={cn("shrink-0", grouped && "invisible")}>
                       <Avatar name={m.userName} size={32} />
                     </span>
-                    <div className={cn("max-w-[75%] rounded-md px-3 py-2 shadow-[0_1px_2px_rgba(14,26,58,.08)]", mine ? "rounded-br-xs bg-accent text-on-accent" : "rounded-bl-xs bg-bg text-fg")}>
+                    <div className={cn("max-w-[75%] rounded-md px-3 py-2 shadow-[0_1px_2px_rgba(20,28,24,.08)]", mine ? "rounded-br-xs bg-accent text-on-accent" : "rounded-bl-xs bg-bg text-fg")}>
                       {!grouped && !mine && <p className="mb-0.5 text-xs font-semibold text-accent-text">{m.userName}</p>}
-                      <p className="whitespace-pre-wrap break-words text-sm">{m.body}</p>
+                      {m.file && (
+                        <div className="mb-1">
+                          <AttachmentView file={m.file} kind={m.kind} tone={mine ? "accent" : "light"} />
+                        </div>
+                      )}
+                      {!(m.file && /^\[(foto|áudio|vídeo|arquivo)\]$/.test(m.body)) && <p className="whitespace-pre-wrap break-words text-sm">{m.body}</p>}
                       <p className={cn("mt-0.5 text-right text-[11px] tabular-nums", mine ? "text-on-accent" : "text-muted")}>{timeOnly(m.createdAt)}</p>
                     </div>
                   </div>
@@ -85,7 +111,31 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
           <label htmlFor="team-msg" className="sr-only">
             Mensagem para a equipe
           </label>
+          <input
+            ref={fileInput}
+            type="file"
+            accept={ACCEPT_ATTR}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              upload(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Mandar arquivo (foto, áudio, vídeo ou documento)"
+            title="Mandar arquivo (até 4 MB)"
+            disabled={pending}
+            onClick={() => fileInput.current?.click()}
+            className="grid size-10 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface hover:text-fg disabled:opacity-40"
+          >
+            <Paperclip className="size-5" aria-hidden />
+          </button>
+          <EmojiButton className="size-10" onPick={(e) => setText((t) => insertAt(textRef.current, t, e))} />
           <textarea
+            ref={textRef}
             id="team-msg"
             rows={1}
             value={text}
@@ -98,7 +148,7 @@ export function TeamChat({ slug, meId, meName, messages }: { slug: string; meId:
                 send();
               }
             }}
-            className="max-h-40 min-h-10 flex-1 resize-none rounded-md border border-border bg-bg px-3 py-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(14,26,58,.06)] focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,.15)] [field-sizing:content]"
+            className="max-h-40 min-h-10 flex-1 resize-none rounded-md border border-border bg-bg px-3 py-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(20,28,24,.06)] focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(31,122,85,.15)] [field-sizing:content]"
           />
           <IconButton type="submit" label="Enviar" size={36} tone="accent" disabled={!text.trim()}>
             <Send className="size-5" />

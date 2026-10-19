@@ -70,7 +70,7 @@ export function FieldsManager({ slug, fields }: { slug: string; fields: CustomFi
         {fields.length === 0 ? (
           <EmptyState icon={ListPlus} title="Nenhum campo ainda" text="Ex.: “Como conheceu”, “Data do evento”, “CPF/CNPJ”, “Tamanho do pedido”." />
         ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+          <ul className="divide-y divide-border overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
             {fields.map((f) => (
               <li key={f.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">

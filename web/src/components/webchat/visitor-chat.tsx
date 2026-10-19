@@ -9,6 +9,7 @@ import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { AttachmentView } from "@/components/chat/attachment";
+import { EmojiButton, insertAt } from "@/components/chat/emoji";
 
 type M = { id: string; direction: "in" | "out"; body: string; sentAt: string; kind?: string; file?: { name: string; mime: string; size: number; url: string | null } | null };
 
@@ -51,6 +52,7 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
   const [pending, start] = useTransition();
   const end = useRef<HTMLLIElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!vid) return;
@@ -167,7 +169,8 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
           <label htmlFor="vmsg" className="sr-only">
             Mensagem
           </label>
-          <input id="vmsg" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Escreva sua mensagem…" className="h-10 flex-1 rounded-sm border border-border-input px-3 text-base outline-none focus:border-focus" autoComplete="off" />
+          <EmojiButton className="size-10" onPick={(e) => setText((t) => insertAt(textRef.current, t, e))} />
+          <input ref={textRef} id="vmsg" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Escreva sua mensagem…" className="h-10 flex-1 rounded-sm border border-border-input px-3 text-base outline-none focus:border-focus" autoComplete="off" />
           <Button type="submit" size="lg" loading={pending} disabled={!text.trim() || !vid} aria-label="Enviar mensagem">
             <Send className="size-4" aria-hidden />
           </Button>

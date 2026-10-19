@@ -62,7 +62,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
               onClick={() => setView(t.v)}
               className={cn(
                 "flex h-8 items-center gap-1.5 rounded-[6px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-fast ease-out",
-                view === t.v ? "bg-bg text-fg shadow-[0_1px_2px_rgba(14,26,58,.12),0_0_0_1px_var(--border)]" : "text-muted hover:text-fg",
+                view === t.v ? "bg-bg text-fg shadow-[0_1px_2px_rgba(20,28,24,.12),0_0_0_1px_var(--border)]" : "text-muted hover:text-fg",
               )}
             >
               {t.label}
@@ -157,7 +157,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
                 <li key={p.key}>
                   <Link
                     href={`${base}/new?preset=${p.key}`}
-                    className="group flex h-full flex-col gap-3 rounded-md bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-10px_rgba(29,78,216,.35)]"
+                    className="group flex h-full flex-col gap-3 rounded-md bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_8px_20px_-10px_rgba(31,122,85,.35)]"
                   >
                     <div className="flex items-center gap-2">
                       <Sparkle className="size-4 text-accent" weight="fill" aria-hidden />
@@ -306,7 +306,7 @@ function RobotCard({ robot: r, href, onToggle, stages, onEdit }: { robot: Robot;
   return (
     <div
       className={cn(
-        "relative rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-[box-shadow,transform,opacity] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_6px_16px_-8px_rgba(29,78,216,.35)]",
+        "relative rounded-md bg-bg p-3 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-[box-shadow,transform,opacity] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_6px_16px_-8px_rgba(31,122,85,.35)]",
         !r.active && "opacity-60",
       )}
     >
@@ -342,7 +342,7 @@ function RobotCard({ robot: r, href, onToggle, stages, onEdit }: { robot: Robot;
 
 function RobotRow({ robot: r, href, onToggle, stages }: { robot: Robot; href: string; onToggle: (r: Robot, v: boolean) => void; stages: Map<string, Stage> }) {
   return (
-    <div className={cn("relative flex items-center gap-3 rounded-md bg-bg px-4 py-3 shadow-[0_0_0_1px_var(--border)] transition-shadow duration-fast hover:shadow-[0_0_0_1px_var(--border-input),0_4px_12px_-6px_rgba(29,78,216,.3)]", !r.active && "opacity-60")}>
+    <div className={cn("relative flex items-center gap-3 rounded-md bg-bg px-4 py-3 shadow-[0_0_0_1px_var(--border)] transition-shadow duration-fast hover:shadow-[0_0_0_1px_var(--border-input),0_4px_12px_-6px_rgba(31,122,85,.3)]", !r.active && "opacity-60")}>
       <span className="grid size-9 shrink-0 place-items-center rounded-sm bg-accent-soft text-accent-text" aria-hidden>
         <Bot className="size-5" />
       </span>

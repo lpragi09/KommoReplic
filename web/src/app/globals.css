@@ -7,10 +7,49 @@
   --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* marca netzer tech: verde da logo. No fundo escuro (landing, menu lateral) usa o tom mais claro */
+/* tema netzer (folha da marca): verde do broto como destaque, off-white quente nos fundos,
+   preto esverdeado no escuro. Sobrepõe tokens.css (gerado pelo build_tokens.py). */
 :root {
   --brand: #1f7a55;
   --brand-on-night: #3fbf86;
+
+  --surface: #f7f7f5;
+  --canvas: #efefea;
+  --border: #e3e3dd;
+  --border-input: #7b7b74;
+  --text: #111111;
+  --text-muted: #57574f;
+  --accent: #1f7a55;
+  --accent-hover: #17603f;
+  --accent-soft: #e5f1ea;
+  --accent-text: #17603f;
+  --focus: #1f7a55;
+  --nav-bg: #0b0f0c;
+  --nav-hover: #18201b;
+  --nav-active: #2a9367;
+  --inverse-bg: #111111;
+  --bubble-out: #dcefe3;
+  --stage-1: #dcefe3;
+  --stage-2: #bfe0cc;
+  --stage-3: #8fc7a6;
+  --stage-4: #58a97c;
+  --stage-5: #2f8b5f;
+  --stage-6: #1f7a55;
+  --stage-7: #144a35;
+  --stage-8: #2b2e2c;
+  --stage-won: #1f7a55;
+  --night: #060807;
+  --night-raised: #0e1511;
+  --night-line: #1c2a22;
+  --on-night: #f3f5f2;
+  --on-night-muted: #a7b3ab;
+  --aurora-1: #1f7a55;
+  --aurora-2: #3fbf86;
+  --aurora-3: #123d2b;
+  --shadow-card: 0 1px 2px rgba(20,28,24,.06), 0 2px 6px -2px rgba(20,28,24,.10);
+  --shadow-drag: 0 12px 28px -6px rgba(20,28,24,.30);
+  --shadow-pop: 0 16px 40px -8px rgba(20,28,24,.28);
+  --shadow-glow: 0 0 0 1px rgba(63,191,134,.18), 0 20px 60px -20px rgba(31,122,85,.55);
 }
 
 @theme inline {

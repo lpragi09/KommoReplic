@@ -158,7 +158,7 @@ const port: RobotPort = {
       : null;
     const lid = leadId ?? conv?.lead_id ?? null;
     const leadRow: Row | null = lid
-      ? check(await a.from("leads").select("*, lead_tags(tags(name)), lead_contacts(is_main, contacts(name))").eq("workspace_id", wsId).eq("id", lid).is("deleted_at", null).maybeSingle())
+      ? check(await a.from("leads").select("*, lead_tags(tags(name)), lead_contacts(is_main, contacts(id, name))").eq("workspace_id", wsId).eq("id", lid).is("deleted_at", null).maybeSingle())
       : null;
     if (!conv && leadRow)
       conv = check(
@@ -167,7 +167,21 @@ const port: RobotPort = {
     const links: Row[] = leadRow?.lead_contacts ?? [];
     const main = links.find((x) => x.is_main) ?? links[0];
     const owner = leadRow?.responsible_user_id ? check(await a.from("profiles").select("full_name").eq("id", leadRow.responsible_user_id).maybeSingle()) : null;
+    // email do contato principal (passo "Enviar email"); banco sem a coluna de descadastro: lê sem ela
+    const contactId: string | null = main?.contacts?.id ?? conv?.contact_id ?? null;
+    let contactEmail: string | null = null;
+    let emailOptOut = false;
+    if (contactId) {
+      let r = await a.from("contacts").select("email_opt_out, contact_identities(kind, value)").eq("id", contactId).maybeSingle();
+      if (r.error) r = await a.from("contacts").select("contact_identities(kind, value)").eq("id", contactId).maybeSingle();
+      const c = r.data as Row | null;
+      contactEmail = (c?.contact_identities ?? []).find((i: Row) => i.kind === "email")?.value ?? null;
+      emailOptOut = !!c?.email_opt_out;
+    }
     return {
+      contactId,
+      contactEmail,
+      emailOptOut,
       wsName: ws.name,
       lead: leadRow ? toLead(leadRow) : null,
       contactName: conv?.contacts?.name ?? main?.contacts?.name ?? "",

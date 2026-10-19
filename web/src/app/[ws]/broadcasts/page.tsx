@@ -5,6 +5,7 @@ import { Megaphone } from "@/components/ui/icons";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { Broadcasts } from "@/components/team/broadcasts";
+import { emailOn } from "@/lib/email";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
@@ -19,10 +20,10 @@ export default async function BroadcastsPage({ params }: PageProps<"/[ws]/broadc
     <>
       <PageHeader title="Disparos" crumbs={[{ label: "Automações", href: `/${slug}/automations` }]} />
       {allowed ? (
-        <Broadcasts slug={slug} pipelines={pipelines} templates={templates} history={history} />
+        <Broadcasts slug={slug} pipelines={pipelines} templates={templates} history={history} emailReady={emailOn()} />
       ) : (
         <div className="grid flex-1 place-items-center bg-surface p-6">
-          <div className="max-w-md rounded-xl bg-bg p-8 text-center shadow-[0_0_0_1px_var(--border),0_20px_40px_-24px_rgba(14,26,58,.4)]">
+          <div className="max-w-md rounded-xl bg-bg p-8 text-center shadow-[0_0_0_1px_var(--border),0_20px_40px_-24px_rgba(20,28,24,.4)]">
             <span className="fx-tile mx-auto size-12" aria-hidden>
               <Megaphone className="size-6" weight="fill" />
             </span>

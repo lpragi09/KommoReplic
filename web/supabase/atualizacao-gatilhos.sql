@@ -1,4 +1,4 @@
--- netzer tech · gatilho 'quando o responsável muda'. Rode depois de atualizacao-anexos.sql. Pode rodar de novo.
+-- netzer · gatilho 'quando o responsável muda'. Rode depois de atualizacao-anexos.sql. Pode rodar de novo.
 
 -- Gatilhos de etapa (estilo funil digital do Kommo): novo gatilho "quando o responsável muda",
 -- que também pode guardar a etapa (só leads daquela etapa).

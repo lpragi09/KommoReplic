@@ -581,7 +581,7 @@ export function FlowCanvas({
       }}
     >
       {/* barra do quadro */}
-      <div className="absolute left-3 top-3 z-30 flex items-center gap-1 rounded-pill bg-bg p-1 shadow-[0_0_0_1px_var(--border),0_6px_16px_-8px_rgba(14,26,58,.35)]" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="absolute left-3 top-3 z-30 flex items-center gap-1 rounded-pill bg-bg p-1 shadow-[0_0_0_1px_var(--border),0_6px_16px_-8px_rgba(20,28,24,.35)]" onPointerDown={(e) => e.stopPropagation()}>
         <button
           type="button"
           onClick={() => {
@@ -648,7 +648,7 @@ export function FlowCanvas({
         {/* desligar: aparece onde a pessoa clicou no fio e fica até clicar em outro lugar */}
         {selEdge && wires.some((w) => w.key === selEdge.key) && (
           <div
-            className="absolute z-40 flex items-center gap-1 whitespace-nowrap rounded-pill bg-bg p-1 shadow-[0_0_0_1px_var(--border),0_10px_24px_-8px_rgba(14,26,58,.45)]"
+            className="absolute z-40 flex items-center gap-1 whitespace-nowrap rounded-pill bg-bg p-1 shadow-[0_0_0_1px_var(--border),0_10px_24px_-8px_rgba(20,28,24,.45)]"
             style={{ left: selEdge.at.x, top: selEdge.at.y, transform: `translate(-50%, calc(-100% - 10px)) scale(${1 / zoom})`, transformOrigin: "bottom center" }}
             onPointerDown={(ev) => ev.stopPropagation()}
           >
@@ -665,7 +665,7 @@ export function FlowCanvas({
         <div
           data-node={START_ID}
           onPointerDown={(e) => startNode(e, START_ID, { x: start.x, y: start.y })}
-          className="absolute flex cursor-grab items-center gap-2 rounded-pill bg-inverse-bg py-2.5 pl-2.5 pr-5 text-sm font-medium text-on-inverse shadow-[0_10px_28px_-12px_rgba(14,26,58,.7)] active:cursor-grabbing"
+          className="absolute flex cursor-grab items-center gap-2 rounded-pill bg-inverse-bg py-2.5 pl-2.5 pr-5 text-sm font-medium text-on-inverse shadow-[0_10px_28px_-12px_rgba(20,28,24,.7)] active:cursor-grabbing"
           style={{ left: start.x, top: start.y }}
         >
           <span className="grid size-8 place-items-center rounded-pill bg-accent" aria-hidden>
@@ -686,9 +686,9 @@ export function FlowCanvas({
               aria-label={`${i + 1}. ${STEP_TYPES[s.type].label}`}
               onPointerDown={(e) => startNode(e, s.id, { x: s.x ?? 0, y: s.y ?? 0 })}
               className={cn(
-                "absolute cursor-grab rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_14px_34px_-20px_rgba(14,26,58,.5)] active:cursor-grabbing",
-                drag?.kind === "node" && drag.id === s.id && "shadow-[0_0_0_2px_var(--accent),0_24px_48px_-16px_rgba(29,78,216,.55)]",
-                drag?.kind === "wire" && drag.from !== s.id && "shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_50%,transparent),0_14px_34px_-20px_rgba(14,26,58,.5)]",
+                "absolute cursor-grab rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_14px_34px_-20px_rgba(20,28,24,.5)] active:cursor-grabbing",
+                drag?.kind === "node" && drag.id === s.id && "shadow-[0_0_0_2px_var(--accent),0_24px_48px_-16px_rgba(31,122,85,.55)]",
+                drag?.kind === "wire" && drag.from !== s.id && "shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_50%,transparent),0_14px_34px_-20px_rgba(20,28,24,.5)]",
               )}
               style={{ left: s.x ?? 0, top: s.y ?? 0, width: NODE_W }}
             >

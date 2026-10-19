@@ -59,7 +59,7 @@ export function AgentSettings({ slug, company, agent, hasKey, blockedPlan }: { s
       setSaved(true);
     });
 
-  const card = "rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]";
+  const card = "rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]";
   const area = "w-full rounded-md px-3 py-2.5 text-sm";
 
   return (
@@ -185,7 +185,7 @@ export function AgentSettings({ slug, company, agent, hasKey, blockedPlan }: { s
             </div>
           </section>
 
-          <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-3 rounded-xl bg-bg/95 px-4 py-3 shadow-[0_0_0_1px_var(--border),0_-8px_24px_-16px_rgba(14,26,58,.35)]">
+          <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-3 rounded-xl bg-bg/95 px-4 py-3 shadow-[0_0_0_1px_var(--border),0_-8px_24px_-16px_rgba(20,28,24,.35)]">
             <Button onClick={save} loading={pending}>
               Salvar agente
             </Button>
@@ -234,7 +234,7 @@ function TestChat({ slug, company, cfg, hasKey }: { slug: string; company: strin
 
   return (
     <aside aria-label="Testar o agente" className="lg:sticky lg:top-6 lg:self-start">
-      <div className="overflow-hidden rounded-[28px] bg-[#0b1220] p-2 shadow-[0_30px_60px_-30px_rgba(14,26,58,.6)]">
+      <div className="overflow-hidden rounded-[28px] bg-[#0b120e] p-2 shadow-[0_30px_60px_-30px_rgba(20,28,24,.6)]">
         <div className="flex h-[560px] flex-col overflow-hidden rounded-[22px] bg-bg">
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
             <span className="grid size-9 place-items-center rounded-pill bg-accent text-on-accent" aria-hidden>

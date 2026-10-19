@@ -21,6 +21,7 @@ type Option = { action: StageTriggerAction; label: string; text: string; icon: R
 const OPTIONS: Option[] = [
   { action: "robot", label: "Robô", text: "Roda um robô que você criou: conversa, perguntas, botões e caminhos.", icon: <Bot className="size-5" /> },
   { action: "message", label: "Enviar mensagem", text: "Uma mensagem no canal do cliente (WhatsApp, Instagram, Messenger ou chat do site).", icon: <MessageCircle className="size-5" /> },
+  { action: "email", label: "Enviar email", text: "Email para o contato principal do lead, com link de descadastro.", icon: <Mail className="size-5" /> },
   { action: "task", label: "Adicionar tarefa", text: "Cria uma tarefa para o responsável, com prazo.", icon: <CalendarCheck className="size-5" /> },
   { action: "tag", label: "Editar etiquetas", text: "Coloca ou tira uma etiqueta do lead.", icon: <TagIcon className="size-5" /> },
   { action: "stage", label: "Mudar etapa do lead", text: "Leva o lead para outra etapa, inclusive de outro funil.", icon: <ArrowRightLeft className="size-5" /> },
@@ -29,11 +30,8 @@ const OPTIONS: Option[] = [
   { action: "webhook", label: "Enviar webhook", text: "Avisa outro sistema (planilha, ERP, Make, Zapier) com os dados do lead.", icon: <Globe className="size-5" /> },
 ];
 /** nome curto do gatilho no card: "Tarefa: Ligar para o cliente" */
-const SHORT: Record<StageTriggerAction, string> = { robot: "Robô", message: "Mensagem", task: "Tarefa", tag: "Etiqueta", stage: "Mudar etapa", responsible: "Responsável", note: "Nota", webhook: "Webhook" };
-const SOON = [
-  { label: "Enviar email", icon: <Mail className="size-5" /> },
-  { label: "Gerar formulário", icon: <StickyNote className="size-5" /> },
-];
+const SHORT: Record<StageTriggerAction, string> = { robot: "Robô", message: "Mensagem", email: "Email", task: "Tarefa", tag: "Etiqueta", stage: "Mudar etapa", responsible: "Responsável", note: "Nota", webhook: "Webhook" };
+const SOON = [{ label: "Gerar formulário", icon: <StickyNote className="size-5" /> }];
 
 type When = "created" | "moved" | "both" | "owner";
 const WHEN: { v: When; label: string }[] = [
@@ -60,6 +58,7 @@ type Form = {
   delay: number;
   robotId: string;
   text: string;
+  subject: string;
   dueMinutes: number;
   tag: string;
   removeTag: boolean;
@@ -80,6 +79,7 @@ const blank = (action: StageTriggerAction): Form => ({
   delay: 0,
   robotId: "",
   text: "",
+  subject: "",
   dueMinutes: 1440,
   tag: "",
   removeTag: false,
@@ -115,6 +115,10 @@ function fromRobot(r: Robot): Form {
       break;
     case "message":
     case "note":
+      f.text = act.text;
+      break;
+    case "email":
+      f.subject = act.subject;
       f.text = act.text;
       break;
     case "task":
@@ -199,6 +203,12 @@ export function StageTriggerDialog({
         if (!f.text.trim()) return "Escreva a mensagem.";
         step = { id: sid(), type: "message", text: f.text.trim() };
         detail = f.text.trim().slice(0, 40);
+        break;
+      case "email":
+        if (!f.subject.trim()) return "Escreva o assunto do email.";
+        if (!f.text.trim()) return "Escreva o texto do email.";
+        step = { id: sid(), type: "email", subject: f.subject.trim(), text: f.text.trim() };
+        detail = f.subject.trim().slice(0, 40);
         break;
       case "task":
         if (!f.text.trim()) return "Escreva o texto da tarefa.";
@@ -330,7 +340,7 @@ export function StageTriggerDialog({
                   setForm(blank(o.action));
                   setCustomDelay(false);
                 }}
-                className="flex h-full w-full items-start gap-3 rounded-md bg-bg p-3 text-left shadow-[0_0_0_1px_var(--border)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--accent),0_8px_20px_-12px_rgba(29,78,216,.5)]"
+                className="flex h-full w-full items-start gap-3 rounded-md bg-bg p-3 text-left shadow-[0_0_0_1px_var(--border)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--accent),0_8px_20px_-12px_rgba(31,122,85,.5)]"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-md bg-accent-soft text-accent" aria-hidden>
                   {o.icon}
@@ -434,6 +444,25 @@ export function StageTriggerDialog({
               />
               {form.action === "message" && <span className="text-xs font-normal text-muted">Use {"{{nome}}"}, {"{{empresa}}"} e {"{{responsavel}}"}.</span>}
             </label>
+          )}
+          {form.action === "email" && (
+            <div className="flex flex-col gap-3">
+              <Field label="Assunto" value={form.subject} onChange={(e) => set({ subject: e.target.value })} maxLength={200} placeholder="{{nome}}, recebemos seu contato" />
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                Texto do email
+                <textarea
+                  value={form.text}
+                  onChange={(e) => set({ text: e.target.value })}
+                  rows={6}
+                  maxLength={5000}
+                  className="rounded-md border border-border-input bg-bg px-3 py-2 text-base font-normal outline-none focus:border-focus"
+                  placeholder={"Olá, {{nome}}!\n\nObrigado pelo contato…"}
+                />
+                <span className="text-xs font-normal text-muted">
+                  Vai para o email do contato principal, com link de descadastro no rodapé. Use {"{{nome}}"}, {"{{empresa}}"} e {"{{responsavel}}"}. Leads sem email são pulados.
+                </span>
+              </label>
+            </div>
           )}
           {form.action === "task" && (
             <div className="grid gap-3 sm:grid-cols-[1fr_180px]">

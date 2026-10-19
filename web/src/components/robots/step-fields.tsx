@@ -331,6 +331,14 @@ export function StepBody({ step, onChange, ctx, port }: { step: RobotStep; onCha
           {!ctx.fields.length && <p className="text-xs text-warning">Crie campos em Configurações → Campos personalizados.</p>}
         </div>
       );
+    case "email":
+      return (
+        <div className="flex flex-col gap-2">
+          <Field label="Assunto" value={step.subject} onChange={(e) => onChange({ ...step, subject: e.target.value })} maxLength={200} placeholder="{{nome}}, sua proposta chegou" />
+          <TextWithVars label="Texto do email" value={step.text} onChange={(text) => onChange({ ...step, text })} rows={5} />
+          <span className="text-xs text-muted">Vai para o email do contato principal, com link de descadastro no rodapé. Precisa do Resend configurado.</span>
+        </div>
+      );
     case "webhook":
       return <Field label="Endereço (https)" value={step.url} onChange={(e) => onChange({ ...step, url: e.target.value })} maxLength={500} hint="Recebe um POST com o lead, o contato e a origem (UTM). Funciona com Zapier e Make." />;
     case "start_robot":

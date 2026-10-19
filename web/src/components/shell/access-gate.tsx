@@ -78,7 +78,7 @@ function Paywall({ billing, access }: { billing: string; access: Access }) {
         <p className="mx-auto mt-2 max-w-[44ch] text-base text-muted">{c.text}</p>
         <Link
           href={billing}
-          className="fx-shine mt-6 inline-flex h-11 items-center gap-2 rounded-md bg-accent px-6 text-md font-medium text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_8px_20px_-8px_rgba(29,78,216,.7)] hover:bg-accent-hover"
+          className="fx-shine mt-6 inline-flex h-11 items-center gap-2 rounded-md bg-accent px-6 text-md font-medium text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_8px_20px_-8px_rgba(31,122,85,.7)] hover:bg-accent-hover"
         >
           Ver planos e ativar
         </Link>

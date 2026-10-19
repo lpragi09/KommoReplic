@@ -37,7 +37,7 @@ export function Dialog({
         <D.Overlay className="fixed inset-0 z-40 bg-[color-mix(in_srgb,var(--inverse-bg)_55%,transparent)] data-[state=open]:animate-[fx-fade_.16s_ease-out]" />
         <D.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 flex data-[state=open]:animate-[fx-dialog_.18s_cubic-bezier(.2,.8,.2,1)] max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--border)_80%,transparent),0_30px_70px_-20px_rgba(14,26,58,.45)]",
+            "fixed left-1/2 top-1/2 z-50 flex data-[state=open]:animate-[fx-dialog_.18s_cubic-bezier(.2,.8,.2,1)] max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_color-mix(in_srgb,var(--border)_80%,transparent),0_30px_70px_-20px_rgba(20,28,24,.45)]",
             { sm: "max-w-[400px]", md: "max-w-[560px]", lg: "max-w-[720px]", xl: "max-w-[1040px]" }[size],
           )}
         >
@@ -45,7 +45,7 @@ export function Dialog({
           <div className="relative flex shrink-0 items-start justify-between gap-4 border-b border-border bg-[radial-gradient(90%_160%_at_0%_0%,color-mix(in_srgb,var(--accent)_12%,var(--bg)),color-mix(in_srgb,var(--surface)_60%,var(--bg))_70%)] px-6 py-5">
             <div className="flex min-w-0 items-center gap-3.5">
               {icon && (
-                <span className={cn("grid size-11 shrink-0 place-items-center rounded-lg text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_10px_20px_-10px_rgba(14,26,58,.7)]", tone === "danger" ? "bg-[linear-gradient(145deg,#ef4444,var(--danger))]" : "bg-[linear-gradient(145deg,#3b82f6,var(--accent))]")} aria-hidden>
+                <span className={cn("grid size-11 shrink-0 place-items-center rounded-lg text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_10px_20px_-10px_rgba(20,28,24,.7)]", tone === "danger" ? "bg-[linear-gradient(145deg,#ef4444,var(--danger))]" : "bg-[linear-gradient(145deg,#34a274,var(--accent))]")} aria-hidden>
                   {icon}
                 </span>
               )}

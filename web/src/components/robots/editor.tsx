@@ -16,7 +16,7 @@ import { FlowCanvas, normalizeFlow, type Start } from "./canvas";
 type Run = RobotRun & { leadName: string | null };
 
 const selectCls =
-  "h-10 w-full rounded-sm border border-border bg-bg px-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(14,26,58,.06)] hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,.15)]";
+  "h-10 w-full rounded-sm border border-border bg-bg px-2 text-base text-fg shadow-[inset_0_1px_2px_rgba(20,28,24,.06)] hover:border-border-input focus:border-focus focus:outline-none focus:shadow-[0_0_0_4px_rgba(31,122,85,.15)]";
 
 export function RobotEditor({
   slug,
@@ -428,7 +428,7 @@ function Preview({ steps }: { steps: RobotStep[] }) {
           ) : (
             <p
               key={s.id}
-              className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-md rounded-br-xs bg-accent px-3 py-2 text-sm text-on-accent shadow-[0_4px_12px_-6px_rgba(29,78,216,.6)]"
+              className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-md rounded-br-xs bg-accent px-3 py-2 text-sm text-on-accent shadow-[0_4px_12px_-6px_rgba(31,122,85,.6)]"
             >
               {s.type === "message" &&
                 (sample(s.text) || (

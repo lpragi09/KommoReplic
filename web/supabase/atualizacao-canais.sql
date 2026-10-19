@@ -1,4 +1,4 @@
--- netzer tech · canais da Meta (WhatsApp, Instagram, Messenger) + agente de IA. Rode depois de atualizacao-fluxo.sql. Pode rodar de novo.
+-- netzer · canais da Meta (WhatsApp, Instagram, Messenger) + agente de IA. Rode depois de atualizacao-fluxo.sql. Pode rodar de novo.
 
 -- Canais da Meta conectados pelo próprio cliente (WhatsApp Cloud API, Instagram, Messenger).
 -- O token fica cifrado (AES-256-GCM no servidor) numa tabela sem policy: só a chave secreta lê.

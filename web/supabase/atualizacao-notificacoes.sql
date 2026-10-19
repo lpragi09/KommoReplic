@@ -1,4 +1,4 @@
--- netzer tech · notificações vistas. Rode depois de atualizacao-canal-app-secret.sql. Pode rodar de novo.
+-- netzer · notificações vistas. Rode depois de atualizacao-canal-app-secret.sql. Pode rodar de novo.
 
 -- Notificações: até quando cada pessoa já viu (as notificações são calculadas do estado atual).
 -- memberships só é escrita por admin; a função abaixo deixa cada um marcar só a própria linha.

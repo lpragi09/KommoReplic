@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /* Marca netzer: o broto (caule com botão no alto, dois pares de folhas e dois grãos na base).
-   Desenhado em currentColor: a cor vem de quem usa (verde da netzer tech no claro, verde mais vivo no escuro). */
+   Desenhado em currentColor: a cor vem de quem usa (verde da netzer no claro, verde mais vivo no escuro). */
 export function NetzerMark({ className, title }: { className?: string; title?: string }) {
   return (
     <svg viewBox="0 0 80 104" className={className} role={title ? "img" : undefined} aria-hidden={title ? undefined : true} fill="currentColor">
@@ -21,14 +21,14 @@ export function NetzerMark({ className, title }: { className?: string; title?: s
   );
 }
 
-/** Logo completa: broto + "netzer" com "tech" embaixo (horizontal quando inline) */
+/** Logo completa: broto + "netzer" (horizontal quando inline, empilhada com o lema quando não) */
 export function NetzerLogo({ className, inline = true, markClassName }: { className?: string; inline?: boolean; markClassName?: string }) {
   return (
     <span className={cn("inline-flex items-center text-brand", inline ? "gap-2" : "flex-col gap-1", className)}>
       <NetzerMark className={cn(inline ? "h-7 w-auto" : "h-12 w-auto", markClassName)} />
       <span className={cn("flex flex-col leading-none", !inline && "items-center")}>
         <span className="font-semibold tracking-tight">netzer</span>
-        <span className="mt-0.5 text-[0.62em] font-medium tracking-[0.32em]">tech</span>
+        {!inline && <span className="mt-1.5 text-[0.42em] font-normal tracking-[0.16em] opacity-80">da raiz à rede</span>}
       </span>
     </span>
   );

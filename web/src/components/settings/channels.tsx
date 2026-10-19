@@ -87,7 +87,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
     });
 
   const webchat = channels.filter((c) => c.kind === "webchat");
-  const card = "rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]";
+  const card = "rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]";
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface">
@@ -223,7 +223,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
                 </div>
               </div>
               <p className="text-xs text-muted sm:col-span-2">
-                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). Cada aviso da Meta vem assinado: se o app é o da netzer tech, vale a <code>META_APP_SECRET</code>; se o app é da sua empresa, cole a chave secreta dele abaixo.
+                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). Cada aviso da Meta vem assinado: se o app é o da netzer, vale a <code>META_APP_SECRET</code>; se o app é da sua empresa, cole a chave secreta dele abaixo.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

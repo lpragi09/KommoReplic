@@ -211,7 +211,7 @@ export default async function ReportsPage({ params, searchParams }: PageProps<"/
 
 function Kpi({ icon: Icon, label, value, sub, tone }: { icon: LucideIcon; label: string; value: string; sub: string; tone?: "success" }) {
   return (
-    <div className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+    <div className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
       <div className="flex items-center gap-2 text-sm text-muted">
         <span className={cn("grid size-7 place-items-center rounded-sm", tone === "success" ? "bg-success-soft text-success" : "bg-accent-soft text-accent-text")} aria-hidden>
           <Icon className="size-4" />
@@ -226,7 +226,7 @@ function Kpi({ icon: Icon, label, value, sub, tone }: { icon: LucideIcon; label:
 
 function Card({ title, sub, children, icon: Icon }: { title: string; sub?: string; children: ReactNode; icon?: LucideIcon }) {
   return (
-    <section className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]" aria-label={title}>
+    <section className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]" aria-label={title}>
       <header className="mb-3 flex items-center gap-2">
         {Icon && <Icon className="size-4 text-muted" aria-hidden />}
         <div>

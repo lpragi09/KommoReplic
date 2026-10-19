@@ -1,4 +1,4 @@
--- netzer tech: setup completo do banco (Supabase)
+-- netzer: setup completo do banco (Supabase)
 -- Cole tudo no SQL Editor de um projeto NOVO e clique em Run, uma vez só.
 -- Junta, em ordem: migrations/20261011000001_init.sql, 0002_rpcs.sql, 0003_profile_email.sql
 
@@ -1636,7 +1636,7 @@ drop index if exists channels_external;
 create unique index channels_external on channels (kind, external_id) where external_id is not null and status <> 'disconnected';
 
 -- Chave secreta do app da Meta por canal (cifrada), para empresas que usam o próprio app:
--- o webhook confere a assinatura de cada aviso com ela (ou com a META_APP_SECRET do netzer tech).
+-- o webhook confere a assinatura de cada aviso com ela (ou com a META_APP_SECRET do netzer).
 alter table channel_secrets add column if not exists app_secret_enc text;
 
 -- Notificações: até quando cada pessoa já viu (as notificações são calculadas do estado atual).
@@ -1687,3 +1687,13 @@ end $$;
 alter table robots drop constraint if exists robots_trigger_check;
 alter table robots add constraint robots_trigger_check
   check (trigger in ('stage_enter','lead_created','message_in','new_contact','responsible_changed'));
+
+-- Email: descadastro por contato e disparos por email (assunto). Chat da equipe com anexo.
+alter table contacts add column if not exists email_opt_out boolean not null default false;
+alter table broadcasts add column if not exists medium text not null default 'message';
+alter table broadcasts drop constraint if exists broadcasts_medium_check;
+alter table broadcasts add constraint broadcasts_medium_check check (medium in ('message','email'));
+alter table broadcasts add column if not exists subject text check (subject is null or char_length(subject) <= 200);
+alter table broadcasts drop constraint if exists broadcasts_body_check;
+alter table broadcasts add constraint broadcasts_body_check check (char_length(body) between 1 and 5000);
+alter table team_messages add column if not exists file_id uuid references files(id) on delete set null;

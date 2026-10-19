@@ -28,7 +28,7 @@ export function ListsTabs({ slug, active, counts }: { slug: string; active: "con
             aria-current={on ? "page" : undefined}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-sm font-medium transition-colors",
-              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(14,26,58,.25)]" : "text-muted hover:text-fg",
+              on ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" : "text-muted hover:text-fg",
             )}
           >
             <t.icon className={cn("size-4", on && "text-accent")} aria-hidden />
@@ -44,7 +44,7 @@ export function ListsTabs({ slug, active, counts }: { slug: string; active: "con
 /** busca que envia pelo endereço (?q=), no mesmo desenho da busca do funil */
 export function SearchPill({ id, placeholder, defaultValue }: { id: string; placeholder: string; defaultValue: string }) {
   return (
-    <form role="search" className="group flex h-10 w-full items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(37,99,235,.15)] sm:w-72">
+    <form role="search" className="group flex h-10 w-full items-center gap-2 rounded-pill bg-surface px-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow,background-color] duration-fast focus-within:bg-bg focus-within:shadow-[inset_0_0_0_1px_var(--focus),0_0_0_4px_rgba(31,122,85,.15)] sm:w-72">
       <Search className="size-4 shrink-0 text-muted group-focus-within:text-accent" aria-hidden />
       <label htmlFor={id} className="sr-only">
         {placeholder}
@@ -260,7 +260,7 @@ export function ContactsCsvButtons({ slug }: { slug: string }) {
       <a
         href={`/${slug}/contacts/export`}
         download
-        className="inline-flex h-9 items-center gap-2 rounded-sm bg-bg px-3 text-base text-fg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-shadow hover:bg-surface hover:shadow-[0_0_0_1px_var(--border-input)]"
+        className="inline-flex h-9 items-center gap-2 rounded-sm bg-bg px-3 text-base text-fg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-shadow hover:bg-surface hover:shadow-[0_0_0_1px_var(--border-input)]"
       >
         <Download className="size-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Exportar</span>
       </a>

@@ -39,7 +39,7 @@ const periods = [
 const channelIcon = (name: string): LucideIcon =>
   /whats/i.test(name) ? WhatsappLogo : /insta/i.test(name) ? InstagramLogo : /messenger|facebook/i.test(name) ? MessengerLogo : Globe;
 
-const card = "rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]";
+const card = "rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]";
 
 export default async function HomePage({ params, searchParams }: PageProps<"/[ws]/home">) {
   const { ws: slug } = await params;
@@ -85,7 +85,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
               key={p.v}
               href={q({ p: p.v })}
               aria-current={p.v === period.v ? "page" : undefined}
-              className={cn("inline-flex h-8 items-center rounded-pill px-3.5 text-sm font-medium transition-colors", p.v === period.v ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(14,26,58,.25)]" : "text-muted hover:text-fg")}
+              className={cn("inline-flex h-8 items-center rounded-pill px-3.5 text-sm font-medium transition-colors", p.v === period.v ? "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_2px_6px_-2px_rgba(20,28,24,.25)]" : "text-muted hover:text-fg")}
             >
               {p.label}
             </Link>
@@ -127,7 +127,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
                           href={t.href}
                           className="group inline-flex items-center gap-2 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_10%,transparent)] py-1.5 pl-2 pr-3.5 text-sm font-medium text-on-night shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--on-night)_14%,transparent)] hover:bg-[color-mix(in_srgb,var(--on-night)_16%,transparent)]"
                         >
-                          <span className={cn("size-2 rounded-pill", t.tone === "danger" ? "bg-[#f87171]" : t.tone === "warning" ? "bg-[#fbbf24]" : "bg-[#7aa2ff]")} aria-hidden />
+                          <span className={cn("size-2 rounded-pill", t.tone === "danger" ? "bg-[#f87171]" : t.tone === "warning" ? "bg-[#fbbf24]" : "bg-[#6fd3a5]")} aria-hidden />
                           {t.text}
                           <ArrowRight className="size-3.5 opacity-60 transition-transform group-hover:translate-x-0.5" aria-hidden />
                         </Link>
@@ -136,7 +136,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
                   </ul>
                 ) : (
                   <p className="mt-3 inline-flex items-center gap-2 text-sm text-on-night-muted">
-                    <Sparkle className="size-4 text-[#7aa2ff]" weight="fill" aria-hidden /> Tudo em dia: nenhuma conversa esperando e todos os leads com próxima tarefa.
+                    <Sparkle className="size-4 text-[#6fd3a5]" weight="fill" aria-hidden /> Tudo em dia: nenhuma conversa esperando e todos os leads com próxima tarefa.
                   </p>
                 )}
               </div>
@@ -159,7 +159,7 @@ export default async function HomePage({ params, searchParams }: PageProps<"/[ws
 
           {/* números */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <Kpi icon={MessageSquare} tone="from-[#3b82f6] to-[var(--accent)]" label="Conversas abertas" value={String(d.openConversations)} sub={d.unanswered ? `${d.unanswered} sem resposta` : "Todas respondidas"} subTone={d.unanswered ? "danger" : "success"} href={`/${slug}/inbox`} />
+            <Kpi icon={MessageSquare} tone="from-[#34a274] to-[var(--accent)]" label="Conversas abertas" value={String(d.openConversations)} sub={d.unanswered ? `${d.unanswered} sem resposta` : "Todas respondidas"} subTone={d.unanswered ? "danger" : "success"} href={`/${slug}/inbox`} />
             <Kpi icon={Trophy} tone="from-[#34d399] to-[#059669]" label="Negócios ganhos" value={String(d.won.length)} sub={money(wonV)} href={leadsHref("")} />
             <Kpi icon={TrendingDown} tone="from-[#fb7185] to-[#e11d48]" label="Negócios perdidos" value={String(d.lost.length)} sub={money(sum(d.lost))} />
             <Kpi icon={ChartPie} tone="from-[#a78bfa] to-[#6d28d9]" label="Taxa de conversão" value={rate === null ? "—" : `${rate}%`} sub={closed ? `${d.won.length} de ${closed} fechados` : "Nada fechado no período"} />
@@ -299,7 +299,7 @@ function Kpi({ icon: Icon, tone, label, value, sub, subTone, href }: { icon: Luc
   const body = (
     <>
       <div className="flex items-start justify-between">
-        <span className={cn("grid size-9 place-items-center rounded-lg bg-gradient-to-br sm:size-11 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(14,26,58,.45)]", tone)} aria-hidden>
+        <span className={cn("grid size-9 place-items-center rounded-lg bg-gradient-to-br sm:size-11 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(20,28,24,.45)]", tone)} aria-hidden>
           <Icon className="size-5" weight="fill" />
         </span>
         {href && <ArrowRight className="size-4 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />}
@@ -311,7 +311,7 @@ function Kpi({ icon: Icon, tone, label, value, sub, subTone, href }: { icon: Luc
   );
   const cls = cn(card, "group block p-4 sm:p-5"); // duas por linha no celular
   return href ? (
-    <Link href={href} className={cn(cls, "transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(29,78,216,.45)]")}>
+    <Link href={href} className={cn(cls, "transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(31,122,85,.45)]")}>
       {body}
     </Link>
   ) : (

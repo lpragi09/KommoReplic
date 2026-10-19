@@ -33,7 +33,7 @@ export function ArtAccept() {
         </div>
       </div>
       <div className="flex gap-2">
-        <span className="flex-1 rounded-pill bg-accent py-1.5 text-center text-xs font-medium text-on-accent shadow-[0_6px_16px_-6px_rgba(29,78,216,.8)]">Aceitar</span>
+        <span className="flex-1 rounded-pill bg-accent py-1.5 text-center text-xs font-medium text-on-accent shadow-[0_6px_16px_-6px_rgba(31,122,85,.8)]">Aceitar</span>
         <span className={cn("flex-1 rounded-pill py-1.5 text-center text-xs text-on-night-muted", chip)}>Vincular</span>
       </div>
       <p className="flex items-center gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--aurora-1)_25%,transparent)] px-2.5 py-1.5 text-xs text-on-night">

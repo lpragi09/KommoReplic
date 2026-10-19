@@ -25,6 +25,8 @@ export type Contact = {
   responsibleUserId: ID | null;
   identities: Identity[];
   createdAt: ISO;
+  /** pediu para não receber emails (link de descadastro) */
+  emailOptOut?: boolean;
 };
 
 export type Lead = {
@@ -169,7 +171,7 @@ export type FeedItem =
 /* ---------- robôs (automações em passos, estilo Salesbot + funil digital) ---------- */
 export type RobotTrigger = "stage_enter" | "lead_created" | "message_in" | "new_contact" | "responsible_changed";
 /** gatilho de etapa (estilo funil digital do Kommo): o que ele faz */
-export type StageTriggerAction = "robot" | "message" | "task" | "tag" | "stage" | "responsible" | "webhook" | "note";
+export type StageTriggerAction = "robot" | "message" | "email" | "task" | "tag" | "stage" | "responsible" | "webhook" | "note";
 /** horário de atividade: só roda nesses dias/horas (fuso de Brasília) */
 export type ActiveHours = { from: string; to: string; days: number[] };
 /** posição no quadro e ligação para o próximo passo (null = termina; ausente = o seguinte da lista) */
@@ -194,6 +196,7 @@ export type RobotStep = StepBase &
     | { type: "set_field"; fieldId: string; value: string }
     | { type: "close" }
     | { type: "webhook"; url: string }
+    | { type: "email"; subject: string; text: string }
     | { type: "start_robot"; robotId: string }
     | { type: "stop" }
   );
@@ -313,11 +316,24 @@ export type CustomField = { id: ID; name: string; kind: FieldKind; options: stri
 export type FieldValue = string | number | boolean | null;
 
 /* ---------- chat interno da equipe ---------- */
-export type TeamMessage = { id: ID; userId: ID; userName: string; body: string; createdAt: ISO };
+export type TeamMessage = { id: ID; userId: ID; userName: string; body: string; createdAt: ISO; kind?: "text" | "image" | "audio" | "video" | "file"; file?: MessageFile | null };
 
 /* ---------- disparos em massa ---------- */
 export type BroadcastFilter = { pipelineId: ID | null; stageIds: ID[]; tag: string | null; channels: ChannelKind[] };
-export type Broadcast = { id: ID; name: string; body: string; filter: BroadcastFilter; total: number; sent: number; failed: number; createdBy: string; createdAt: ISO };
+export type Broadcast = {
+  id: ID;
+  name: string;
+  body: string;
+  filter: BroadcastFilter;
+  total: number;
+  sent: number;
+  failed: number;
+  createdBy: string;
+  createdAt: ISO;
+  /** "message": pelo canal da conversa; "email": para o email do contato principal */
+  medium?: "message" | "email";
+  subject?: string | null;
+};
 
 /* ---------- cadastro e acesso (teste grátis / plano) ---------- */
 export type SignupInfo = { company: string; docType: "cpf" | "cnpj" | null; document: string; phone: string };

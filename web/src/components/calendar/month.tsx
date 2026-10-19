@@ -46,7 +46,7 @@ export function MonthCalendar({ slug, month, tasks, marks = [], showOwner }: { s
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+      <div className="overflow-x-auto rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
         <table className="w-full min-w-[720px] table-fixed border-collapse">
           <thead>
             <tr>
@@ -81,7 +81,7 @@ export function MonthCalendar({ slug, month, tasks, marks = [], showOwner }: { s
                         <span
                           className={cn(
                             "grid size-7 place-items-center rounded-pill text-sm tabular-nums",
-                            isToday ? "bg-accent font-semibold text-on-accent shadow-[0_4px_12px_-4px_rgba(29,78,216,.7)]" : inMonth ? "text-fg" : "text-muted",
+                            isToday ? "bg-accent font-semibold text-on-accent shadow-[0_4px_12px_-4px_rgba(31,122,85,.7)]" : inMonth ? "text-fg" : "text-muted",
                             h?.kind === "nacional" && !isToday && inMonth && "font-semibold text-danger",
                           )}
                         >
@@ -169,7 +169,7 @@ export function UpcomingDays({ slug, tasks, days = 14 }: { slug: string; tasks: 
   const count = new Map<string, number>();
   for (const t of tasks) if (!t.completedAt) count.set(localDay(t.dueAt), (count.get(localDay(t.dueAt)) ?? 0) + 1);
   return (
-    <section aria-labelledby="agenda-t" className="rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)]">
+    <section aria-labelledby="agenda-t" className="rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
       <h2 id="agenda-t" className="mb-3 text-sm font-semibold text-fg">
         Próximos {days} dias
       </h2>

@@ -10,7 +10,8 @@ import { Plus, Trash2, CalendarDays } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export const MARK_TONE: Record<MarkColor, { chip: string; dot: string; label: string }> = {
-  blue: { chip: "bg-accent-soft text-accent-text", dot: "bg-accent", label: "Azul" },
+  // a chave "blue" fica (marcações salvas); a cor continua azul de verdade, já que o destaque do app virou verde
+  blue: { chip: "bg-[color-mix(in_srgb,#2563eb_12%,var(--bg))] text-[#1d4ed8]", dot: "bg-[#2563eb]", label: "Azul" },
   green: { chip: "bg-success-soft text-success", dot: "bg-success", label: "Verde" },
   amber: { chip: "bg-[color-mix(in_srgb,var(--warning)_15%,var(--bg))] text-warning", dot: "bg-warning", label: "Âmbar" },
   red: { chip: "bg-danger-soft text-danger", dot: "bg-danger", label: "Vermelho" },

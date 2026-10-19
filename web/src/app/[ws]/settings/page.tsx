@@ -41,7 +41,7 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
   const items: { href: string; icon: LucideIcon; title: string; text: string; stat: string; tone: string }[] = [
     { href: "channels", icon: MessageSquare, title: "Canais", text: "Chat do site, WhatsApp, Instagram e Messenger", stat: `${connected} ${connected === 1 ? "conectado" : "conectados"}`, tone: "from-[#25d366] to-[#128c4a]" },
     { href: "profile", icon: UserCircle, title: "Meu perfil e foto", text: "Sua foto aparece para a equipe no lugar das iniciais", stat: "Você", tone: "from-[#f472b6] to-[#db2777]" },
-    { href: "ai", icon: Sparkle, title: "Agente de IA", text: "Responde os clientes com a sua base de conhecimento e chama a equipe", stat: agent.enabled ? "Ligado" : "Desligado", tone: "from-[#38bdf8] to-[var(--accent)]" },
+    { href: "ai", icon: Sparkle, title: "Agente de IA", text: "Responde os clientes com a sua base de conhecimento e chama a equipe", stat: agent.enabled ? "Ligado" : "Desligado", tone: "from-[#3fbf86] to-[var(--accent)]" },
     { href: "pipelines", icon: Columns3, title: "Funis e etapas", text: "Nomes, ordem e cores das etapas", stat: `${pipelines.length} ${pipelines.length === 1 ? "funil" : "funis"}`, tone: "from-[var(--stage-4)] to-[var(--stage-7)]" },
     { href: "users", icon: Users, title: "Equipe e permissões", text: "Pessoas, papéis e o que cada uma vê", stat: `${team.members.length} ${team.members.length === 1 ? "pessoa" : "pessoas"}`, tone: "from-[var(--aurora-2)] to-[var(--aurora-1)]" },
     { href: "fields", icon: ListPlus, title: "Campos personalizados", text: "Dados extras no cartão de cada lead", stat: `${fields.length} ${fields.length === 1 ? "campo" : "campos"}`, tone: "from-[#a78bfa] to-[#6d28d9]" },
@@ -101,10 +101,10 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
               <li key={i.href}>
                 <Link
                   href={`/${slug}/settings/${i.href}`}
-                  className="group flex h-full flex-col gap-4 rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(29,78,216,.45)]"
+                  className="group flex h-full flex-col gap-4 rounded-xl bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-[box-shadow,transform] duration-fast ease-out hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(31,122,85,.45)]"
                 >
                   <div className="flex items-start justify-between">
-                    <span className={cn("grid size-11 place-items-center rounded-lg bg-gradient-to-br text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(14,26,58,.45)]", i.tone)} aria-hidden>
+                    <span className={cn("grid size-11 place-items-center rounded-lg bg-gradient-to-br text-white shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_8px_18px_-8px_rgba(20,28,24,.45)]", i.tone)} aria-hidden>
                       <i.icon className="size-5" weight="fill" />
                     </span>
                     <span className="rounded-pill bg-surface px-2.5 py-0.5 text-xs font-medium text-muted shadow-[inset_0_0_0_1px_var(--border)]">{i.stat}</span>

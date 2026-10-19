@@ -6,9 +6,9 @@ import { cn } from "@/lib/cn";
    Só transform, opacity, cor e sombra animam; curva de mola (--ease-out). */
 const variants = {
   primary:
-    "fx-shine bg-accent text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_1px_2px_rgba(14,26,58,.25),0_6px_16px_-6px_rgba(29,78,216,.6)] hover:bg-accent-hover hover:shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_1px_2px_rgba(14,26,58,.25),0_10px_24px_-8px_rgba(29,78,216,.7)]",
+    "fx-shine bg-accent text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_1px_2px_rgba(20,28,24,.25),0_6px_16px_-6px_rgba(31,122,85,.6)] hover:bg-accent-hover hover:shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_1px_2px_rgba(20,28,24,.25),0_10px_24px_-8px_rgba(31,122,85,.7)]",
   secondary:
-    "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] hover:shadow-[0_0_0_1px_var(--border-input),0_2px_6px_-2px_rgba(14,26,58,.12)] hover:bg-surface",
+    "bg-bg text-fg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] hover:shadow-[0_0_0_1px_var(--border-input),0_2px_6px_-2px_rgba(20,28,24,.12)] hover:bg-surface",
   ghost: "bg-transparent text-fg hover:bg-surface",
   danger:
     "bg-danger text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_6px_16px_-8px_rgba(196,43,43,.6)] hover:brightness-95",

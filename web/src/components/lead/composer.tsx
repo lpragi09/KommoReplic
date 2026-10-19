@@ -4,6 +4,7 @@ import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { AlertTriangle, FileText, Paperclip, Send, X } from "@/components/ui/icons";
 import { addNoteAction, createTaskAction, sendAttachmentAction, sendMessageAction } from "@/app/actions";
 import { ACCEPT_ATTR, MAX_ATTACHMENT, kindOf, sizeText } from "@/lib/attachments";
+import { EmojiButton, insertAt } from "@/components/chat/emoji";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -48,6 +49,7 @@ export function Composer({
   const [taskType, setTaskType] = useState(taskTypes[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const [owner, setOwner] = useState(me);
 
   const modes: { v: Mode; label: string; off?: boolean }[] = [
@@ -178,6 +180,7 @@ export function Composer({
           {mode === "chat" ? "Mensagem para o cliente" : mode === "note" ? "Nota interna" : "Descrição da tarefa"}
         </label>
         <textarea
+          ref={textRef}
           id="composer-text"
           rows={2}
           value={text}
@@ -217,6 +220,7 @@ export function Composer({
               </button>
             </>
           )}
+          <EmojiButton disabled={blocked} onPick={(e) => setText((t) => insertAt(textRef.current, t, e))} />
           <span className="hidden text-xs text-muted sm:inline">Ctrl + Enter envia</span>
           {error && (
             <span role="alert" className="text-sm text-danger">

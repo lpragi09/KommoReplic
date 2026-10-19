@@ -76,7 +76,7 @@ export function CompanyFields({
               className={cn(
                 "h-9 rounded-[6px] text-sm font-medium transition-[background-color,box-shadow,color] duration-fast ease-out",
                 type === v
-                  ? "bg-bg text-fg shadow-[0_1px_2px_rgba(14,26,58,.12),0_0_0_1px_var(--border)]"
+                  ? "bg-bg text-fg shadow-[0_1px_2px_rgba(20,28,24,.12),0_0_0_1px_var(--border)]"
                   : "text-muted hover:text-fg",
               )}
             >

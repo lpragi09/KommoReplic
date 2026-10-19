@@ -70,9 +70,9 @@ export default async function CompaniesPage({ params }: PageProps<"/[ws]/compani
                 <li key={c.id}>
                   <Link
                     href={`/${slug}/companies/${c.id}`}
-                    className="group flex h-full items-center gap-4 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(14,26,58,.06)] transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(29,78,216,.45)]"
+                    className="group flex h-full items-center gap-4 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] transition-[box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-[0_0_0_1px_var(--border-input),0_14px_30px_-16px_rgba(31,122,85,.45)]"
                   >
-                    <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#3b82f6,var(--accent))] text-lg font-bold text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3)]" aria-hidden>
+                    <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#34a274,var(--accent))] text-lg font-bold text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.3)]" aria-hidden>
                       {c.name.slice(0, 1).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
