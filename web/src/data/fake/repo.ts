@@ -870,6 +870,35 @@ export * from "./pipelines";
 // ---------------------------------------------------------------------------
 // foto de perfil e logo da empresa
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// configurações: meus dados e dados da empresa
+// ---------------------------------------------------------------------------
+export async function updateMyName(userId: ID, name: string) {
+  const u = db.users.find((x) => x.id === userId);
+  if (u) u.name = name.trim();
+}
+
+/** troca o email do login; no modo em memória vale na hora (no Supabase chega um link de confirmação) */
+export async function changeMyEmail(userId: ID, email: string): Promise<{ pending: boolean }> {
+  const addr = email.trim().toLowerCase();
+  if (db.users.some((x) => x.email === addr && x.id !== userId)) throw new DomainError("invalid", "Já existe uma conta com esse email.");
+  const u = db.users.find((x) => x.id === userId);
+  if (u) u.email = addr;
+  return { pending: false };
+}
+
+export async function changeMyPassword(userId: ID, current: string, next: string) {
+  const u = db.users.find((x) => x.id === userId);
+  if (!u || u.passwordHash !== hash(current)) throw new DomainError("invalid", "A senha atual não confere.");
+  u.passwordHash = hash(next);
+}
+
+export async function updateWorkspace(wsId: ID, actor: ID, input: { name: string; phone: string | null; timezone: string; currency: string }) {
+  if (!db.memberships.some((m) => m.workspaceId === wsId && m.userId === actor && m.role === "admin")) throw new DomainError("forbidden", "Só administradores mudam os dados da empresa.");
+  const w = db.workspaces.find((x) => x.id === wsId);
+  if (w) Object.assign(w, { name: input.name.trim(), phone: input.phone, timezone: input.timezone, currency: input.currency });
+}
+
 export async function setMyAvatar(userId: ID, avatar: string | null) {
   const u = db.users.find((x) => x.id === userId);
   if (u) u.avatar = avatar;

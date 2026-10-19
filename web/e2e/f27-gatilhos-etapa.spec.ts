@@ -56,8 +56,16 @@ test("F27-H1 gatilho de etapa: escolhe um robô pelo nome e uma tarefa que roda 
   // editar: clicar no gatilho reabre a janela já preenchida
   await page.goto(`/${slug}/automations`);
   await page.getByRole("tab", { name: "Funil digital" }).click();
-  await page.getByRole("button", { name: /Tarefa: Ligar em até 1 hora/ }).click();
+  await page.getByRole("button", { name: /^Tarefa: Ligar em até 1 hora/ }).click();
   const edit = page.getByRole("dialog", { name: /Gatilho em “Primeiro contato”/ });
   await expect(edit.getByLabel("Tarefa", { exact: true })).toHaveValue("Ligar em até 1 hora");
   await expect(edit.getByLabel("Quando")).toHaveValue("created");
+  await edit.getByRole("button", { name: "Cancelar" }).click();
+
+  // lixeira do card: tira o gatilho da etapa (o robô chamado continua salvo)
+  await page.getByRole("button", { name: "Tirar Robô: Robô de recepção da etapa" }).click();
+  await page.getByRole("dialog", { name: /Tirar da etapa “Qualificado”/ }).getByRole("button", { name: "Tirar da etapa" }).click();
+  await expect(page.getByRole("region", { name: /Qualificado: 0 robôs/ })).toBeVisible();
+  await page.getByRole("tab", { name: "Todos os robôs" }).click();
+  await expect(page.getByText("Robô de recepção")).toBeVisible();
 });

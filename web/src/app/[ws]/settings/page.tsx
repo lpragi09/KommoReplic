@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
+import { Building2, UserCircle, ChevronRight, Columns3, CreditCard, Link2, ListPlus, MessageSquare, Sparkle, Users, type LucideIcon } from "@/components/ui/icons";
 import { getAccess, getAgent, listChannels, listFields, listMembers, listPipelines, listTrackingLinks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
@@ -40,7 +40,8 @@ export default async function SettingsPage({ params }: PageProps<"/[ws]/settings
 
   const items: { href: string; icon: LucideIcon; title: string; text: string; stat: string; tone: string }[] = [
     { href: "channels", icon: MessageSquare, title: "Canais", text: "Chat do site, WhatsApp, Instagram e Messenger", stat: `${connected} ${connected === 1 ? "conectado" : "conectados"}`, tone: "from-[#25d366] to-[#128c4a]" },
-    { href: "profile", icon: UserCircle, title: "Meu perfil e foto", text: "Sua foto aparece para a equipe no lugar das iniciais", stat: "Você", tone: "from-[#f472b6] to-[#db2777]" },
+    { href: "profile", icon: UserCircle, title: "Meu perfil", text: "Foto, nome, email de acesso e senha", stat: "Você", tone: "from-[#f472b6] to-[#db2777]" },
+    { href: "company", icon: Building2, title: "Dados da empresa", text: "Nome, WhatsApp, fuso horário e moeda", stat: ws.name.length > 14 ? `${ws.name.slice(0, 14)}…` : ws.name, tone: "from-[#3fbf86] to-[var(--stage-7)]" },
     { href: "ai", icon: Sparkle, title: "Agente de IA", text: "Responde os clientes com a sua base de conhecimento e chama a equipe", stat: agent.enabled ? "Ligado" : "Desligado", tone: "from-[#3fbf86] to-[var(--accent)]" },
     { href: "pipelines", icon: Columns3, title: "Funis e etapas", text: "Nomes, ordem e cores das etapas", stat: `${pipelines.length} ${pipelines.length === 1 ? "funil" : "funis"}`, tone: "from-[var(--stage-4)] to-[var(--stage-7)]" },
     { href: "users", icon: Users, title: "Equipe e permissões", text: "Pessoas, papéis e o que cada uma vê", stat: `${team.members.length} ${team.members.length === 1 ? "pessoa" : "pessoas"}`, tone: "from-[var(--aurora-2)] to-[var(--aurora-1)]" },

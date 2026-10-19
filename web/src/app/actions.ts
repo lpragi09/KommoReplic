@@ -1228,6 +1228,61 @@ const photo = z
   .regex(/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/, "Formato de imagem inválido.")
   .nullable();
 
+// ---------------------------------------------------------------------------
+// configurações: meus dados e dados da empresa
+// ---------------------------------------------------------------------------
+export async function updateMyNameAction(slug: string, name: string) {
+  return run(async () => {
+    const { user } = await requireWorkspace(slug);
+    await data.updateMyName(user.id, z.string().trim().min(2, "Digite seu nome.").max(120).parse(name));
+    return null;
+  });
+}
+
+export async function changeMyEmailAction(slug: string, email: string) {
+  return run(async () => {
+    const { user } = await requireWorkspace(slug);
+    if (!(await rateLimit(`email-change:${user.id}`, 3, 60 * 60_000))) throw new DomainError("invalid", "Muitas trocas de email. Tente daqui a uma hora.");
+    const v = z
+      .string()
+      .trim()
+      .email("Digite um email válido.")
+      .refine((e) => !isDisposableEmail(e), "Use um email de verdade: endereços temporários não são aceitos.")
+      .parse(email);
+    if (v.toLowerCase() === user.email.toLowerCase()) throw new DomainError("invalid", "Esse já é o seu email.");
+    return data.changeMyEmail(user.id, v);
+  });
+}
+
+export async function changeMyPasswordAction(slug: string, current: string, next: string) {
+  return run(async () => {
+    const { user } = await requireWorkspace(slug);
+    if (!(await rateLimit(`pwd:${user.id}`, 5, 15 * 60_000))) throw new DomainError("invalid", "Muitas tentativas. Espere alguns minutos.");
+    await data.changeMyPassword(user.id, z.string().min(1, "Digite a senha atual.").parse(current), z.string().min(8, "A senha nova precisa de pelo menos 8 caracteres.").max(72).parse(next));
+    return null;
+  });
+}
+
+const wsInput = z.object({
+  name: z.string().trim().min(2, "Dê um nome para a empresa.").max(120),
+  phone: z
+    .string()
+    .optional()
+    .transform((v) => digits(v ?? ""))
+    .refine((v) => v === "" || (v.length >= 10 && v.length <= 13), "WhatsApp com DDD, ex.: (11) 98888-1234.")
+    .transform((v) => v || null),
+  timezone: z.enum(["America/Sao_Paulo", "America/Manaus", "America/Fortaleza", "America/Noronha", "America/Rio_Branco"]),
+  currency: z.enum(["BRL", "USD", "EUR"]),
+});
+
+export async function updateWorkspaceAction(slug: string, input: z.input<typeof wsInput>) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.updateWorkspace(ws.id, user.id, wsInput.parse(input));
+    return null;
+  });
+}
+
 export async function setMyAvatarAction(slug: string, avatar: string | null) {
   return run(async () => {
     const { user } = await requireWorkspace(slug);

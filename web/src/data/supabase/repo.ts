@@ -294,7 +294,7 @@ export async function workspaceForUser(slug: string, _userId: ID): Promise<Works
   const sb = await userClient();
   const { data } = await sb.from("workspaces").select("*").eq("slug", slug).maybeSingle();
   if (!data) throw new DomainError("not_found"); // RLS: quem não é membro não enxerga
-  return { id: data.id, slug: data.slug, name: data.name, timezone: data.timezone, currency: data.currency, logo: data.logo ?? null };
+  return { id: data.id, slug: data.slug, name: data.name, timezone: data.timezone, currency: data.currency, logo: data.logo ?? null, phone: data.phone ?? null };
 }
 
 export async function createWorkspace(
@@ -911,6 +911,41 @@ export * from "./pipelines";
 // ---------------------------------------------------------------------------
 // foto de perfil e logo da empresa
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// configurações: meus dados e dados da empresa
+// ---------------------------------------------------------------------------
+export async function updateMyName(userId: ID, name: string) {
+  const sb = await userClient();
+  check(await sb.from("profiles").update({ full_name: name.trim() }).eq("id", userId));
+  await sb.auth.updateUser({ data: { full_name: name.trim() } });
+}
+
+/** troca o email do login: o Supabase manda um link de confirmação; o email só muda depois do clique */
+export async function changeMyEmail(_userId: ID, email: string): Promise<{ pending: boolean }> {
+  const sb = await userClient();
+  const { error } = await sb.auth.updateUser({ email: email.trim().toLowerCase() }, { emailRedirectTo: `${process.env.APP_URL ?? ""}/app` });
+  if (error) throw new DomainError("invalid", /registered|exists/i.test(error.message) ? "Já existe uma conta com esse email." : "Não deu para trocar o email agora. Tente de novo.");
+  return { pending: true };
+}
+
+export async function changeMyPassword(_userId: ID, current: string, next: string) {
+  const sb = await userClient();
+  const { data } = await sb.auth.getUser();
+  const email = data.user?.email;
+  if (!email) throw new DomainError("invalid", "Entre de novo para trocar a senha.");
+  const check1 = await sb.auth.signInWithPassword({ email, password: current });
+  if (check1.error) throw new DomainError("invalid", "A senha atual não confere.");
+  const { error } = await sb.auth.updateUser({ password: next });
+  if (error) throw new DomainError("invalid", /different|same/i.test(error.message) ? "A senha nova precisa ser diferente da atual." : "Não deu para trocar a senha. Tente de novo.");
+}
+
+export async function updateWorkspace(wsId: ID, _actor: ID, input: { name: string; phone: string | null; timezone: string; currency: string }) {
+  const sb = await userClient();
+  const { data, error } = await sb.from("workspaces").update({ name: input.name.trim(), phone: input.phone, timezone: input.timezone, currency: input.currency }).eq("id", wsId).select("id");
+  if (error) throw toDomain(error);
+  if (!data?.length) throw new DomainError("forbidden", "Só administradores mudam os dados da empresa.");
+}
+
 export async function setMyAvatar(userId: ID, avatar: string | null) {
   const sb = await userClient();
   const { error } = await sb.from("profiles").update({ avatar }).eq("id", userId);

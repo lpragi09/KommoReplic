@@ -99,65 +99,149 @@ async function ListView({
     );
   }
   const total = leads.reduce((s, l) => s + l.priceCents, 0);
+  // resumo por etapa, na ordem do funil
+  const byStage = new Map<string, { name: string; color: (typeof leads)[number]["stage"]["color"]; sort: number; n: number; cents: number }>();
+  for (const l of leads) {
+    const cur = byStage.get(l.stage.id) ?? { name: l.stage.name, color: l.stage.color, sort: l.stage.sort, n: 0, cents: 0 };
+    cur.n++;
+    cur.cents += l.priceCents;
+    byStage.set(l.stage.id, cur);
+  }
+  const stages = [...byStage.values()].sort((a, b) => a.sort - b.sort);
+  /** nome curto do responsável: sem nome no perfil, usa o começo do email */
+  const who = (id: string | null) => {
+    const n = userName(id);
+    return n.includes("@") ? n.split("@")[0] : n;
+  };
+  const task = (l: (typeof leads)[number]) =>
+    l.taskState === "late"
+      ? { cls: "bg-danger-soft text-danger", text: `Atrasada · ${when(l.closestTaskAt!)}` }
+      : l.taskState === "none"
+        ? { cls: "bg-warning-soft text-warning", text: "Sem tarefa" }
+        : { cls: "bg-surface text-fg shadow-[inset_0_0_0_1px_var(--border)]", text: l.closestTaskAt ? when(l.closestTaskAt) : "—" };
+
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full min-w-[720px] border-collapse text-left">
-        <caption className="sr-only">Leads do funil</caption>
-        <thead className="sticky top-0 bg-surface text-caps uppercase text-muted">
-          <tr className="h-10 border-b border-border">
-            <th scope="col" className="px-4 font-semibold">Lead</th>
-            <th scope="col" className="px-4 font-semibold">Etapa</th>
-            <th scope="col" className="px-4 font-semibold">Contato</th>
-            <th scope="col" className="px-4 text-right font-semibold">Valor</th>
-            <th scope="col" className="px-4 font-semibold">Responsável</th>
-            <th scope="col" className="px-4 font-semibold">Próxima tarefa</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map((l) => (
-            <tr key={l.id} className="h-11 border-b border-border text-base hover:bg-surface">
-              <td className="max-w-80 px-4">
-                <Link href={`/${slug}/leads/${l.id}`} className="block truncate font-medium text-fg hover:text-accent-text hover:underline">
-                  {leadTitle(l)}
+    <div className="min-h-0 flex-1 overflow-auto bg-surface">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 p-4 sm:p-6">
+        {/* resumo */}
+        <section aria-label="Resumo" className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <p className="text-sm text-muted">
+            <strong className="text-2xl font-semibold tabular-nums text-fg">{leads.length}</strong> {leads.length === 1 ? "lead" : "leads"}
+            <span className="mx-2 text-border-input" aria-hidden>
+              ·
+            </span>
+            <strong className="text-2xl font-semibold tabular-nums text-fg">{money(total)}</strong> no total
+          </p>
+          <ul className="flex flex-wrap gap-1.5">
+            {stages.map((st) => (
+              <li key={st.name} className="inline-flex items-center gap-1.5 rounded-pill bg-bg px-2.5 py-1 text-xs text-fg shadow-[inset_0_0_0_1px_var(--border)]">
+                <span className={cn("size-2 rounded-pill", stageBar[st.color])} aria-hidden />
+                {st.name}
+                <span className="font-semibold tabular-nums">{st.n}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* tabela (computador) */}
+        <div className="hidden overflow-hidden rounded-xl bg-bg shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] md:block">
+          <table className="w-full border-collapse text-left">
+            <caption className="sr-only">Leads do funil</caption>
+            <thead className="border-b border-border bg-surface text-xs font-medium text-muted">
+              <tr className="h-10">
+                <th scope="col" className="pl-5 pr-3 font-medium">Negócio</th>
+                <th scope="col" className="px-3 font-medium">Etapa</th>
+                <th scope="col" className="px-3 font-medium">Contato</th>
+                <th scope="col" className="px-3 text-right font-medium">Valor</th>
+                <th scope="col" className="px-3 font-medium">Responsável</th>
+                <th scope="col" className="px-3 pr-5 font-medium">Próxima tarefa</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {leads.map((l) => {
+                const t = task(l);
+                return (
+                  <tr key={l.id} className="group relative h-16 text-sm transition-colors duration-fast hover:bg-[color-mix(in_srgb,var(--accent)_4%,var(--bg))]">
+                    <td className="max-w-80 pl-5 pr-3">
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent-soft text-xs font-semibold text-accent-text" aria-hidden>
+                          {leadTitle(l).slice(0, 2).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <Link href={`/${slug}/leads/${l.id}`} className="block truncate font-semibold text-fg after:absolute after:inset-0 after:content-[''] group-hover:text-accent-text">
+                            {leadTitle(l)}
+                          </Link>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                            #{l.number}
+                            {l.tags.slice(0, 2).map((tg) => (
+                              <Tag key={tg}>{tg}</Tag>
+                            ))}
+                            {l.tags.length > 2 && <span>+{l.tags.length - 2}</span>}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3">
+                      <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface px-2.5 py-1 text-xs font-medium text-fg shadow-[inset_0_0_0_1px_var(--border)]">
+                        <span className={cn("size-2 rounded-pill", stageBar[l.stage.color])} aria-hidden />
+                        {l.stage.name}
+                      </span>
+                    </td>
+                    <td className="max-w-48 truncate px-3 text-muted">{l.mainContact?.name ?? "Sem contato"}</td>
+                    <td className="px-3 text-right font-semibold tabular-nums text-fg">{money(l.priceCents)}</td>
+                    <td className="px-3">
+                      <span className="inline-flex max-w-44 items-center gap-2">
+                        <Avatar name={userName(l.responsibleUserId)} size={24} />
+                        <span className="truncate">{who(l.responsibleUserId)}</span>
+                      </span>
+                    </td>
+                    <td className="px-3 pr-5">
+                      <span className={cn("inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-medium", t.cls)} suppressHydrationWarning>
+                        {t.text}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* cartões (celular) */}
+        <ul className="flex flex-col gap-2 md:hidden">
+          {leads.map((l) => {
+            const t = task(l);
+            return (
+              <li key={l.id}>
+                <Link href={`/${slug}/leads/${l.id}`} className="flex flex-col gap-2 rounded-xl bg-bg p-4 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)] active:scale-[.99]">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-fg">{leadTitle(l)}</p>
+                      <p className="truncate text-xs text-muted">
+                        #{l.number} · {l.mainContact?.name ?? "Sem contato"}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-semibold tabular-nums text-fg">{money(l.priceCents)}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface px-2.5 py-1 text-xs font-medium text-fg shadow-[inset_0_0_0_1px_var(--border)]">
+                      <span className={cn("size-2 rounded-pill", stageBar[l.stage.color])} aria-hidden />
+                      {l.stage.name}
+                    </span>
+                    <span className={cn("inline-flex items-center rounded-pill px-2.5 py-1 text-xs font-medium", t.cls)} suppressHydrationWarning>
+                      {t.text}
+                    </span>
+                    <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted">
+                      <Avatar name={userName(l.responsibleUserId)} size={20} />
+                      {who(l.responsibleUserId)}
+                    </span>
+                  </div>
                 </Link>
-                {l.tags.length > 0 && (
-                  <span className="mt-0.5 flex gap-1">
-                    {l.tags.slice(0, 3).map((t) => (
-                      <Tag key={t}>{t}</Tag>
-                    ))}
-                  </span>
-                )}
-              </td>
-              <td className="px-4">
-                <span className="inline-flex items-center gap-2 text-sm">
-                  <span className={cn("size-2.5 rounded-pill", stageBar[l.stage.color])} aria-hidden />
-                  {l.stage.name}
-                </span>
-              </td>
-              <td className="max-w-48 truncate px-4 text-sm text-muted">{l.mainContact?.name ?? "—"}</td>
-              <td className="px-4 text-right font-semibold tabular-nums">{money(l.priceCents)}</td>
-              <td className="px-4">
-                <span className="inline-flex items-center gap-2 text-sm">
-                  <Avatar name={userName(l.responsibleUserId)} size={24} />
-                  {userName(l.responsibleUserId)}
-                </span>
-              </td>
-              <td className={cn("px-4 text-sm", l.taskState === "late" ? "text-danger" : l.taskState === "none" ? "text-warning" : "text-muted")}>
-                {l.closestTaskAt ? when(l.closestTaskAt) : "Sem tarefa"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="h-10 text-sm text-muted">
-            <td className="px-4" colSpan={3}>
-              {leads.length} leads
-            </td>
-            <td className="px-4 text-right font-semibold text-fg tabular-nums">{money(total)}</td>
-            <td colSpan={2} />
-          </tr>
-        </tfoot>
-      </table>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }

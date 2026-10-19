@@ -3,8 +3,10 @@
 import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Pipeline, Robot, Stage } from "@/data/types";
-import { setRobotActiveAction } from "@/app/actions";
-import { Bot, ChevronRight, Lightning, MessageCircle, Plus, Sparkle } from "@/components/ui/icons";
+import { deleteRobotAction, setRobotActiveAction } from "@/app/actions";
+import { Bot, ChevronRight, Lightning, MessageCircle, Plus, Sparkle, Trash2 } from "@/components/ui/icons";
+import { Button, IconButton } from "@/components/ui/button";
+import { Dialog, DialogClose } from "@/components/ui/overlay";
 import { EmptyState } from "@/components/ui/bits";
 import { PRESETS, TRIGGERS, channelLabel, humanMinutes } from "@/lib/robot-meta";
 import { cn } from "@/lib/cn";
@@ -25,9 +27,18 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
   const [view, setView] = useState<View>(robots.length ? "funil" : "prontos");
   const [pid, setPid] = useState(pipelines[0]?.id ?? "");
   const [, start] = useTransition();
-  const [list, setActive] = useOptimistic(robots, (cur, p: { id: string; active: boolean }) => cur.map((r) => (r.id === p.id ? { ...r, active: p.active } : r)));
+  const [active, setActive] = useOptimistic(robots, (cur, p: { id: string; active: boolean }) => cur.map((r) => (r.id === p.id ? { ...r, active: p.active } : r)));
   const [error, setError] = useState<string | null>(null);
 
+  // lixeira do card: gatilho de etapa sai da etapa (o robô chamado continua); robô normal é excluído
+  const [gone, setGone] = useOptimistic(robots, (cur, id: string) => cur.filter((r) => r.id !== id));
+  const list = active.filter((r) => gone.some((g) => g.id === r.id));
+  const remove = (r: Robot) =>
+    start(async () => {
+      setGone(r.id);
+      const res = await deleteRobotAction(slug, r.id);
+      setError(res.ok ? null : res.error);
+    });
   const toggle = (r: Robot, active: boolean) =>
     start(async () => {
       setActive({ id: r.id, active });
@@ -97,6 +108,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
             head={<MessageCircle className="size-4 text-accent" weight="fill" aria-hidden />}
             accent
             robots={inbound}
+            onRemove={remove}
             addHref={`${base}/new?trigger=message_in`}
             onToggle={toggle}
             base={base}
@@ -121,6 +133,7 @@ export function RobotsBoard({ slug, pipelines, robots, users = [] }: { slug: str
               robots={list.filter((r) => (r.trigger === "stage_enter" || r.trigger === "responsible_changed") && r.stageId === s.id)}
               addHref={`${base}/new?trigger=stage_enter&stage=${s.id}`}
               onAdd={() => setTrigger({ stage: s, existing: null })}
+              onRemove={remove}
               onEdit={(r) => setTrigger({ stage: s, existing: r })}
               onToggle={toggle}
               base={base}
@@ -211,6 +224,7 @@ function Rail({
   stages,
   onAdd,
   onEdit,
+  onRemove,
 }: {
   title: string;
   sub?: string;
@@ -224,6 +238,7 @@ function Rail({
   /** etapa do funil: abre a janela de gatilhos em vez de ir para o editor */
   onAdd?: () => void;
   onEdit?: (r: Robot) => void;
+  onRemove?: (r: Robot) => void;
 }) {
   const addCls =
     "mt-1.5 flex h-10 items-center justify-center gap-1.5 rounded-md border border-dashed border-border-input text-sm text-muted transition-colors duration-fast ease-out hover:border-accent hover:bg-bg hover:text-accent-text";
@@ -246,7 +261,7 @@ function Rail({
       <ul className="flex flex-col gap-1.5 overflow-y-auto">
         {robots.map((r) => (
           <li key={r.id}>
-            <RobotCard robot={r} href={`${base}/${r.id}`} onToggle={onToggle} stages={stages} onEdit={onEdit && isStageTrigger(r) ? () => onEdit(r) : undefined} />
+            <RobotCard robot={r} href={`${base}/${r.id}`} onToggle={onToggle} stages={stages} onEdit={onEdit && isStageTrigger(r) ? () => onEdit(r) : undefined} onRemove={onRemove ? () => onRemove(r) : undefined} stageName={title} />
           </li>
         ))}
       </ul>
@@ -302,7 +317,24 @@ function Channels({ robot }: { robot: Robot }) {
   );
 }
 
-function RobotCard({ robot: r, href, onToggle, stages, onEdit }: { robot: Robot; href: string; onToggle: (r: Robot, v: boolean) => void; stages: Map<string, Stage>; onEdit?: () => void }) {
+function RobotCard({
+  robot: r,
+  href,
+  onToggle,
+  stages,
+  onEdit,
+  onRemove,
+  stageName,
+}: {
+  robot: Robot;
+  href: string;
+  onToggle: (r: Robot, v: boolean) => void;
+  stages: Map<string, Stage>;
+  onEdit?: () => void;
+  onRemove?: () => void;
+  stageName?: string;
+}) {
+  const trigger = isStageTrigger(r);
   return (
     <div
       className={cn(
@@ -322,7 +354,33 @@ function RobotCard({ robot: r, href, onToggle, stages, onEdit }: { robot: Robot;
             <p className="mt-0.5 line-clamp-2 text-xs text-muted">{summary(r, stages)}</p>
           </Link>
         )}
-        <span className="relative z-10">
+        <span className="relative z-10 flex items-center gap-1">
+          {onRemove && (
+            <Dialog
+              icon={<Trash2 className="size-5" />}
+              tone="danger"
+              size="sm"
+              title={trigger ? `Tirar da etapa “${stageName}”?` : `Excluir o robô “${r.name}”?`}
+              description={trigger ? "O gatilho sai desta etapa. O robô que ele chamava continua salvo em Todos os robôs." : "O robô é apagado e para de rodar. Não dá para desfazer."}
+              trigger={
+                <IconButton label={trigger ? `Tirar ${r.name} da etapa` : `Excluir ${r.name}`} tone="danger" size={28}>
+                  <Trash2 className="size-4" />
+                </IconButton>
+              }
+              footer={
+                <>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cancelar</Button>
+                  </DialogClose>
+                  <DialogClose asChild>
+                    <Button variant="danger" onClick={onRemove}>
+                      {trigger ? "Tirar da etapa" : "Excluir robô"}
+                    </Button>
+                  </DialogClose>
+                </>
+              }
+            />
+          )}
           <Switch checked={r.active} onChange={(v) => onToggle(r, v)} label={r.active ? `Desligar ${r.name}` : `Ligar ${r.name}`} />
         </span>
       </div>
