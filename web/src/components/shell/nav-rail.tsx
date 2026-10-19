@@ -4,7 +4,8 @@ import { Fragment, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle } from "@/components/ui/icons";
+import { Bell, Bot, CalendarDays, ChartColumn, ChevronsLeft, ChevronsRight, Columns3, Contact, House, LogOut, MessageSquare, Search, Settings, type LucideIcon, UserCircle, Moon, Sun } from "@/components/ui/icons";
+import { applyTheme, useTheme } from "@/components/theme/theme";
 import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
@@ -167,6 +168,7 @@ export function NavRail({
                     <Settings className="size-4" aria-hidden /> Configurações
                   </Link>
                 </DropdownMenu.Item>
+                <ThemeMenuItem />
                 <DropdownMenu.Item
                   onSelect={() => signOutAction()}
                   className="flex h-8 cursor-pointer items-center gap-2 rounded-sm px-2 text-sm text-danger outline-none data-[highlighted]:bg-danger-soft"
@@ -179,6 +181,22 @@ export function NavRail({
         </li>
       </ul>
     </nav>
+  );
+}
+
+/** troca rápida claro/escuro no menu da conta (a escolha completa, com "igual ao sistema", fica em Meu perfil) */
+function ThemeMenuItem() {
+  const { dark } = useTheme();
+  return (
+    <DropdownMenu.Item
+      onSelect={(e) => {
+        e.preventDefault();
+        applyTheme(dark ? "claro" : "escuro");
+      }}
+      className="flex h-8 cursor-pointer items-center gap-2 rounded-sm px-2 text-sm text-fg outline-none data-[highlighted]:bg-surface"
+    >
+      {dark ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />} {dark ? "Modo claro" : "Modo escuro"}
+    </DropdownMenu.Item>
   );
 }
 

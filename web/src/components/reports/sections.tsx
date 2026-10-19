@@ -197,7 +197,7 @@ export function Consolidated({ leads, users, from, days, label }: { leads: L[]; 
   return (
     <div className="flex flex-col gap-4">
       <Card title="Leads" sub={`Criados e ganhos por ${bucket === 1 ? "dia" : bucket === 7 ? "semana" : "mês"} · ${label}`}>
-        <LineChart series={[{ name: "Criados", values: created, cls: "stroke-[var(--accent)]", dot: "fill-[var(--accent)]" }, { name: "Ganhos", values: won, cls: "stroke-[var(--stage-won)]", dot: "fill-[var(--stage-won)]" }]} labels={created.map((_, i) => new Date(start + i * bucket * DAY).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }))} />
+        <LineChart series={[{ name: "Criados", values: created, cls: "stroke-[var(--accent)]", dot: "fill-[var(--accent)]", bg: "bg-[var(--accent)]" }, { name: "Ganhos", values: won, cls: "stroke-[var(--warning)]", dot: "fill-[var(--warning)]", bg: "bg-[var(--warning)]" }]} labels={created.map((_, i) => new Date(start + i * bucket * DAY).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }))} />
       </Card>
       <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
         <Card title="Etapas do funil" sub="Onde estão os leads">
@@ -262,8 +262,8 @@ const strokeOf: Record<Stage["color"], string> = {
   lost: "stroke-[var(--stage-lost)]",
 };
 
-function LineChart({ series, labels }: { series: { name: string; values: number[]; cls: string; dot: string }[]; labels: string[] }) {
-  const W = 720;
+function LineChart({ series, labels }: { series: { name: string; values: number[]; cls: string; dot: string; bg: string }[]; labels: string[] }) {
+  const W = 1100;
   const H = 220;
   const P = { l: 32, r: 12, t: 12, b: 28 };
   const n = labels.length;
@@ -278,14 +278,14 @@ function LineChart({ series, labels }: { series: { name: string; values: number[
         {ticks.map((t) => (
           <g key={t}>
             <line x1={P.l} x2={W - P.r} y1={y(t)} y2={y(t)} className="stroke-[var(--border)]" strokeDasharray="3 4" />
-            <text x={P.l - 6} y={y(t) + 4} textAnchor="end" className="fill-[var(--muted)] text-[10px]">
+            <text x={P.l - 6} y={y(t) + 4} textAnchor="end" className="fill-[var(--text-muted)] text-[10px]">
               {t}
             </text>
           </g>
         ))}
         {labels.map((l, i) =>
           i % every === 0 ? (
-            <text key={i} x={x(i)} y={H - 8} textAnchor="middle" className="fill-[var(--muted)] text-[10px]">
+            <text key={i} x={x(i)} y={H - 8} textAnchor="middle" className="fill-[var(--text-muted)] text-[10px]">
               {l}
             </text>
           ) : null,
@@ -300,7 +300,7 @@ function LineChart({ series, labels }: { series: { name: string; values: number[
       <figcaption className="mt-1 flex gap-4 text-xs text-muted">
         {series.map((s) => (
           <span key={s.name} className="inline-flex items-center gap-1.5">
-            <span className={cn("size-2 rounded-pill", s.dot.replace("fill-", "bg-"))} aria-hidden /> {s.name} ({s.values.reduce((a, b) => a + b, 0)})
+            <span className={cn("size-2 rounded-pill", s.bg)} aria-hidden /> {s.name} ({s.values.reduce((a, b) => a + b, 0)})
           </span>
         ))}
       </figcaption>

@@ -110,3 +110,6 @@ export const CaretUpDown = icon(P.CaretUpDown, "bold");
 export const UserCircle = icon(P.UserCircle);
 export const Coins = icon(P.Coins);
 export const Briefcase = icon(P.Briefcase);
+export const Sun = icon(P.Sun);
+export const Moon = icon(P.Moon);
+export const Monitor = icon(P.Monitor);

@@ -3,6 +3,7 @@ import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { PhotoPicker } from "@/components/settings/photo";
 import { ProfileForms } from "@/components/settings/account";
+import { ThemeChoice } from "@/components/theme/theme";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
@@ -39,6 +40,15 @@ export default async function ProfilePage({ params }: PageProps<"/[ws]/settings/
             </div>
           </section>
           <ProfileForms slug={slug} name={me?.name || user.name || ""} email={user.email} />
+            <section aria-labelledby="tema-t" className="rounded-xl bg-bg p-6 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]">
+              <h2 id="tema-t" className="text-base font-semibold text-fg">
+                Aparência
+              </h2>
+              <p className="mt-0.5 text-sm text-muted">Vale para você, neste navegador.</p>
+              <div className="mt-4">
+                <ThemeChoice />
+              </div>
+            </section>
         </div>
       </div>
     </>

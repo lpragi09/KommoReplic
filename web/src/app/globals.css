@@ -52,6 +52,50 @@
   --shadow-glow: 0 0 0 1px rgba(63,191,134,.18), 0 20px 60px -20px rgba(31,122,85,.55);
 }
 
+/* modo escuro (opção de cada pessoa em Meu perfil): preto esverdeado da marca, verde do broto mais claro para ler bem */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1411;
+  --surface: #0a0e0b;
+  --canvas: #070a08;
+  --border: #233029;
+  --border-input: #5d6b63;
+  --text: #eef2ef;
+  --text-muted: #a3b0a8;
+  --accent: #3fbf86;
+  --accent-hover: #5ccd99;
+  --accent-soft: #12301f;
+  --accent-text: #6fd3a5;
+  --on-accent: #03120b;
+  --focus: #5ccd99;
+  --nav-bg: #050706;
+  --nav-hover: #121915;
+  --nav-active: #2a9367;
+  --inverse-bg: #eef2ef;
+  --on-inverse: #0b0f0c;
+  --danger: #ff7a7a;
+  --danger-soft: #3a1515;
+  --success: #4fd08f;
+  --success-soft: #10301f;
+  --warning: #f2b54a;
+  --warning-soft: #352609;
+  --bubble-in: #161e19;
+  --bubble-out: #16402b;
+  --bubble-note: #352609;
+  --stage-1: #1d4a34;
+  --stage-2: #235c3f;
+  --stage-3: #2d7650;
+  --stage-4: #3c9666;
+  --stage-5: #4caf7c;
+  --stage-6: #3fbf86;
+  --stage-7: #8fdcb4;
+  --stage-8: #8e9892;
+  --stage-won: #3fbf86;
+  --stage-lost: #ff7a7a;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 2px 6px -2px rgba(0,0,0,.6);
+  --shadow-pop: 0 16px 40px -8px rgba(0,0,0,.7);
+}
+
 @theme inline {
   --color-brand: var(--brand);
   --color-brand-on-night: var(--brand-on-night);
