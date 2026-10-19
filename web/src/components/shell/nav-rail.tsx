@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { Avatar, Badge } from "@/components/ui/bits";
 import { signOutAction } from "@/app/actions";
 import { BRAND } from "@/lib/brand";
+import { NetzerMark } from "@/components/brand/logo";
 
 /* preferência de menu aberto/fechado: só conveniência local, sem servidor */
 const NAV_KEY = "nav-expanded";
@@ -44,6 +45,7 @@ export function NavRail({
   workspaceName,
   unread = 0,
   incoming = 0,
+  notifications = 0,
 }: {
   slug: string;
   userName: string;
@@ -51,6 +53,8 @@ export function NavRail({
   workspaceName: string;
   unread?: number;
   incoming?: number;
+  /** notificações que a pessoa ainda não viu */
+  notifications?: number;
 }) {
   const path = usePathname();
   const expanded = useSyncExternalStore(subscribeNav, readNav, () => false);
@@ -69,7 +73,7 @@ export function NavRail({
   const isOn = (it: Item) => [it.href, ...(it.match ?? [])].some((h) => path === h || path.startsWith(h + "/"));
   const footer: Item[] = [
     { href: `${base}/search`, label: "Buscar", icon: Search },
-    { href: `${base}/notifications`, label: "Notificações", icon: Bell },
+    { href: `${base}/notifications`, label: "Notificações", icon: Bell, badge: notifications },
     { href: `${base}/settings`, label: "Configurações", icon: Settings },
   ];
 
@@ -112,9 +116,8 @@ export function NavRail({
       )}
     >
       <div className="mb-4 flex h-8 items-center gap-2 overflow-hidden px-4">
-        {/* marca provisória: troca no replica-brand */}
-        <span className="fx-glow grid size-8 shrink-0 place-items-center rounded-sm bg-accent text-sm font-bold text-on-accent" aria-hidden>
-          {BRAND.initial}
+        <span className="grid size-8 shrink-0 place-items-center" title={BRAND.name}>
+          <NetzerMark className="h-7 w-auto text-brand-on-night" />
         </span>
         <span className={cn("truncate text-md font-semibold", !expanded && "sr-only")}>{workspaceName}</span>
       </div>

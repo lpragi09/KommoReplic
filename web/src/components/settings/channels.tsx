@@ -189,7 +189,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
         onOpenChange={(o) => !o && setOpen(null)}
         icon={<MessageSquare className="size-5" />}
         title={open ? `Conectar ${NETS[open].label}` : ""}
-        description="Pela API oficial da Meta. Você cola os dados da sua conta e o Recadi confere com a Meta antes de salvar."
+        description="Pela API oficial da Meta. Você cola os dados da sua conta e o sistema confere com a Meta antes de salvar."
         size="lg"
         footer={
           <>
@@ -223,7 +223,7 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
                 </div>
               </div>
               <p className="text-xs text-muted sm:col-span-2">
-                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). Cada aviso da Meta vem assinado: se o app é o do Recadi, vale a <code>META_APP_SECRET</code>; se o app é da sua empresa, cole a chave secreta dele abaixo.
+                Token de verificação: o valor da variável <code>META_VERIFY_TOKEN</code> na Vercel (você escolhe, ex.: uma frase longa). Cada aviso da Meta vem assinado: se o app é o da netzer tech, vale a <code>META_APP_SECRET</code>; se o app é da sua empresa, cole a chave secreta dele abaixo.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

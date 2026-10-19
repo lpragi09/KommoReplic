@@ -1,4 +1,4 @@
--- Recadi: APAGA tudo o que o setup.sql criou (tabelas, dados, funções, regras de acesso).
+-- netzer tech: APAGA tudo o que o setup.sql criou (tabelas, dados, funções, regras de acesso).
 -- Use só num projeto de teste, quando o setup rodou pela metade ou você quer começar do zero.
 -- Depois rode o setup.sql de novo.
 -- Não mexe nos usuários do Auth nem no bucket de arquivos (o setup reaproveita o bucket).

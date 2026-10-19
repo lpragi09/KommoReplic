@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash, randomBytes } from "node:crypto";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { renderText } from "../robots/engine";
@@ -12,6 +13,8 @@ import {
   type MarkColor,
   type FieldValue,
   type ID,
+  type Invite,
+  type InviteInfo,
   type Lead,
   type Member,
   type Role,
@@ -73,16 +76,97 @@ export async function addMember(wsId: ID, _actor: ID, input: { name: string; ema
   const email = input.email.trim().toLowerCase();
   const role = check(await a.from("roles").select("id").eq("workspace_id", wsId).eq("id", input.roleId).maybeSingle());
   if (!role) throw new DomainError("invalid", "Papel inválido.");
-  let userId: string | null = check(await a.from("profiles").select("id").eq("email", email).maybeSingle())?.id ?? null;
-  if (!userId) {
-    const { data, error } = await a.auth.admin.createUser({ email, password: input.password, email_confirm: true, user_metadata: { full_name: input.name.trim() } });
-    if (error) throw new DomainError("invalid", error.message.includes("already") ? "Esse email já tem conta. Peça para a pessoa entrar e tente de novo." : "Não deu para criar o acesso dessa pessoa.");
-    userId = data.user.id;
-    await a.from("profiles").upsert({ id: userId, email, full_name: input.name.trim() }, { onConflict: "id" });
+  // quem já tem conta só entra por convite (a pessoa aceita com a conta dela)
+  const existing: string | null = check(await a.from("profiles").select("id").eq("email", email).maybeSingle())?.id ?? null;
+  if (existing) {
+    const inTeam = check(await a.from("memberships").select("id").eq("workspace_id", wsId).eq("user_id", existing).maybeSingle());
+    throw new DomainError("invalid", inTeam ? "Essa pessoa já está na equipe." : "Esse email já tem conta. Use “Convidar por link”: a pessoa aceita com a conta dela.");
   }
-  const exists = check(await a.from("memberships").select("id").eq("workspace_id", wsId).eq("user_id", userId).maybeSingle());
-  if (exists) throw new DomainError("invalid", "Essa pessoa já está na equipe.");
+  const userId = await newLogin(email, input.name, input.password);
   check(await a.from("memberships").insert({ workspace_id: wsId, user_id: userId, role_id: role.id }));
+}
+
+/** cria o login (email já confirmado: quem garante o email é o admin que convidou) e o perfil */
+async function newLogin(email: string, name: string, password: string) {
+  const a = adminClient();
+  const { data, error } = await a.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name.trim() } });
+  if (error) throw new DomainError("invalid", error.message.includes("already") ? "Esse email já tem conta. Entre com ela." : "Não deu para criar o acesso dessa pessoa.");
+  await a.from("profiles").upsert({ id: data.user.id, email, full_name: name.trim() }, { onConflict: "id" });
+  return data.user.id as string;
+}
+
+// ---------------------------------------------------------------------------
+// convites por link (o link leva um token; o banco guarda só o hash)
+// ---------------------------------------------------------------------------
+const sha = (t: string) => createHash("sha256").update(t).digest("hex");
+
+export async function createInvite(wsId: ID, _actor: ID, input: { email: string; roleId: ID }) {
+  const { sb, uid } = await assertAdmin(wsId);
+  const a = adminClient();
+  const email = input.email.trim().toLowerCase();
+  const role = check(await sb.from("roles").select("id").eq("workspace_id", wsId).eq("id", input.roleId).maybeSingle());
+  if (!role) throw new DomainError("invalid", "Papel inválido.");
+  const existing: string | null = check(await a.from("profiles").select("id").eq("email", email).maybeSingle())?.id ?? null;
+  if (existing && check(await a.from("memberships").select("id").eq("workspace_id", wsId).eq("user_id", existing).maybeSingle()))
+    throw new DomainError("invalid", "Essa pessoa já está na equipe.");
+  // um convite aberto por email (índice único): gerar de novo troca o link
+  check(await sb.from("invitations").delete().eq("workspace_id", wsId).ilike("email", email).is("accepted_at", null));
+  const token = randomBytes(24).toString("base64url");
+  check(await sb.from("invitations").insert({ workspace_id: wsId, email, role_id: role.id, token_hash: sha(token), invited_by: uid }));
+  return { token };
+}
+
+export async function listInvites(wsId: ID): Promise<Invite[]> {
+  const sb = await userClient();
+  const rows = check(await sb.from("invitations").select("id, email, role_id, expires_at, roles(name)").eq("workspace_id", wsId).is("accepted_at", null).gt("expires_at", new Date().toISOString()).order("created_at"));
+  return rows.map((r: Row) => ({ id: r.id, email: r.email, roleId: r.role_id, roleName: r.roles?.name ?? "", expiresAt: new Date(r.expires_at).toISOString() }));
+}
+
+export async function revokeInvite(wsId: ID, _actor: ID, id: ID) {
+  const { sb } = await assertAdmin(wsId);
+  check(await sb.from("invitations").delete().eq("workspace_id", wsId).eq("id", id));
+}
+
+/** página pública do convite: lê pelo hash com a chave secreta (quem abre ainda não é da empresa) */
+async function inviteRow(token: string) {
+  return check(await adminClient().from("invitations").select("id, workspace_id, email, role_id, expires_at, accepted_at, roles(name), workspaces(name, slug)").eq("token_hash", sha(token)).maybeSingle()) as Row | null;
+}
+
+export async function getInvite(token: string): Promise<InviteInfo | null> {
+  const r = await inviteRow(token);
+  if (!r?.workspaces) return null;
+  return { workspaceName: r.workspaces.name, workspaceSlug: r.workspaces.slug, email: r.email, roleName: r.roles?.name ?? "", state: r.accepted_at ? "accepted" : new Date(r.expires_at) < new Date() ? "expired" : "ok" };
+}
+
+async function openInvite(token: string) {
+  const r = await inviteRow(token);
+  if (!r || r.accepted_at || new Date(r.expires_at) < new Date()) throw new DomainError("invalid", "Este convite não vale mais. Peça um link novo para quem convidou.");
+  return r;
+}
+
+async function joinFromInvite(r: Row, userId: string) {
+  const a = adminClient();
+  const inTeam = check(await a.from("memberships").select("id").eq("workspace_id", r.workspace_id).eq("user_id", userId).maybeSingle());
+  if (!inTeam) check(await a.from("memberships").insert({ workspace_id: r.workspace_id, user_id: userId, role_id: r.role_id }));
+  check(await a.from("invitations").update({ accepted_at: new Date().toISOString() }).eq("id", r.id));
+  return { slug: r.workspaces.slug as string };
+}
+
+/** quem já tem conta (e está logado com o email do convite) entra na equipe */
+export async function acceptInvite(token: string, userId: ID) {
+  const r = await openInvite(token);
+  const { data } = await (await userClient()).auth.getUser();
+  if (!data.user || data.user.id !== userId || (data.user.email ?? "").toLowerCase() !== String(r.email).toLowerCase())
+    throw new DomainError("invalid", `Este convite é para ${r.email}. Entre com essa conta para aceitar.`);
+  return joinFromInvite(r, userId);
+}
+
+/** quem ainda não tem conta cria a senha no próprio convite (o email é o do convite) */
+export async function acceptInviteNewAccount(token: string, input: { name: string; password: string }) {
+  const r = await openInvite(token);
+  const userId = await newLogin(String(r.email).toLowerCase(), input.name, input.password);
+  const out = await joinFromInvite(r, userId);
+  return { ...out, email: String(r.email).toLowerCase() };
 }
 
 async function adminsLeft(wsId: ID) {

@@ -136,7 +136,13 @@ export type Message = {
   sentAt: ISO;
   /** escrita pelo agente de IA */
   byAi?: boolean;
+  /** texto (padrão) ou anexo */
+  kind?: "text" | "image" | "audio" | "video" | "file";
+  /** anexo; url é um link temporário para mostrar/baixar (null se não deu para gerar) */
+  file?: MessageFile | null;
 };
+
+export type MessageFile = { id: ID; name: string; mime: string; size: number; url: string | null };
 
 export type IncomingLead = {
   id: ID;
@@ -276,6 +282,10 @@ export class DomainError extends Error {
 /* ---------- equipe ---------- */
 export type Role = { id: ID; name: string; isAdmin: boolean };
 export type Member = { userId: ID; name: string; email: string; roleId: ID; roleName: string; isAdmin: boolean };
+/** convite por link ainda não aceito */
+export type Invite = { id: ID; email: string; roleId: ID; roleName: string; expiresAt: ISO };
+/** o que a página do convite mostra (aberta por quem recebeu o link) */
+export type InviteInfo = { workspaceName: string; workspaceSlug: string; email: string; roleName: string; state: "ok" | "expired" | "accepted" };
 
 /* ---------- campos personalizados (valores ficam no lead, chave = id do campo) ---------- */
 export type FieldKind = "text" | "textarea" | "number" | "money" | "select" | "date" | "checkbox" | "url" | "phone" | "email";

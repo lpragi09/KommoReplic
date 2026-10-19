@@ -8,7 +8,7 @@ export const instant = false;
 /* Porta de entrada de quem já está logado: o proxy manda "/" para cá quando há sessão. */
 async function Go() {
   const user = await currentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sair"); // cookie de sessão vencido: limpa e mostra a landing
   const [first] = await workspacesOf(user.id);
   redirect(first ? `/${first.slug}/leads` : "/onboarding");
   return null;

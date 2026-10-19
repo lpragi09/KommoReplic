@@ -1,5 +1,5 @@
 -- =====================================================================
--- Recadi · atualização de 15/10/2026: robôs de automação, chat da equipe e disparos
+-- netzer tech · atualização de 15/10/2026: robôs de automação, chat da equipe e disparos
 -- Rode UMA vez no Supabase: SQL Editor → New query → cole tudo → Run.
 -- Pode rodar de novo sem problema (não apaga nada, só cria o que faltar).
 -- =====================================================================

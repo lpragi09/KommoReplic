@@ -30,7 +30,7 @@ import { PRESETS } from "@/lib/robot-meta";
 /* Banco em memória para desenvolvimento, até o replica-backend ligar o Supabase.
    Vive em globalThis para sobreviver ao hot reload. Reinicia ao reiniciar o servidor. */
 
-export type Membership = { workspaceId: string; userId: string; role: "admin" | "member"; roleKey?: "gerente" | "vendedor" };
+export type Membership = { workspaceId: string; userId: string; role: "admin" | "member"; roleKey?: "gerente" | "vendedor"; /** até quando a pessoa já viu as notificações */ notificationsSeenAt?: string };
 export type Session = { token: string; userId: string };
 
 export type DB = {

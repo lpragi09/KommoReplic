@@ -1,7 +1,7 @@
-/* Recadi · rastreamento de origem no site do cliente.
-   Uso: <script src="https://SEU-RECADI/t.js" data-link="CODIGO" async></script>
+/* netzer tech · rastreamento de origem no site do cliente.
+   Uso: <script src="https://SEU-DOMINIO/t.js" data-link="CODIGO" async></script>
    - guarda as UTMs da 1ª visita (30 dias), a página de entrada e de onde a pessoa veio;
-   - troca todo botão de WhatsApp da página pelo link rastreável do Recadi, levando essas UTMs;
+   - troca todo botão de WhatsApp da página pelo link rastreável do sistema, levando essas UTMs;
    - leva as UTMs também para links do chat do site (/chat/...).
    Sem cookies de terceiros, sem dados pessoais: só os parâmetros da URL. */
 (function () {

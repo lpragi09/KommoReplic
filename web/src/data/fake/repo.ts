@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { db, hash, now, seedWorkspaceBasics, uid } from "./store";
 import { accessOf } from "../access";
 import { validDoc } from "@/lib/document";
+import { kindOf } from "@/lib/attachments";
 import {
   DomainError,
   type ChannelKind,
@@ -41,6 +42,15 @@ export async function userBySessionToken(token: string | undefined): Promise<Use
   if (!s) return null;
   const u = db.users.find((x) => x.id === s.userId);
   return u ? { id: u.id, name: u.name, email: u.email } : null;
+}
+
+/** login com Google: só existe com o Supabase (no modo em memória não há provedor) */
+export async function oauthUrl(_provider: "google", _redirectTo: string): Promise<string> {
+  throw new DomainError("invalid", "Login com Google só funciona com o banco real (Supabase) ligado.");
+}
+
+export async function finishOAuth(_code: string): Promise<void> {
+  throw new DomainError("invalid", "Login com Google só funciona com o banco real (Supabase) ligado.");
 }
 
 export async function signIn(email: string, password: string): Promise<string> {
@@ -82,6 +92,16 @@ export async function getSubscription(wsId: ID): Promise<Subscription> {
   // empresas do exemplo (sem registro) ficam sempre em teste
   const s = db.subs[wsId] ?? { trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString(), status: "trialing" as const };
   return { plan: db.subs[wsId]?.plan ?? "trial", status: s.status, seats: db.memberships.filter((m) => m.workspaceId === wsId).length, stripeCustomerId: null, trialEndsAt: s.trialEndsAt, currentPeriodEnd: null };
+}
+
+/** até quando a pessoa já viu as notificações desta empresa (null = nunca abriu) */
+export async function getNotificationsSeen(wsId: ID, userId: ID): Promise<string | null> {
+  return db.memberships.find((m) => m.workspaceId === wsId && m.userId === userId)?.notificationsSeenAt ?? null;
+}
+
+export async function markNotificationsSeen(wsId: ID, userId: ID) {
+  const m = db.memberships.find((x) => x.workspaceId === wsId && x.userId === userId);
+  if (m) m.notificationsSeenAt = now();
 }
 
 export async function getAccess(wsId: ID): Promise<Access> {
@@ -571,6 +591,51 @@ export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body:
     if (l) l.lastActivityAt = now();
   }
   return m;
+}
+
+/** anexo da equipe: no banco em memória o arquivo fica como data URL (só para demonstração) */
+export async function sendAttachment(wsId: ID, actor: ID, conversationId: ID, file: { name: string; mime: string; bytes: Uint8Array }, caption: string, clientId: string) {
+  const kind = kindOf(file.mime);
+  if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito.");
+  const c = db.conversations.find((x) => x.id === conversationId && x.workspaceId === wsId);
+  if (!c) throw new DomainError("not_found");
+  const ch = db.channels.find((x) => x.id === c.channelId)!;
+  if (windowClosed(c, ch.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  const dup = db.messages.find((m) => m.conversationId === conversationId && m.clientId === clientId);
+  if (dup) return dup;
+  const url = `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}`;
+  const m: Message = {
+    id: uid(),
+    conversationId,
+    direction: "out",
+    body: caption.trim(),
+    senderUserId: actor,
+    clientId,
+    status: "sent",
+    sentAt: now(),
+    kind,
+    file: { id: uid(), name: file.name.slice(0, 200), mime: file.mime, size: file.bytes.byteLength, url },
+  };
+  db.messages.push(m);
+  c.lastMessageAt = m.sentAt;
+  c.lastMessagePreview = m.body || { image: "[foto]", audio: "[áudio]", video: "[vídeo]", file: "[arquivo]" }[kind];
+  c.isUnanswered = false;
+  c.unreadCount = 0;
+  c.aiPaused = true;
+  c.assignedUserId ??= actor;
+  if (c.leadId) {
+    const l = db.leads.find((x) => x.id === c.leadId);
+    if (l) l.lastActivityAt = now();
+  }
+  return m;
+}
+
+/** anexo recebido (webhook da Meta): no modo em memória não há webhook; fica só para ter a mesma forma do Supabase */
+export async function attachInbound(messageId: ID, file: { name: string; mime: string; bytes: Uint8Array }) {
+  const m = db.messages.find((x) => x.id === messageId);
+  if (!m) return;
+  m.kind = kindOf(file.mime) ?? "file";
+  m.file = { id: uid(), name: file.name, mime: file.mime, size: file.bytes.byteLength, url: `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}` };
 }
 
 // ---------------------------------------------------------------------------

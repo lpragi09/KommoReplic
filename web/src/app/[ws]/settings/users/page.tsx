@@ -1,4 +1,4 @@
-import { listMembers } from "@/data";
+import { listInvites, listMembers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
 import { TeamManager } from "@/components/settings/team";
@@ -12,10 +12,11 @@ export default async function UsersPage({ params }: PageProps<"/[ws]/settings/us
   const { user, ws } = await requireWorkspace(slug);
   const { roles, members } = await listMembers(ws.id);
   const canManage = !!members.find((m) => m.userId === user.id)?.isAdmin;
+  const invites = canManage ? await listInvites(ws.id) : [];
   return (
     <>
       <PageHeader title="Equipe e permissões" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
-      <TeamManager slug={slug} roles={roles} members={members} meId={user.id} canManage={canManage} />
+      <TeamManager slug={slug} roles={roles} members={members} invites={invites} meId={user.id} canManage={canManage} />
     </>
   );
 }

@@ -176,7 +176,7 @@ async function postWebhook(url: string, payload: unknown) {
   if (!ips.length || ips.some(privateIp)) throw refuse();
   const res = await fetch(u, {
     method: "POST",
-    headers: { "content-type": "application/json", "user-agent": "Recadi-Robo/1.0" },
+    headers: { "content-type": "application/json", "user-agent": "NetzerTech-Robo/1.0" },
     body: JSON.stringify(payload),
     redirect: "manual", // um redirecionamento poderia levar para um endereço interno
     signal: AbortSignal.timeout(5000),

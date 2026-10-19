@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   devIndicators: false, // sem o selo do Next nas capturas de tela
   partialPrefetching: true,
+  // anexos na conversa sobem pela server action: até 4 MB de arquivo (a Vercel aceita 4,5 MB por requisição)
+  experimental: { serverActions: { bodySizeLimit: "4.5mb" } },
   async headers() {
     const base = [
       { key: "X-Content-Type-Options", value: "nosniff" },

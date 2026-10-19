@@ -1,4 +1,4 @@
--- Recadi: confere se o setup.sql já foi aplicado por completo.
+-- netzer tech: confere se o setup.sql já foi aplicado por completo.
 -- Se as 4 linhas mostrarem "ok", está tudo certo e NÃO precisa rodar o setup de novo.
 select 'tabelas (esperado 46)' as item, count(*)::text as valor,
        case when count(*) = 46 then 'ok' else 'faltando' end as status

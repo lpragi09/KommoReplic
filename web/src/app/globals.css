@@ -7,6 +7,17 @@
   --font-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* marca netzer tech: verde da logo. No fundo escuro (landing, menu lateral) usa o tom mais claro */
+:root {
+  --brand: #1f7a55;
+  --brand-on-night: #3fbf86;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-on-night: var(--brand-on-night);
+}
+
 body {
   background: var(--bg);
   color: var(--text);

@@ -1,4 +1,6 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
+import { kindOf, safeName } from "@/lib/attachments";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import {
@@ -121,7 +123,25 @@ const toMessage = (r: Row): Message => ({
   status: r.status,
   sentAt: isoReq(r.sent_at),
   byAi: r.by_ai ?? false,
+  kind: r.kind && r.kind !== "text" ? r.kind : "text",
 });
+
+/** mensagens com o arquivo junto (files) */
+const MSG_SELECT = "*, files(id, name, mime, size_bytes, storage_path)";
+
+/** links temporários (1h) para os anexos; quem pode ver o arquivo decide o RLS do storage (ou a chave secreta, no chat público) */
+async function withFiles(rows: Row[], client?: Awaited<ReturnType<typeof userClient>>): Promise<Message[]> {
+  const paths = rows.map((r) => r.files?.storage_path).filter(Boolean) as string[];
+  const urls = new Map<string, string>();
+  if (paths.length) {
+    const { data } = await (client ?? adminClient()).storage.from("attachments").createSignedUrls(paths, 3600);
+    for (const d of data ?? []) if (d.signedUrl && d.path) urls.set(d.path, d.signedUrl);
+  }
+  return rows.map((r) => ({
+    ...toMessage(r),
+    file: r.files ? { id: r.files.id, name: r.files.name, mime: r.files.mime, size: Number(r.files.size_bytes), url: urls.get(r.files.storage_path) ?? null } : null,
+  }));
+}
 const toChannel = (r: Row): Channel => ({
   id: r.id,
   workspaceId: r.workspace_id,
@@ -175,6 +195,21 @@ export async function userBySessionToken(_token?: string): Promise<User | null> 
   return { id: data.user.id, name: p?.full_name || data.user.email || "", email: data.user.email ?? "" };
 }
 
+/** login com Google (provedor ligado no painel do Supabase): devolve o endereço do Google; o verificador PKCE fica no cookie */
+export async function oauthUrl(provider: "google", redirectTo: string): Promise<string> {
+  const sb = await userClient();
+  const { data, error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
+  if (error || !data.url) throw new DomainError("invalid", "Não deu para abrir o login do Google. Tente de novo.");
+  return data.url;
+}
+
+/** volta do Google: troca o código pela sessão (grava os cookies) */
+export async function finishOAuth(code: string): Promise<void> {
+  const sb = await userClient();
+  const { error } = await sb.auth.exchangeCodeForSession(code);
+  if (error) throw new DomainError("invalid", "O login com Google não terminou. Tente de novo.");
+}
+
 export async function signIn(email: string, password: string): Promise<string> {
   const sb = await userClient();
   const { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
@@ -195,6 +230,20 @@ export async function signUp(name: string, email: string, password: string, sign
 export async function signOut(_token?: string) {
   const sb = await userClient();
   await sb.auth.signOut({ scope: "local" });
+}
+
+/** até quando a pessoa já viu as notificações desta empresa (null = nunca abriu ou banco sem a atualização) */
+export async function getNotificationsSeen(wsId: ID, userId: ID): Promise<string | null> {
+  const sb = await userClient();
+  const { data } = await sb.from("memberships").select("notifications_seen_at").eq("workspace_id", wsId).eq("user_id", userId).maybeSingle();
+  return iso((data as Row | null)?.notifications_seen_at) ?? null;
+}
+
+/** a pessoa só altera a própria linha (memberships é escrita só por admin; a função do banco confere auth.uid()) */
+export async function markNotificationsSeen(wsId: ID, _userId: ID) {
+  const sb = await userClient();
+  const { error } = await sb.rpc("mark_notifications_seen", { p_ws: wsId });
+  if (error) throw toDomain(error);
 }
 
 export async function getAccess(wsId: ID): Promise<Access> {
@@ -464,7 +513,7 @@ export async function getLead(wsId: ID, id: ID) {
   const channel = convRow?.channels ? toChannel(convRow.channels) : null;
 
   const [msgs, notes, tasks, events] = await Promise.all([
-    conversation ? sb.from("messages").select("*").eq("conversation_id", conversation.id).order("sent_at").limit(500) : Promise.resolve({ data: [], error: null }),
+    conversation ? sb.from("messages").select(MSG_SELECT).eq("conversation_id", conversation.id).order("sent_at").limit(500) : Promise.resolve({ data: [], error: null }),
     sb.from("notes").select("*").eq("lead_id", id).order("created_at"),
     sb.from("tasks").select("*").eq("lead_id", id).order("created_at"),
     sb.from("events").select("*").eq("lead_id", id).order("created_at"),
@@ -495,7 +544,7 @@ export async function getLead(wsId: ID, id: ID) {
     }
   };
   const feed: FeedItem[] = [
-    ...check(msgs as { data: Row[]; error: PostgrestError | null }).map((m: Row) => ({ type: "message" as const, at: isoReq(m.sent_at), message: toMessage(m), channelKind: channel!.kind })),
+    ...(await withFiles(check(msgs as { data: Row[]; error: PostgrestError | null }), sb)).map((message) => ({ type: "message" as const, at: message.sentAt, message, channelKind: channel!.kind })),
     ...check(notes).map((n: Row) => ({
       type: "note" as const,
       at: isoReq(n.created_at),
@@ -599,7 +648,7 @@ export async function getConversation(wsId: ID, id: ID) {
   if (error) throw toDomain(error);
   if (!c) throw new DomainError("not_found");
   const lead = c.lead_id ? toCard(check(await sb.from("leads").select(LEAD_SELECT).eq("id", c.lead_id).single())) : null;
-  const messages = check(await sb.from("messages").select("*").eq("conversation_id", id).order("sent_at").limit(500)).map(toMessage);
+  const messages = await withFiles(check(await sb.from("messages").select(MSG_SELECT).eq("conversation_id", id).order("sent_at").limit(500)), sb);
   return { conversation: toConversation(c), contact: toContact(c.contacts), channel: toChannel(c.channels), lead, messages };
 }
 
@@ -632,6 +681,44 @@ export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body:
   return toMessage(r);
 }
 
+/** anexo enviado pela equipe: vai para o storage (pasta da empresa), vira um registro em files e uma mensagem do tipo certo */
+export async function sendAttachment(wsId: ID, actor: ID, conversationId: ID, file: { name: string; mime: string; bytes: Uint8Array }, caption: string, clientId: string) {
+  const kind = kindOf(file.mime);
+  if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito.");
+  const { conversation, channel } = await getConversation(wsId, conversationId);
+  if (windowClosed(conversation, channel.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  const sb = await userClient();
+  const { data: dup } = await sb.from("messages").select(MSG_SELECT).eq("conversation_id", conversationId).eq("client_id", clientId).maybeSingle();
+  if (dup) return (await withFiles([dup], sb))[0];
+  const path = `${wsId}/${randomUUID()}/${safeName(file.name)}`;
+  const up = await sb.storage.from("attachments").upload(path, file.bytes, { contentType: file.mime, upsert: false });
+  if (up.error) throw new DomainError("invalid", "Não deu para guardar o arquivo. Tente de novo.");
+  const f = check(await sb.from("files").insert({ workspace_id: wsId, storage_path: path, name: file.name.slice(0, 200), mime: file.mime, size_bytes: file.bytes.byteLength, uploaded_by: actor }).select("id").single());
+  const status = channel.kind === "webchat" ? "sent" : "queued";
+  const r = check(
+    await sb
+      .from("messages")
+      .insert({ workspace_id: wsId, conversation_id: conversationId, channel_id: channel.id, direction: "out", kind, body: caption.trim(), file_id: f.id, sender_user_id: actor, client_id: clientId, status })
+      .select(MSG_SELECT)
+      .single(),
+  );
+  if (!conversation.aiPaused) await sb.from("conversations").update({ ai_paused: true }).eq("id", conversationId);
+  return (await withFiles([r], sb))[0];
+}
+
+/** anexo recebido pela Meta: guarda o arquivo e liga à mensagem já gravada (receive_inbound) */
+export async function attachInbound(messageId: ID, file: { name: string; mime: string; bytes: Uint8Array }) {
+  const a = adminClient();
+  const m = check(await a.from("messages").select("workspace_id").eq("id", messageId).maybeSingle());
+  if (!m) return;
+  const kind = kindOf(file.mime) ?? "file";
+  const path = `${m.workspace_id}/${randomUUID()}/${safeName(file.name)}`;
+  const up = await a.storage.from("attachments").upload(path, file.bytes, { contentType: file.mime, upsert: false });
+  if (up.error) throw new Error(up.error.message);
+  const f = check(await a.from("files").insert({ workspace_id: m.workspace_id, storage_path: path, name: file.name.slice(0, 200), mime: file.mime, size_bytes: file.bytes.byteLength }).select("id").single());
+  check(await a.from("messages").update({ kind, file_id: f.id }).eq("id", messageId));
+}
+
 // ---------------------------------------------------------------------------
 // chat do site (público): só pelo servidor, com a chave secreta
 // ---------------------------------------------------------------------------
@@ -644,7 +731,21 @@ export async function getWebchat(publicKey: string) {
 
 export async function visitorThread(publicKey: string, visitorId: string): Promise<Message[]> {
   const rows = check(await adminClient().rpc("visitor_thread", { p_key: publicKey, p_thread: visitorId })) as Row[];
-  return rows.map((m) => ({ id: m.id, conversationId: "", direction: m.direction, body: m.body, senderUserId: null, clientId: null, status: "received", sentAt: isoReq(m.sent_at) }));
+  // a função do banco devolve o arquivo achatado (file_*); o link sai pela chave secreta (o visitante não tem login)
+  return withFiles(
+    rows.map((m) => ({
+      id: m.id,
+      conversation_id: "",
+      direction: m.direction,
+      body: m.body,
+      sender_user_id: null,
+      client_id: null,
+      status: "received",
+      sent_at: m.sent_at,
+      kind: m.kind,
+      files: m.file_id ? { id: m.file_id, name: m.file_name, mime: m.file_mime, size_bytes: m.file_size, storage_path: m.file_path } : null,
+    })),
+  );
 }
 
 export async function receiveInbound(channelId: ID, externalThreadId: string, senderName: string, body: string, externalId: string): Promise<{ conversationId: ID; isNew: boolean } | null> {

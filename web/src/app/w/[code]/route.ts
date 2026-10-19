@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 /* Link rastreável de WhatsApp: /w/{código}?utm_source=...
    Grava o clique com as UTMs (do link + da URL) e manda para o WhatsApp com um código curto no fim da mensagem.
-   Quando a mensagem chega, o Recadi acha o código e liga o clique à conversa — sem robô. */
+   Quando a mensagem chega, o sistema acha o código e liga o clique à conversa — sem robô. */
 export async function GET(req: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const url = new URL(req.url);
@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
   );
 
   // cliques em massa do mesmo endereço não viram estatística falsa
-  if (!rateLimit(`wlink:${ip}`, 30, 60_000)) return new Response("muitos cliques seguidos, tente em um minuto", { status: 429 });
+  if (!(await rateLimit(`wlink:${ip}`, 30, 60_000))) return new Response("muitos cliques seguidos, tente em um minuto", { status: 429 });
   const hit = await clickTrackingLink(code, attr);
   if (!hit) return new Response("link não encontrado", { status: 404 });
 

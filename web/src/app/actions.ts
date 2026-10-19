@@ -10,6 +10,7 @@ import { DomainError } from "@/data/types";
 import { rateLimit } from "@/lib/rate-limit";
 import { digits, isDisposableEmail, validDoc } from "@/lib/document";
 import { cleanAttribution } from "@/lib/utm";
+import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { checkTemplate } from "@/lib/template-rules";
 import { limitsOf, upgradeFor, type Limits } from "@/lib/plans";
 import { MetaError, verifyAccount } from "@/lib/meta";
@@ -80,7 +81,7 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
   const values = { email: String(form.get("email") ?? "") };
   const parsed = signInSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
-  if (!rateLimit(`login:${await clientIp()}:${parsed.data.email.toLowerCase()}`, 5, 60_000))
+  if (!(await rateLimit(`login:${await clientIp()}:${parsed.data.email.toLowerCase()}`, 5, 60_000)))
     return { error: "Muitas tentativas. Espere um minuto e tente de novo.", values };
   try {
     await setSession(await data.signIn(parsed.data.email, parsed.data.password));
@@ -88,9 +89,14 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
     if (e instanceof DomainError) return { error: e.message, values };
     throw e;
   }
+  const next = String(form.get("next") ?? "");
+  if (INVITE_PATH.test(next)) redirect(next); // veio de um convite: volta para aceitar
   await afterLogin();
   return {};
 }
+
+/** único "next" aceito no login: a página de um convite (nada de redirecionar para fora) */
+const INVITE_PATH = /^\/convite\/[A-Za-z0-9_-]{20,60}$/;
 
 const docFields = {
   docType: z.enum(["cpf", "cnpj"], { message: "Escolha CPF ou CNPJ." }),
@@ -123,7 +129,7 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
   const values = Object.fromEntries(keep.map((k) => [k, String(form.get(k) ?? "")]));
   const parsed = signUpSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
-  if (!rateLimit(`signup:${await clientIp()}`, 5, 10 * 60_000)) return { error: "Muitos cadastros deste endereço. Tente mais tarde.", values };
+  if (!(await rateLimit(`signup:${await clientIp()}`, 5, 10 * 60_000))) return { error: "Muitos cadastros deste endereço. Tente mais tarde.", values };
   try {
     const { company, docType, document, phone } = parsed.data;
     await setSession(await data.signUp(parsed.data.name, parsed.data.email, parsed.data.password, { company, docType, document, phone }));
@@ -132,6 +138,19 @@ export async function signUpAction(_: FormState, form: FormData): Promise<FormSt
     throw e;
   }
   redirect("/onboarding");
+}
+
+/** "Continuar com Google": manda para o Google; a volta cai em /auth/callback */
+export async function googleSignInAction(): Promise<FormState> {
+  const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
+  let url: string;
+  try {
+    url = await data.oauthUrl("google", `${origin}/auth/callback`);
+  } catch (e) {
+    if (e instanceof DomainError) return { error: e.message };
+    throw e;
+  }
+  redirect(url);
 }
 
 export async function signOutAction() {
@@ -150,7 +169,7 @@ const wsSchema = z
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9-]{3,40}$/, "Use de 3 a 40 letras minúsculas, números ou hífen.")
-    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app"].includes(s), "Esse endereço é reservado."),
+    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite"].includes(s), "Esse endereço é reservado."),
   timezone: z.string().min(1),
   currency: z.enum(["BRL", "USD", "EUR"]),
   ...docFields,
@@ -323,6 +342,23 @@ export async function sendMessageAction(slug: string, conversationId: string, bo
   });
 }
 
+/** anexo (foto, áudio, vídeo, documento) com legenda opcional; o arquivo vem no FormData */
+export async function sendAttachmentAction(slug: string, conversationId: string, form: FormData) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const file = form.get("file");
+    if (!(file instanceof File) || file.size === 0) throw new DomainError("invalid", "Escolha um arquivo.");
+    if (file.size > MAX_ATTACHMENT) throw new DomainError("invalid", "Arquivo grande demais: o limite é 4 MB.");
+    const mime = file.type || "application/octet-stream";
+    if (!kindOf(mime)) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito. Use foto, áudio, vídeo, PDF ou documento do Office.");
+    const caption = z.string().max(1000).parse(String(form.get("caption") ?? ""));
+    const clientId = id.parse(String(form.get("clientId") ?? ""));
+    await data.sendAttachment(ws.id, user.id, id.parse(conversationId), { name: file.name || "arquivo", mime, bytes: new Uint8Array(await file.arrayBuffer()) }, caption, clientId);
+    await data.deliverQueued(ws.id).catch(() => 0);
+    return null;
+  });
+}
+
 export async function markReadAction(slug: string, conversationId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);
@@ -371,7 +407,7 @@ const importRows = z
 export async function importContactsAction(slug: string, rows: z.input<typeof importRows>) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
-    if (!rateLimit(`import:${ws.id}`, 5, 10 * 60_000)) throw new DomainError("invalid", "Muitas importações seguidas. Espere alguns minutos.");
+    if (!(await rateLimit(`import:${ws.id}`, 5, 10 * 60_000))) throw new DomainError("invalid", "Muitas importações seguidas. Espere alguns minutos.");
     const list = importRows.parse(rows);
     const seen = new Set<string>();
     for (const c of await data.listContacts(ws.id, "", true))
@@ -393,6 +429,15 @@ export async function importContactsAction(slug: string, rows: z.input<typeof im
       created++;
     }
     return { created, skipped };
+  });
+}
+
+/** "marcar tudo como lido" nas notificações: o que já existe agora fica apagado e sai da contagem */
+export async function markNotificationsSeenAction(slug: string) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.markNotificationsSeen(ws.id, user.id);
+    return null;
   });
 }
 
@@ -420,7 +465,7 @@ export async function visitorSendAction(input: z.input<typeof visitorMsg>) {
   return run(async () => {
     const v = visitorMsg.parse(input);
     const ip = await clientIp();
-    if (!rateLimit(`chat-ip:${ip}`, 30, 60_000) || !rateLimit(`chat-v:${v.visitorId}`, 12, 60_000))
+    if (!(await rateLimit(`chat-ip:${ip}`, 30, 60_000)) || !(await rateLimit(`chat-v:${v.visitorId}`, 12, 60_000)))
       throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     const { channelId, workspaceId: ws } = await data.getWebchat(v.publicKey);
     const got = await data.receiveInbound(channelId, v.visitorId, v.name, v.body, v.messageId);
@@ -439,7 +484,14 @@ export async function visitorThreadAction(publicKey: string, visitorId: string) 
   const v = visitorMsg.pick({ publicKey: true, visitorId: true }).parse({ publicKey, visitorId });
   const msgs = await data.visitorThread(v.publicKey, v.visitorId);
   // o visitante só vê texto, direção e hora — nada de ids internos ou de quem respondeu
-  return msgs.map((m) => ({ id: m.id, direction: m.direction, body: m.body, sentAt: m.sentAt }));
+  return msgs.map((m) => ({
+    id: m.id,
+    direction: m.direction,
+    body: m.body,
+    sentAt: m.sentAt,
+    kind: m.kind ?? "text",
+    file: m.file ? { name: m.file.name, mime: m.file.mime, size: m.file.size, url: m.file.url } : null,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -660,6 +712,68 @@ const newMember = z.object({
   roleId: id,
 });
 
+const newInvite = z.object({ email: z.string().trim().email("Digite um email válido.").max(200), roleId: id });
+const inviteToken = z.string().regex(/^[A-Za-z0-9_-]{20,60}$/, "Convite inválido.");
+
+/** convite por link: devolve o endereço para o admin mandar (WhatsApp, email...) */
+export async function createInviteAction(slug: string, input: z.input<typeof newInvite>) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const { l, over } = await planLimits(ws.id);
+    const n = (await data.listMembers(ws.id)).members.length + (await data.listInvites(ws.id)).length;
+    if (n + 1 > l.users) throw over("pessoas na equipe (contando convites abertos)", l.users, (x) => x.users > n);
+    const { token } = await data.createInvite(ws.id, user.id, newInvite.parse(input));
+    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
+    return { url: `${origin}/convite/${token}` };
+  });
+}
+
+export async function revokeInviteAction(slug: string, inviteId: string) {
+  return run(async () => {
+    const { user, ws } = await requireWorkspace(slug);
+    await data.revokeInvite(ws.id, user.id, id.parse(inviteId));
+    return null;
+  });
+}
+
+/** quem já tem conta e está logado aceita o convite */
+export async function acceptInviteAction(token: string) {
+  const user = await currentUser();
+  if (!user) redirect(`/login?next=/convite/${inviteToken.parse(token)}`);
+  let slug: string;
+  try {
+    slug = (await data.acceptInvite(inviteToken.parse(token), user.id)).slug;
+  } catch (e) {
+    if (e instanceof DomainError || e instanceof z.ZodError) return { error: e instanceof DomainError ? e.message : "Convite inválido." };
+    throw e;
+  }
+  redirect(`/${slug}/leads`);
+}
+
+const newAccount = z.object({
+  name: z.string().trim().min(2, "Digite seu nome.").max(120),
+  password: z.string().min(8, "A senha precisa de pelo menos 8 caracteres.").max(72),
+});
+
+/** quem não tem conta cria a senha no convite e já entra */
+export async function acceptInviteNewAccountAction(token: string, _: FormState, form: FormData): Promise<FormState> {
+  const values = { name: String(form.get("name") ?? "") };
+  const parsed = newAccount.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
+  if (!(await rateLimit(`convite:${await clientIp()}`, 10, 10 * 60_000))) return { error: "Muitas tentativas. Tente mais tarde.", values };
+  let slug: string;
+  try {
+    const out = await data.acceptInviteNewAccount(inviteToken.parse(token), parsed.data);
+    slug = out.slug;
+    await setSession(await data.signIn(out.email, parsed.data.password));
+  } catch (e) {
+    if (e instanceof DomainError) return { error: e.message, values };
+    if (e instanceof z.ZodError) return { error: "Convite inválido.", values };
+    throw e;
+  }
+  redirect(`/${slug}/leads`);
+}
+
 export async function addMemberAction(slug: string, input: z.input<typeof newMember>) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
@@ -732,7 +846,7 @@ export async function setLeadFieldAction(slug: string, leadId: string, fieldId: 
 export async function sendTeamMessageAction(slug: string, body: string) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
-    if (!rateLimit(`team:${user.id}`, 30, 60_000)) throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
+    if (!(await rateLimit(`team:${user.id}`, 30, 60_000))) throw new DomainError("invalid", "Muitas mensagens seguidas. Espere um pouco.");
     await data.sendTeamMessage(ws.id, user.id, z.string().trim().min(1, "Escreva uma mensagem.").max(4000).parse(body));
     return null;
   });
@@ -757,7 +871,7 @@ export async function sendBroadcastAction(slug: string, input: { name: string; b
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     if (!(await planLimits(ws.id)).l.broadcasts) throw new DomainError("invalid", `Disparos fazem parte do plano ${upgradeFor((x) => x.broadcasts)} em diante. Mude em Configurações → Plano e cobrança.`);
-    if (!rateLimit(`bc:${ws.id}`, 5, 60 * 60_000)) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
+    if (!(await rateLimit(`bc:${ws.id}`, 5, 60 * 60_000))) throw new DomainError("invalid", "Limite de 5 disparos por hora. Tente mais tarde.");
     const v = z
       .object({ name: z.string().trim().min(1, "Dê um nome ao disparo.").max(80), body: z.string().trim().min(1, "Escreva a mensagem.").max(2000), filter: bcFilter })
       .parse(input);
@@ -933,7 +1047,7 @@ const testTurn = z.object({ role: z.enum(["cliente", "empresa"]), text: z.string
 export async function testAgentAction(slug: string, input: z.input<typeof agentInput>, turns: z.input<typeof testTurn>[]) {
   return run(async () => {
     const { user, ws } = await requireActive(slug);
-    if (!rateLimit(`ai-test:${user.id}`, 20, 60_000)) throw new DomainError("invalid", "Muitos testes seguidos. Espere um minuto.");
+    if (!(await rateLimit(`ai-test:${user.id}`, 20, 60_000))) throw new DomainError("invalid", "Muitos testes seguidos. Espere um minuto.");
     if (!aiAvailable()) throw new DomainError("invalid", "Falta a chave da Anthropic (ANTHROPIC_API_KEY) nas variáveis da Vercel.");
     const v = agentInput.parse(input);
     const t = z.array(testTurn).min(1).max(30).parse(turns);

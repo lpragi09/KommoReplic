@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Member, Role } from "@/data/types";
-import { addMemberAction, removeMemberAction, setMemberRoleAction } from "@/app/actions";
+import type { Invite, Member, Role } from "@/data/types";
+import { addMemberAction, createInviteAction, removeMemberAction, revokeInviteAction, setMemberRoleAction } from "@/app/actions";
 import { Avatar } from "@/components/ui/bits";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog, DialogClose } from "@/components/ui/overlay";
-import { Trash2, UserPlus } from "@/components/ui/icons";
+import { Check, Copy, Link2, Trash2, UserPlus, WhatsappLogo } from "@/components/ui/icons";
+import { when } from "@/lib/format";
 
 const roleHelp: Record<string, string> = {
   Admin: "Vê e altera tudo, inclusive equipe, robôs e cobrança.",
@@ -15,8 +16,14 @@ const roleHelp: Record<string, string> = {
   Vendedor: "Vê e edita só os próprios leads e contatos.",
 };
 
-export function TeamManager({ slug, roles, members, meId, canManage }: { slug: string; roles: Role[]; members: Member[]; meId: string; canManage: boolean }) {
+export function TeamManager({ slug, roles, members, invites = [], meId, canManage }: { slug: string; roles: Role[]; members: Member[]; invites?: Invite[]; meId: string; canManage: boolean }) {
   const [open, setOpen] = useState(false);
+  const defaultRole = roles.find((r) => r.name === "Vendedor")?.id ?? roles[0]?.id ?? "";
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState({ email: "", roleId: defaultRole });
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", roleId: roles.find((r) => r.name === "Vendedor")?.id ?? roles[0]?.id ?? "" });
   const [error, setError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
@@ -29,6 +36,24 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
       setError(null);
       setOpen(false);
       setForm({ ...form, name: "", email: "", password: "" });
+    });
+  const sendInvite = () =>
+    start(async () => {
+      const res = await createInviteAction(slug, invite);
+      if (!res.ok) return setInviteError(res.error);
+      setInviteError(null);
+      setInviteUrl(res.data.url);
+    });
+  const copyInvite = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  const revoke = (i: Invite) =>
+    start(async () => {
+      const res = await revokeInviteAction(slug, i.id);
+      setRowError(res.ok ? null : res.error);
     });
   const changeRole = (m: Member, roleId: string) =>
     start(async () => {
@@ -49,15 +74,29 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
             {members.length} {members.length === 1 ? "pessoa" : "pessoas"} na equipe.
           </p>
           {canManage && (
-            <Button
-              icon={<UserPlus className="size-4" aria-hidden />}
-              onClick={() => {
-                setError(null);
-                setOpen(true);
-              }}
-            >
-              Adicionar pessoa
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                icon={<UserPlus className="size-4" aria-hidden />}
+                onClick={() => {
+                  setError(null);
+                  setOpen(true);
+                }}
+              >
+                Criar acesso
+              </Button>
+              <Button
+                icon={<Link2 className="size-4" aria-hidden />}
+                onClick={() => {
+                  setInviteError(null);
+                  setInviteUrl(null);
+                  setInvite({ email: "", roleId: defaultRole });
+                  setInviteOpen(true);
+                }}
+              >
+                Convidar por link
+              </Button>
+            </>
           )}
         </div>
         {rowError && (
@@ -122,6 +161,32 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
           ))}
         </ul>
 
+        {canManage && invites.length > 0 && (
+          <section aria-labelledby="convites">
+            <h2 id="convites" className="mb-2 text-sm font-semibold text-fg">
+              Convites esperando resposta
+            </h2>
+            <ul className="divide-y divide-border overflow-hidden rounded-lg bg-bg shadow-[0_0_0_1px_var(--border)]">
+              {invites.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <span className="grid size-10 place-items-center rounded-pill bg-surface text-muted" aria-hidden>
+                    <Link2 className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-fg">{i.email}</p>
+                    <p className="text-sm text-muted" suppressHydrationWarning>
+                      {i.roleName} · vence {when(i.expiresAt)}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="secondary" disabled={pending} onClick={() => revoke(i)}>
+                    Cancelar convite
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section aria-labelledby="papeis" className="rounded-lg bg-bg p-4 shadow-[0_0_0_1px_var(--border)]">
           <h2 id="papeis" className="mb-2 text-sm font-semibold text-fg">
             O que cada papel pode fazer
@@ -141,15 +206,15 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
         open={open}
         onOpenChange={setOpen}
         icon={<UserPlus className="size-5" />}
-        title="Adicionar pessoa"
-        description="Crie o acesso e passe o email e a senha inicial para a pessoa."
+        title="Criar acesso"
+        description="Para quem ainda não tem conta: você define a senha inicial e passa para a pessoa. Quem já tem conta entra por convite."
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={add} loading={pending}>
-              Adicionar
+              Criar acesso
             </Button>
           </>
         }
@@ -175,6 +240,73 @@ export function TeamManager({ slug, roles, members, meId, canManage }: { slug: s
             </p>
           )}
         </div>
+      </Dialog>
+
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        icon={<Link2 className="size-5" />}
+        title="Convidar por link"
+        description="A pessoa abre o link, cria a senha (ou entra com a conta que já tem) e cai direto na empresa. O link vale 7 dias e só serve para o email convidado."
+        footer={
+          inviteUrl ? (
+            <Button variant="secondary" onClick={() => setInviteOpen(false)}>
+              Fechar
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setInviteOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={sendInvite} loading={pending}>
+                Gerar link
+              </Button>
+            </>
+          )
+        }
+      >
+        {inviteUrl ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-fg">
+              Convite para <strong>{invite.email}</strong> pronto. Mande o link:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 text-sm">{inviteUrl}</code>
+              <Button size="sm" variant="secondary" icon={copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={copyInvite}>
+                {copied ? "Copiado" : "Copiar"}
+              </Button>
+            </div>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Oi! Te convidei para a equipe no netzer tech: ${inviteUrl}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-[#0b6b38] px-3 text-sm font-medium text-white hover:brightness-110"
+            >
+              <WhatsappLogo className="size-4" aria-hidden /> Mandar pelo WhatsApp
+              <span className="sr-only">(abre em nova aba)</span>
+            </a>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <Field label="Email da pessoa" type="email" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} autoComplete="off" autoFocus />
+            <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+              Papel
+              <select value={invite.roleId} onChange={(e) => setInvite({ ...invite, roleId: e.target.value })} className="h-10 rounded-sm border border-border-input bg-bg px-2 text-base font-normal text-fg">
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs font-normal text-muted">{roleHelp[roles.find((r) => r.id === invite.roleId)?.name ?? ""] ?? ""}</span>
+            </label>
+            {inviteError && (
+              <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+                {inviteError}
+              </p>
+            )}
+          </div>
+        )}
       </Dialog>
     </div>
   );

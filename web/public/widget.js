@@ -1,7 +1,7 @@
-/* Recadi · botão de chat para o site do cliente.
-   Uso: <script src="https://SEU-RECADI/widget.js" data-chat="CHAVE_DO_CHAT" async></script>
+/* netzer tech · botão de chat para o site do cliente.
+   Uso: <script src="https://SEU-DOMINIO/widget.js" data-chat="CHAVE_DO_CHAT" async></script>
    Opcional: data-cor="#2563eb" (cor do botão), data-lado="esquerda".
-   Abre o chat do Recadi numa janelinha no canto, levando as UTMs da visita (as mesmas que o t.js guarda).
+   Abre o chat do sistema numa janelinha no canto, levando as UTMs da visita (as mesmas que o t.js guarda).
    Sem cookies e sem dados pessoais; o iframe só carrega quando a pessoa clica. */
 (function () {
   var s = document.currentScript;

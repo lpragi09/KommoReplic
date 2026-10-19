@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { NetzerLogo } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 
 const links = [
@@ -32,11 +33,8 @@ export function IslandNav() {
         aria-label="Principal"
         className="fixed inset-x-0 top-4 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-3xl items-center gap-2 rounded-pill border border-[color-mix(in_srgb,var(--on-night)_10%,transparent)] bg-[color-mix(in_srgb,var(--night-raised)_94%,transparent)] py-1.5 pl-4 pr-1.5 shadow-[0_10px_40px_-12px_rgba(0,0,0,.6)]"
       >
-        <Link href="/" className="mr-auto flex items-center gap-2 text-base font-semibold text-on-night">
-          <span className="grid size-7 place-items-center rounded-sm bg-accent text-sm font-bold text-on-accent shadow-[inset_0_1px_0_rgba(255,255,255,.25)]" aria-hidden>
-            {BRAND.initial}
-          </span>
-          {BRAND.name}
+        <Link href="/" aria-label={`${BRAND.name}: início`} className="mr-auto flex items-center text-[17px]">
+          <NetzerLogo className="text-brand-on-night" />
         </Link>
         <ul className="hidden items-center gap-1 md:flex">
           {links.map((l) => (

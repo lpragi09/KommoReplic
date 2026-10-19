@@ -1,5 +1,6 @@
 import "server-only";
 import { connection } from "next/server";
+import { randomBytes } from "node:crypto";
 import { db, hash, now, uid } from "./store";
 import { renderText } from "../robots/engine";
 import {
@@ -11,6 +12,8 @@ import {
   type MarkColor,
   type FieldValue,
   type ID,
+  type Invite,
+  type InviteInfo,
   type Member,
   type Message,
   type Role,
@@ -47,17 +50,93 @@ export async function listMembers(wsId: ID): Promise<{ roles: Role[]; members: M
   return { roles: ROLES, members };
 }
 
+/** cria o acesso de alguém novo; quem já tem conta só entra por convite (a pessoa aceita) */
 export async function addMember(wsId: ID, actor: ID, input: { name: string; email: string; password: string; roleId: ID }) {
   assertAdmin(wsId, actor);
   const email = input.email.trim().toLowerCase();
-  let u = db.users.find((x) => x.email === email);
-  if (!u) {
-    u = { id: uid(), name: input.name.trim(), email, passwordHash: hash(input.password) };
-    db.users.push(u);
-  }
-  if (db.memberships.some((m) => m.workspaceId === wsId && m.userId === u!.id)) throw new DomainError("invalid", "Essa pessoa já está na equipe.");
-  const r = ROLES.find((x) => x.id === input.roleId) ?? ROLES[2];
-  db.memberships.push({ workspaceId: wsId, userId: u.id, role: r.isAdmin ? "admin" : "member", roleKey: r.isAdmin ? undefined : r.id === ROLES[1].id ? "gerente" : "vendedor" });
+  const existing = db.users.find((x) => x.email === email);
+  if (existing && db.memberships.some((m) => m.workspaceId === wsId && m.userId === existing.id)) throw new DomainError("invalid", "Essa pessoa já está na equipe.");
+  if (existing) throw new DomainError("invalid", "Esse email já tem conta. Use “Convidar por link”: a pessoa aceita com a conta dela.");
+  const u = { id: uid(), name: input.name.trim(), email, passwordHash: hash(input.password) };
+  db.users.push(u);
+  join(wsId, u.id, input.roleId);
+}
+
+function join(wsId: ID, userId: ID, roleId: ID) {
+  const r = ROLES.find((x) => x.id === roleId) ?? ROLES[2];
+  db.memberships.push({ workspaceId: wsId, userId, role: r.isAdmin ? "admin" : "member", roleKey: r.isAdmin ? undefined : r.id === ROLES[1].id ? "gerente" : "vendedor" });
+}
+
+// ---------------------------------------------------------------------------
+// convites por link (o link leva um token; aqui só fica o hash)
+// ---------------------------------------------------------------------------
+type InviteRow = { id: ID; workspaceId: ID; email: string; roleId: ID; tokenHash: string; expiresAt: string; acceptedAt: string | null };
+const gi = globalThis as unknown as { __crmInvites?: InviteRow[] };
+const invites = (gi.__crmInvites ??= []);
+
+export async function createInvite(wsId: ID, actor: ID, input: { email: string; roleId: ID }) {
+  assertAdmin(wsId, actor);
+  const email = input.email.trim().toLowerCase();
+  const u = db.users.find((x) => x.email === email);
+  if (u && db.memberships.some((m) => m.workspaceId === wsId && m.userId === u.id)) throw new DomainError("invalid", "Essa pessoa já está na equipe.");
+  if (!ROLES.some((r) => r.id === input.roleId)) throw new DomainError("invalid", "Papel inválido.");
+  // um convite aberto por email: gerar de novo troca o link
+  for (let i = invites.length - 1; i >= 0; i--) if (invites[i].workspaceId === wsId && invites[i].email === email && !invites[i].acceptedAt) invites.splice(i, 1);
+  const token = randomBytes(24).toString("base64url");
+  invites.push({ id: uid(), workspaceId: wsId, email, roleId: input.roleId, tokenHash: hash(token), expiresAt: new Date(Date.now() + 7 * 864e5).toISOString(), acceptedAt: null });
+  return { token };
+}
+
+export async function listInvites(wsId: ID): Promise<Invite[]> {
+  await connection();
+  return invites
+    .filter((i) => i.workspaceId === wsId && !i.acceptedAt && i.expiresAt > now())
+    .map((i) => ({ id: i.id, email: i.email, roleId: i.roleId, roleName: ROLES.find((r) => r.id === i.roleId)?.name ?? "", expiresAt: i.expiresAt }));
+}
+
+export async function revokeInvite(wsId: ID, actor: ID, id: ID) {
+  assertAdmin(wsId, actor);
+  const i = invites.findIndex((x) => x.id === id && x.workspaceId === wsId);
+  if (i >= 0) invites.splice(i, 1);
+}
+
+function inviteByToken(token: string) {
+  return invites.find((i) => i.tokenHash === hash(token)) ?? null;
+}
+
+export async function getInvite(token: string): Promise<InviteInfo | null> {
+  await connection();
+  const i = inviteByToken(token);
+  const ws = i && db.workspaces.find((w) => w.id === i.workspaceId);
+  if (!i || !ws) return null;
+  return { workspaceName: ws.name, workspaceSlug: ws.slug, email: i.email, roleName: ROLES.find((r) => r.id === i.roleId)?.name ?? "", state: i.acceptedAt ? "accepted" : i.expiresAt < now() ? "expired" : "ok" };
+}
+
+function openInvite(token: string) {
+  const i = inviteByToken(token);
+  if (!i || i.acceptedAt || i.expiresAt < now()) throw new DomainError("invalid", "Este convite não vale mais. Peça um link novo para quem convidou.");
+  return i;
+}
+
+/** quem já tem conta (e está logado com o email do convite) entra na equipe */
+export async function acceptInvite(token: string, userId: ID) {
+  const i = openInvite(token);
+  const u = db.users.find((x) => x.id === userId);
+  if (!u || u.email !== i.email) throw new DomainError("invalid", `Este convite é para ${i.email}. Entre com essa conta para aceitar.`);
+  if (!db.memberships.some((m) => m.workspaceId === i.workspaceId && m.userId === userId)) join(i.workspaceId, userId, i.roleId);
+  i.acceptedAt = now();
+  return { slug: db.workspaces.find((w) => w.id === i.workspaceId)!.slug };
+}
+
+/** quem ainda não tem conta cria a senha no próprio convite (o email é o do convite) */
+export async function acceptInviteNewAccount(token: string, input: { name: string; password: string }) {
+  const i = openInvite(token);
+  if (db.users.some((x) => x.email === i.email)) throw new DomainError("invalid", "Esse email já tem conta. Entre com ela para aceitar o convite.");
+  const u = { id: uid(), name: input.name.trim(), email: i.email, passwordHash: hash(input.password) };
+  db.users.push(u);
+  join(i.workspaceId, u.id, i.roleId);
+  i.acceptedAt = now();
+  return { slug: db.workspaces.find((w) => w.id === i.workspaceId)!.slug, email: i.email };
 }
 
 export async function setMemberRole(wsId: ID, actor: ID, userId: ID, roleId: ID) {

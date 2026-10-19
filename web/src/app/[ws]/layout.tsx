@@ -4,7 +4,8 @@ import { MobileNav, NavRail } from "@/components/shell/nav-rail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { NavTracker } from "@/components/shell/back-button";
 import { requireWorkspace } from "@/data/session";
-import { getAccess, getBoard, listConversations, listUsers } from "@/data";
+import { getAccess, listUsers } from "@/data";
+import { loadNotifications } from "@/data/notifications";
 import { AvatarSeed } from "@/components/ui/avatar";
 import { AccessGate } from "@/components/shell/access-gate";
 
@@ -16,11 +17,11 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   const { ws: slug } = await params;
   const { user, ws } = await requireWorkspace(slug);
   if (mobile) return <MobileNav slug={slug} />;
-  const [convs, board, people] = await Promise.all([listConversations(ws.id, user.id, "unread"), getBoard(ws.id, undefined), listUsers(ws.id)]);
+  const [{ unread: convs, board, unseen }, people] = await Promise.all([loadNotifications(slug, ws.id, user.id), listUsers(ws.id)]);
   return (
     <>
       <AvatarSeed people={people} />
-      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} />
+      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} notifications={unseen} />
       <LiveRefresh wsId={ws.id} slug={ws.slug} />
       <NavTracker />
     </>

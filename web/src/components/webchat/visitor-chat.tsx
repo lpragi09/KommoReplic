@@ -7,8 +7,9 @@ import { fromSearch } from "@/lib/utm";
 import { timeOnly } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { AttachmentView } from "@/components/chat/attachment";
 
-type M = { id: string; direction: "in" | "out"; body: string; sentAt: string };
+type M = { id: string; direction: "in" | "out"; body: string; sentAt: string; kind?: string; file?: { name: string; mime: string; size: number; url: string | null } | null };
 
 let cachedVisitor: string | null = null;
 /** UTMs da URL do chat (vindas do anúncio ou do script do site), lidas uma vez no navegador */
@@ -94,7 +95,12 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
           return (
             <li key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div className={cn("max-w-[80%] rounded-lg px-3 py-2", mine ? "rounded-br-xs bg-accent text-on-accent" : "rounded-bl-xs border border-border bg-bg text-fg")}>
-                <p className="whitespace-pre-wrap break-words text-base">{m.body}</p>
+                {m.file && (
+                  <div className={cn(m.body && "mb-1.5")}>
+                    <AttachmentView file={m.file} kind={m.kind} tone={mine ? "accent" : "light"} />
+                  </div>
+                )}
+                {m.body && <p className="whitespace-pre-wrap break-words text-base">{m.body}</p>}
                 <p className={cn("mt-0.5 text-right text-xs", mine ? "text-on-accent/80" : "text-muted")} suppressHydrationWarning>
                   {timeOnly(m.sentAt)}
                 </p>

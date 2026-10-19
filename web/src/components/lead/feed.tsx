@@ -7,6 +7,7 @@ import { completeTaskAction } from "@/app/actions";
 import { dayLabel, timeOnly, when } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { AttachmentView } from "@/components/chat/attachment";
 
 const statusText: Record<MessageStatus, string> = {
   queued: "na fila",
@@ -128,7 +129,12 @@ function Item({ slug, it, contactName }: { slug: string; it: FeedItem; contactNa
             <Sparkle className="size-3" weight="fill" aria-hidden /> Agente de IA
           </p>
         )}
-        <p className="whitespace-pre-wrap break-words text-base text-fg">{m.body}</p>
+        {m.file && (
+          <div className={cn(m.body && "mb-1.5")}>
+            <AttachmentView file={m.file} kind={m.kind} />
+          </div>
+        )}
+        {m.body && <p className="whitespace-pre-wrap break-words text-base text-fg">{m.body}</p>}
         <p className="mt-1 flex items-center justify-end gap-1 text-xs text-muted">
           <time suppressHydrationWarning>{timeOnly(m.sentAt)}</time>
           {out && <Status s={m.status} />}

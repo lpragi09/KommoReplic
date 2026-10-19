@@ -79,7 +79,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
               <h2 id="links-t" className="font-semibold text-fg">
                 1. Link rastreável de WhatsApp
               </h2>
-              <p className="text-sm text-muted">Use no anúncio, na bio ou no botão do site. Cada clique guarda as UTMs e manda um código curto na mensagem; quando o cliente escreve, o Recadi liga a conversa à campanha.</p>
+              <p className="text-sm text-muted">Use no anúncio, na bio ou no botão do site. Cada clique guarda as UTMs e manda um código curto na mensagem; quando o cliente escreve, o sistema liga a conversa à campanha.</p>
             </div>
             <Button
               size="sm"
@@ -191,7 +191,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
             4. Anúncios “clique para WhatsApp” da Meta
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Quando o WhatsApp oficial estiver conectado, a Meta avisa de qual anúncio veio cada conversa (id, título e o clique). O Recadi grava sozinho — sem link, sem script e sem robô. Para isso, a conta de anúncios e o WhatsApp precisam estar no mesmo Gerenciador de Negócios.
+            Quando o WhatsApp oficial estiver conectado, a Meta avisa de qual anúncio veio cada conversa (id, título e o clique). O sistema grava sozinho — sem link, sem script e sem robô. Para isso, a conta de anúncios e o WhatsApp precisam estar no mesmo Gerenciador de Negócios.
           </p>
         </section>
       </div>

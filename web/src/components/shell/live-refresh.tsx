@@ -9,7 +9,8 @@ const editing = () => !!document.querySelector("[data-editing]");
 
 /* Atualização ao vivo.
    - Supabase: assina o canal privado ws:{workspace} (o banco avisa por trigger) e recarrega os dados
-     do servidor; quem decide o que aparece continua sendo o RLS.
+     do servidor; quem decide o que aparece continua sendo o RLS. Se o canal cair, consulta a cada 15s
+     até voltar; ao voltar para a aba, recarrega uma vez (pode ter perdido avisos com a aba dormindo).
    - Repositório falso: recarrega a cada 4s com a aba visível. */
 export function LiveRefresh({ wsId, slug, ms = 4000 }: { wsId: string; slug: string; ms?: number }) {
   const router = useRouter();
@@ -35,11 +36,36 @@ export function LiveRefresh({ wsId, slug, ms = 4000 }: { wsId: string; slug: str
         }, 300);
       };
       let channel: ReturnType<typeof sb.channel> | null = null;
-      void sb.realtime.setAuth().then(() => {
-        channel = sb.channel(`ws:${wsId}`, { config: { private: true } }).on("broadcast", { event: "change" }, refresh).subscribe();
-      });
+      let fallback: ReturnType<typeof setInterval> | null = null;
+      const startFallback = () => {
+        fallback ??= setInterval(() => {
+          if (document.visibilityState === "visible") refresh();
+        }, 15_000);
+      };
+      const stopFallback = () => {
+        if (fallback) clearInterval(fallback);
+        fallback = null;
+      };
+      void sb.realtime
+        .setAuth()
+        .then(() => {
+          channel = sb
+            .channel(`ws:${wsId}`, { config: { private: true } })
+            .on("broadcast", { event: "change" }, refresh)
+            .subscribe((status) => {
+              if (status === "SUBSCRIBED") stopFallback();
+              else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") startFallback();
+            });
+        })
+        .catch(startFallback);
+      const onVisible = () => {
+        if (document.visibilityState === "visible") refresh();
+      };
+      document.addEventListener("visibilitychange", onVisible);
       return () => {
         if (pending) clearTimeout(pending);
+        stopFallback();
+        document.removeEventListener("visibilitychange", onVisible);
         if (channel) void sb.removeChannel(channel);
       };
     }

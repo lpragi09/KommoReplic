@@ -45,6 +45,7 @@ export const FileText = icon(P.FileText);
 export const Filter = icon(P.FunnelSimple);
 export const Fingerprint = icon(P.Fingerprint);
 export const GripVertical = icon(P.DotsSixVertical, "bold");
+export const GoogleLogo = icon(P.GoogleLogo, "bold");
 export const House = icon(P.HouseSimple);
 export const Inbox = icon(P.Tray);
 export const Lightning = icon(P.Lightning);

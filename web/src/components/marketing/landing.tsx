@@ -34,6 +34,7 @@ import {
   ArtWin,
 } from "./art";
 import { BRAND } from "@/lib/brand";
+import { NetzerMark } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 import { IslandNav } from "./island-nav";
 
@@ -316,7 +317,7 @@ export function Landing() {
                 <div className="fx-core overflow-hidden">
                   <Image
                     src="/produto-funil.png"
-                    alt="Funil de vendas do Recadi: coluna de leads de entrada e etapas com cards de negócios"
+                    alt={`Funil de vendas do ${BRAND.name}: coluna de leads de entrada e etapas com cards de negócios`}
                     width={1440}
                     height={560}
                     priority
@@ -351,7 +352,7 @@ export function Landing() {
         {/* ---------- faixa do que existe ---------- */}
         <div
           className="overflow-hidden border-y border-night-line bg-[linear-gradient(90deg,transparent,color-mix(in_srgb,var(--aurora-1)_14%,transparent),transparent)] py-5"
-          aria-label="O que o Recadi faz"
+          aria-label={`O que o ${BRAND.name} faz`}
         >
           <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-10 gap-y-3 px-4">
             {ticker.map((t, i) => (
@@ -392,7 +393,7 @@ export function Landing() {
               </h2>
               <p className="mt-5 max-w-[46ch] text-md text-on-night-muted">
                 Cada mensagem esquecida é um cliente que foi comprar do
-                concorrente. O Recadi foi feito para isso não acontecer.
+                concorrente. O {BRAND.name} foi feito para isso não acontecer.
               </p>
             </div>
             <div className="flex flex-col gap-5">
@@ -827,13 +828,8 @@ export function Landing() {
       <footer className="relative z-10 border-t border-night-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-10 text-sm text-on-night-muted sm:px-6">
           <span className="flex items-center gap-2">
-            <span
-              className="grid size-6 place-items-center rounded-xs bg-accent text-xs font-bold text-on-accent"
-              aria-hidden
-            >
-              {BRAND.initial}
-            </span>
-            © {BRAND.name} · {BRAND.tagline}
+            <NetzerMark className="h-6 w-auto text-brand-on-night" />
+            © {BRAND.name} · uma marca {BRAND.parent}, {BRAND.parentTagline}
           </span>
           <nav aria-label="Legal" className="ml-auto flex gap-5">
             <Link href="/termos" className="hover:text-on-night">

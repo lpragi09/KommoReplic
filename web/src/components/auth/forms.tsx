@@ -3,12 +3,14 @@
 import {
   useActionState,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
 } from "react";
 import Link from "next/link";
 import {
   createWorkspaceAction,
+  googleSignInAction,
   signInAction,
   signUpAction,
   type FormState,
@@ -17,8 +19,9 @@ import type { SignupInfo } from "@/data/types";
 import { CompanyFields } from "./company-fields";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
-import { ArrowLeft } from "@/components/ui/icons";
+import { ArrowLeft, GoogleLogo } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
+import { NetzerLogo } from "@/components/brand/logo";
 
 export function AuthShell({
   title,
@@ -54,6 +57,7 @@ export function AuthShell({
           Voltar ao início
         </Link>
         <div className="hidden max-w-xl lg:block">
+          <NetzerLogo className="fx-rise mb-8 text-2xl text-brand-on-night" markClassName="h-10" />
           <p
             className="fx-rise text-caps uppercase text-on-night-muted"
             style={{ "--d": 1 } as CSSProperties}
@@ -78,7 +82,7 @@ export function AuthShell({
           className="fx-rise hidden text-xs text-on-night-muted lg:block"
           style={{ "--d": 4 } as CSSProperties}
         >
-          {BRAND.name} · versão de desenvolvimento
+          uma marca {BRAND.parent} · {BRAND.parentTagline}
         </p>
       </div>
       <main
@@ -110,8 +114,13 @@ function FormError({ state }: { state: FormState }) {
   ) : null;
 }
 
+const noSubscribe = () => () => {};
+/** ?next= da URL (ex.: voltar para um convite depois de entrar); o servidor só aceita caminho de convite */
+const readNext = () => new URLSearchParams(window.location.search).get("next") ?? "";
+
 export function SignInForm() {
   const [state, action, pending] = useActionState(signInAction, {});
+  const next = useSyncExternalStore(noSubscribe, readNext, () => "");
   return (
     <AuthShell
       title="Entrar"
@@ -130,6 +139,7 @@ export function SignInForm() {
     >
       <form action={action} className="flex flex-col gap-4" noValidate>
         <FormError state={state} />
+        <input type="hidden" name="next" value={next} />
         <Field
           label="Email"
           name="email"
@@ -151,7 +161,28 @@ export function SignInForm() {
           Entrar
         </Button>
       </form>
+      <GoogleButton />
     </AuthShell>
+  );
+}
+
+/* "Continuar com Google": só aparece com NEXT_PUBLIC_GOOGLE_LOGIN=1 (provedor ligado no Supabase).
+   Conta nova pelo Google cai no onboarding, que pede empresa e CPF/CNPJ. */
+const GOOGLE_ON = process.env.NEXT_PUBLIC_GOOGLE_LOGIN === "1";
+
+function GoogleButton() {
+  const [state, action, pending] = useActionState(googleSignInAction, {});
+  if (!GOOGLE_ON) return null;
+  return (
+    <form action={action} className="mt-4 flex flex-col gap-3">
+      <p className="flex items-center gap-3 text-xs text-muted" aria-hidden>
+        <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
+      </p>
+      <FormError state={state} />
+      <Button type="submit" variant="secondary" size="lg" loading={pending} icon={<GoogleLogo className="size-5" aria-hidden />}>
+        Continuar com Google
+      </Button>
+    </form>
   );
 }
 
@@ -208,6 +239,7 @@ export function SignUpForm() {
           Criar conta
         </Button>
       </form>
+      <GoogleButton />
     </AuthShell>
   );
 }

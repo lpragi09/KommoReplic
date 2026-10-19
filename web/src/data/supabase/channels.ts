@@ -2,7 +2,7 @@ import "server-only";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { open, seal } from "@/lib/secret-box";
-import { sendText } from "@/lib/meta";
+import { sendMedia, sendText } from "@/lib/meta";
 import { DomainError, type Channel, type ID } from "../types";
 
 /* Canais da Meta no Supabase: conectar (token cifrado), desconectar e entregar a fila de mensagens. */
@@ -44,7 +44,7 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
   const a = adminClient();
   let q = a
     .from("messages")
-    .select("id, body, channel_id, conversations(external_thread_id), channels(kind, external_id, status, config)")
+    .select("id, body, kind, channel_id, conversations(external_thread_id), channels(kind, external_id, status, config), files(name, storage_path)")
     .eq("status", "queued")
     .eq("direction", "out")
     .order("created_at")
@@ -60,7 +60,14 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
     if (!sec) continue;
     try {
       const via = ch.kind === "instagram" ? (ch.config?.page_id ?? ch.external_id) : ch.external_id;
-      const extId = await sendText(ch.kind, via, open(sec.token_enc), m.conversations?.external_thread_id, m.body);
+      const to = m.conversations?.external_thread_id;
+      let extId: string | null;
+      if (m.files?.storage_path) {
+        const { data: signed } = await a.storage.from("attachments").createSignedUrl(m.files.storage_path, 24 * 3600);
+        if (!signed?.signedUrl) throw new Error("Não deu para gerar o link do arquivo.");
+        const type = m.kind === "image" || m.kind === "audio" || m.kind === "video" ? m.kind : "file";
+        extId = await sendMedia(ch.kind, via, open(sec.token_enc), to, { type, link: signed.signedUrl, caption: m.body || undefined, filename: m.files.name });
+      } else extId = await sendText(ch.kind, via, open(sec.token_enc), to, m.body);
       await a.from("messages").update({ status: "sent", external_id: extId, error: null }).eq("id", m.id);
       sent++;
     } catch (e) {

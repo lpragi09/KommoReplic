@@ -83,11 +83,11 @@ test.describe("F20 robôs e telas novas", () => {
 
     // equipe
     await page.goto(`/${slug}/settings/users`);
-    await page.getByRole("button", { name: "Adicionar pessoa" }).click();
+    await page.getByRole("button", { name: "Criar acesso" }).click();
     await page.getByLabel("Nome", { exact: true }).fill("Carla Dias");
     await page.getByLabel("Email").fill(`carla-${Date.now()}@exemplo.test`);
     await page.getByLabel("Senha inicial").fill("senha-teste-456");
-    await page.getByRole("button", { name: "Adicionar", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Criar acesso" }).click();
     await expect(page.getByRole("listitem").filter({ hasText: "Carla Dias" })).toBeVisible();
     await axe(page);
 
