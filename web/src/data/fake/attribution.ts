@@ -2,15 +2,17 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { connection } from "next/server";
 import { db, now, uid } from "./store";
-import { addTouch, findRef } from "@/lib/utm";
-import { DomainError, type Attribution, type ID, type TrackingLink } from "../types";
+import { addTouch, findRef, matchCode } from "@/lib/utm";
+import { DomainError, type Attribution, type ID, type MessageCode, type TrackingLink } from "../types";
 
 /* Origem dos leads e links rastreáveis — banco em memória. */
 
 type LinkRow = TrackingLink & { workspaceId: string };
 type ClickRow = { id: string; workspaceId: string; linkId: string; ref: string; attribution: Attribution; conversationId: string | null; createdAt: string };
-const g = globalThis as unknown as { __crmLinks?: { links: LinkRow[]; clicks: ClickRow[] } };
+type CodeRow = MessageCode & { workspaceId: string };
+const g = globalThis as unknown as { __crmLinks?: { links: LinkRow[]; clicks: ClickRow[]; codes?: CodeRow[] } };
 const store = (g.__crmLinks ??= { links: [], clicks: [] });
+const codes = (store.codes ??= []);
 
 const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sem 0/O/1/I para ninguém confundir
 const newRef = (n = 5) => Array.from({ length: n }, () => ALPHA[randomInt(ALPHA.length)]).join("");
@@ -42,6 +44,14 @@ export async function attributeInbound(conversationId: ID, body: string, extra?:
     const link = store.links.find((l) => l.id === click.linkId);
     if (link) link.matched += 1;
     setConversationAttribution(conversationId, click.attribution);
+    return;
+  }
+  // sem link rastreável: código cadastrado no texto (anúncio com mensagem pronta)
+  const ws = db.conversations.find((x) => x.id === conversationId)?.workspaceId;
+  const hit = ws ? matchCode(body, codes.filter((c) => c.workspaceId === ws)) : null;
+  if (hit) {
+    hit.matched += 1;
+    setConversationAttribution(conversationId, { ...(extra ?? {}), ...hit.defaults, via: "code", link_name: hit.name, at: now() });
   } else if (extra) setConversationAttribution(conversationId, extra);
 }
 
@@ -97,4 +107,30 @@ export async function clickTrackingLink(code: string, attr: Attribution | null) 
   l.clicks += 1;
   store.clicks.push({ id: uid(), workspaceId: l.workspaceId, linkId: l.id, ref, attribution: { ...l.defaults, ...(attr ?? {}), via: attr?.via ?? "link", link_name: l.name, link_id: l.id, at: now() }, conversationId: null, createdAt: now() });
   return { phone: l.phone, message: l.message, ref };
+}
+
+// ---------------------------------------------------------------------------
+// códigos na mensagem
+// ---------------------------------------------------------------------------
+export async function listMessageCodes(wsId: ID): Promise<MessageCode[]> {
+  await connection();
+  return codes.filter((c) => c.workspaceId === wsId).map(({ workspaceId: _w, ...c }) => c);
+}
+
+export async function saveMessageCode(wsId: ID, id: ID | null, input: { code: string; name: string; defaults: Attribution }): Promise<MessageCode> {
+  if (codes.some((c) => c.workspaceId === wsId && c.id !== id && c.code.toUpperCase() === input.code.toUpperCase())) throw new DomainError("invalid", "Esse código já está cadastrado.");
+  if (id) {
+    const c = codes.find((x) => x.id === id && x.workspaceId === wsId);
+    if (!c) throw new DomainError("not_found");
+    Object.assign(c, input);
+    return c;
+  }
+  const c: CodeRow = { ...input, id: uid(), workspaceId: wsId, matched: 0, createdAt: now() };
+  codes.push(c);
+  return c;
+}
+
+export async function deleteMessageCode(wsId: ID, id: ID) {
+  const i = codes.findIndex((c) => c.id === id && c.workspaceId === wsId);
+  if (i >= 0) codes.splice(i, 1);
 }

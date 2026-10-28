@@ -113,3 +113,4 @@ export const Briefcase = icon(P.Briefcase);
 export const Sun = icon(P.Sun);
 export const Moon = icon(P.Moon);
 export const Monitor = icon(P.Monitor);
+export const Hash = icon(P.Hash);

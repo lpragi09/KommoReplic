@@ -87,3 +87,37 @@ test.describe("F21 UTMs e links rastreáveis", () => {
     await expect(page.getByText("Rui Matos").first()).toBeVisible();
   });
 });
+
+/* Anúncio com texto pronto: o código no fim da mensagem preenche a origem sozinho, sem robô. */
+test("F21-H3 código na mensagem do anúncio vira a origem do lead", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { slug } = await signUp(page);
+  await page.goto(`/${slug}/settings/tracking`);
+  await page.getByRole("button", { name: "Novo código" }).click();
+  await page.getByLabel("Código", { exact: true }).fill("G-01-34");
+  await page.getByLabel("Nome", { exact: true }).fill("Anúncio revisão");
+  await page.getByLabel("Fonte do código (utm_source)").fill("facebook");
+  await page.getByLabel("Campanha do código (utm_campaign)").fill("oficina-outubro");
+  await page.getByLabel("Conteúdo do código (utm_content)").fill("AD34_IMG_REVISAO");
+  await page.getByRole("button", { name: "Salvar código" }).click();
+  await expect(page.getByText("G-01-34", { exact: true })).toBeVisible();
+  await axe(page);
+
+  const key = await webchatKey(page, slug);
+  const visitor = await visitorPage(browser);
+  await visitor.goto(`/chat/${key}`);
+  await visitor.getByLabel("Seu nome (opcional)").fill("Caio Oficina");
+  await visitor.getByLabel("Mensagem", { exact: true }).fill("Olá! Quero agendar uma revisão para o meu carro. g-01-34");
+  await visitor.getByRole("button", { name: "Enviar mensagem" }).click();
+  await expect(visitor.getByText(/Quero agendar uma revisão/)).toBeVisible();
+
+  await page.goto(`/${slug}/leads`);
+  await page.getByRole("button", { name: "Aceitar Caio Oficina como lead" }).click();
+  await page.getByRole("tab", { name: "Origem" }).click();
+  await expect(page.getByText("Código na mensagem · Anúncio revisão")).toBeVisible();
+  await expect(page.getByText("oficina-outubro", { exact: true })).toBeVisible();
+  await expect(page.getByText("AD34_IMG_REVISAO", { exact: true })).toBeVisible();
+
+  await page.goto(`/${slug}/settings/tracking`);
+  await expect(page.getByRole("listitem").filter({ hasText: "G-01-34" })).toContainText("1 conversa");
+});

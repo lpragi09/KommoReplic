@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { TrackingLink } from "@/data/types";
-import { deleteTrackingLinkAction, saveTrackingLinkAction } from "@/app/actions";
+import type { MessageCode, TrackingLink } from "@/data/types";
+import { deleteMessageCodeAction, deleteTrackingLinkAction, saveMessageCodeAction, saveTrackingLinkAction } from "@/app/actions";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Copy, Globe, Link2, Pencil, Plus, Trash2, WhatsappLogo } from "@/components/ui/icons";
+import { Copy, Globe, Link2, Pencil, Plus, Trash2, WhatsappLogo, Hash } from "@/components/ui/icons";
 import { maskPhone } from "@/lib/document";
 
 const UTM_FIELDS = [
@@ -39,6 +39,7 @@ export function TrackingManager({
   links,
   chatKey,
   stats = {},
+  codes = [],
 }: {
   slug: string;
   origin: string;
@@ -46,6 +47,8 @@ export function TrackingManager({
   chatKey: string | null;
   /** por link: leads que vieram por ele, vendas ganhas e quanto faturaram */
   stats?: Record<string, { leads: number; won: number; cents: number }>;
+  /** códigos no texto pronto dos anúncios */
+  codes?: MessageCode[];
 }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -196,6 +199,9 @@ export function TrackingManager({
           )}
         </section>
 
+        {/* códigos na mensagem (anúncio com texto pronto) */}
+        <MessageCodes slug={slug} codes={codes} />
+
         {/* 3½. link de página com UTM */}
         <PageLinkBuilder />
 
@@ -340,6 +346,114 @@ function PageLinkBuilder() {
           </Button>
         </div>
       )}
+    </section>
+  );
+}
+
+type CodeDraft = { id: string | null; code: string; name: string; defaults: Record<string, string> };
+
+/** "se a mensagem tiver G-01-34 → fonte, mídia, campanha e conteúdo", sem montar robô */
+function MessageCodes({ slug, codes }: { slug: string; codes: MessageCode[] }) {
+  const [draft, setDraft] = useState<CodeDraft | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const save = () =>
+    start(async () => {
+      if (!draft) return;
+      const r = await saveMessageCodeAction(slug, draft.id, { code: draft.code, name: draft.name, defaults: draft.defaults });
+      if (!r.ok) return setError(r.error);
+      setError(null);
+      setDraft(null);
+    });
+  const remove = (c: MessageCode) =>
+    start(async () => {
+      const r = await deleteMessageCodeAction(slug, c.id);
+      if (!r.ok) setError(r.error);
+    });
+  const summary = (d: Record<string, string>) =>
+    UTM_FIELDS.filter(([k]) => d[k])
+      .map(([k]) => d[k])
+      .join(" · ");
+  return (
+    <section className="rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]" aria-labelledby="codigos-t">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="fx-tile size-10 shrink-0" aria-hidden>
+          <Hash className="size-5" weight="bold" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id="codigos-t" className="font-semibold text-fg">
+            Código na mensagem do anúncio
+          </h2>
+          <p className="text-sm text-muted">Para anúncios com texto pronto, tipo “Quero agendar uma revisão. G-01-34”. Quando a mensagem chega com o código, a origem é preenchida sozinha, sem robô.</p>
+        </div>
+        <Button size="sm" icon={<Plus className="size-4" aria-hidden />} onClick={() => (setError(null), setDraft({ id: null, code: "", name: "", defaults: {} }))}>
+          Novo código
+        </Button>
+      </div>
+      {error && !draft && (
+        <p role="alert" className="mt-3 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {codes.length === 0 ? (
+        <p className="mt-4 rounded-md bg-surface p-4 text-sm text-muted">Nenhum código ainda. Coloque um código diferente no fim do texto de cada anúncio e cadastre aqui.</p>
+      ) : (
+        <ul className="mt-4 flex flex-col gap-2">
+          {codes.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-2 rounded-md p-3 shadow-[inset_0_0_0_1px_var(--border)]">
+              <code className="rounded-sm bg-accent-soft px-2 py-1 text-sm font-semibold text-accent-text">{c.code}</code>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-fg">{c.name}</span>
+                <span className="block truncate text-xs text-muted">{summary(c.defaults as Record<string, string>) || "sem UTMs"}</span>
+              </span>
+              <span className="text-xs tabular-nums text-muted">
+                <strong className="text-fg">{c.matched}</strong> {c.matched === 1 ? "conversa" : "conversas"}
+              </span>
+              <IconButton label={`Editar ${c.code}`} size={28} onClick={() => setDraft({ id: c.id, code: c.code, name: c.name, defaults: { ...(c.defaults as Record<string, string>) } })}>
+                <Pencil className="size-4" />
+              </IconButton>
+              <IconButton label={`Apagar ${c.code}`} size={28} tone="danger" onClick={() => remove(c)} disabled={pending}>
+                <Trash2 className="size-4" />
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Dialog
+        open={!!draft}
+        onOpenChange={(o) => !o && setDraft(null)}
+        title={draft?.id ? "Editar código" : "Novo código"}
+        description="Quando a mensagem do cliente tiver este código, a conversa e o lead ganham estas UTMs."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDraft(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={save} loading={pending}>
+              Salvar código
+            </Button>
+          </>
+        }
+      >
+        {draft && (
+          <div className="flex flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+              <Field label="Código" value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.replace(/\s/g, "") })} maxLength={30} placeholder="G-01-34" spellCheck={false} autoFocus />
+              <Field label="Nome" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={80} placeholder="Anúncio revisão (imagem)" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {UTM_FIELDS.map(([k, label, ph]) => (
+                <Field key={k} label={`${label} do código (${k})`} value={draft.defaults[k] ?? ""} placeholder={ph} onChange={(e) => setDraft({ ...draft, defaults: { ...draft.defaults, [k]: e.target.value } })} />
+              ))}
+            </div>
+            {error && (
+              <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+      </Dialog>
     </section>
   );
 }

@@ -1130,6 +1130,36 @@ export async function saveTrackingLinkAction(slug: string, linkId: string | null
   });
 }
 
+const codeInput = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(3, "O código precisa de pelo menos 3 caracteres (ex.: G-01-34).")
+    .max(30)
+    .regex(/^[\p{L}\p{N}._#/-]+$/u, "Use só letras, números e - _ . / # (sem espaço)."),
+  name: z.string().trim().min(1, "Dê um nome (ex.: Anúncio revisão).").max(80),
+  defaults: z.record(z.string(), z.string().max(150)),
+});
+
+export async function saveMessageCodeAction(slug: string, codeId: string | null, input: z.input<typeof codeInput>) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    const v = codeInput.parse(input);
+    await data.saveMessageCode(ws.id, codeId ? id.parse(codeId) : null, { ...v, defaults: cleanAttribution(v.defaults) ?? {} });
+    refresh();
+    return null;
+  });
+}
+
+export async function deleteMessageCodeAction(slug: string, codeId: string) {
+  return run(async () => {
+    const { ws } = await requireActive(slug);
+    await data.deleteMessageCode(ws.id, id.parse(codeId));
+    refresh();
+    return null;
+  });
+}
+
 export async function deleteTrackingLinkAction(slug: string, linkId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);

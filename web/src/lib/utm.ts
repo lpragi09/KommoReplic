@@ -26,7 +26,14 @@ export const VIA_LABEL: Record<NonNullable<Attribution["via"]>, string> = {
   webchat: "Chat do site",
   meta_ad: "Anúncio da Meta",
   manual: "Preenchido à mão",
+  code: "Código na mensagem",
 };
+
+/** o código mais longo da lista que aparece na mensagem (assim "G-01-34" ganha de "G-01-3") */
+export function matchCode<T extends { code: string }>(body: string, codes: T[]): T | null {
+  const text = body.toUpperCase();
+  return [...codes].sort((a, b) => b.code.length - a.code.length).find((c) => c.code.trim() && text.includes(c.code.trim().toUpperCase())) ?? null;
+}
 
 /** Aceita só as chaves conhecidas, texto curto, sem controle. Nada vindo de fora entra sem passar aqui. */
 export function cleanAttribution(input: unknown, via?: Attribution["via"]): Attribution | null {

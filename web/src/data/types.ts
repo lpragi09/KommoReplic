@@ -427,7 +427,7 @@ export type Attribution = {
   landing?: string;
   referrer?: string;
   /** por onde a origem chegou */
-  via?: "link" | "site" | "webchat" | "meta_ad" | "manual";
+  via?: "link" | "site" | "webchat" | "meta_ad" | "manual" | "code";
   link_name?: string;
   link_id?: string;
   at?: ISO;
@@ -437,6 +437,8 @@ export type Attribution = {
   history?: AttributionTouch[];
 };
 export type AttributionTouch = { at?: ISO; via?: Attribution["via"]; label: string };
+/** código no texto pronto do anúncio (ex.: "G-01-34"): quando a mensagem chega com ele, a origem é preenchida sozinha */
+export type MessageCode = { id: ID; code: string; name: string; defaults: Attribution; matched: number; createdAt: ISO };
 export type TrackingLink = { id: ID; name: string; code: string; phone: string; message: string; defaults: Attribution; clicks: number; matched: number; createdAt: ISO };
 
 /* ---------- marcações no calendário (etiqueta num dia: promoção, folga, feriado municipal) ---------- */

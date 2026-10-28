@@ -15,6 +15,6 @@ export const {
   getAccess, getNotificationsSeen, markNotificationsSeen, signupInfo, listMarks, saveMark, deleteMark, connectChannel, disconnectChannel, deliverQueued, updateDeliveryStatus, getAgent, saveAgent, setConversationAi, answerWithAgent, createPipeline, renamePipeline, deletePipeline, addStage, updateStage, deleteStage, setMyAvatar, setWorkspaceLogo, updateMyName, changeMyEmail, changeMyPassword, updateWorkspace,
   getAiWallet, setAiOwnKey, addAiCredits, spendAiCredit, refundAiCredit, getAiOwnKey, getUsageCounts,
   getActivity, getMessageStats, listGoals, saveGoals, listRoiReports, saveRoiReport, deleteRoiReport,
-  attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink,
+  attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink, listMessageCodes, saveMessageCode, deleteMessageCode,
 } = impl;
 export type { ConvFilter, LeadFilter } from "./fake/repo";

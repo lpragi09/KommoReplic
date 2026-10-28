@@ -2,8 +2,8 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
-import { addTouch, findRef } from "@/lib/utm";
-import { DomainError, type Attribution, type ID, type TrackingLink } from "../types";
+import { addTouch, findRef, matchCode } from "@/lib/utm";
+import { DomainError, type Attribution, type ID, type MessageCode, type TrackingLink } from "../types";
 
 /* Origem dos leads e links rastreáveis — Supabase.
    Cliques e mensagens chegam sem login (público/webhook): esses caminhos usam a chave secreta e sempre filtram pela empresa do link/conversa.
@@ -50,6 +50,15 @@ export async function attributeInbound(conversationId: ID, body: string, extra?:
       await a.from("link_clicks").update({ conversation_id: conversationId }).eq("id", click.id);
       const link = check(await a.from("tracking_links").select("matched").eq("id", click.link_id).maybeSingle());
       if (link) await a.from("tracking_links").update({ matched: (link.matched ?? 0) + 1 }).eq("id", click.link_id);
+    }
+  }
+  // sem link rastreável: procura um código cadastrado no texto (anúncio com mensagem pronta)
+  if (!ref || !attr) {
+    const { data: codes } = await a.from("message_codes").select("id, code, name, defaults, matched").eq("workspace_id", conv.workspace_id);
+    const hit = matchCode(body, (codes ?? []) as Row[] as { id: string; code: string; name: string; defaults: Attribution; matched: number }[]);
+    if (hit) {
+      attr = { ...(attr ?? {}), ...(hit.defaults ?? {}), via: "code", link_name: hit.name, at: new Date().toISOString() };
+      await a.from("message_codes").update({ matched: (hit.matched ?? 0) + 1 }).eq("id", hit.id);
     }
   }
   const merged = attr ? addTouch(conv.attribution, attr) : null;
@@ -109,4 +118,34 @@ export async function clickTrackingLink(code: string, attr: Attribution | null) 
   });
   await a.from("tracking_links").update({ clicks: (l.clicks ?? 0) + 1 }).eq("id", l.id);
   return { phone: l.phone as string, message: (l.message as string) ?? "", ref };
+}
+
+// ---------------------------------------------------------------------------
+// códigos na mensagem
+// ---------------------------------------------------------------------------
+const toCode = (r: Row): MessageCode => ({ id: r.id, code: r.code, name: r.name, defaults: r.defaults ?? {}, matched: r.matched ?? 0, createdAt: new Date(r.created_at).toISOString() });
+
+export async function listMessageCodes(wsId: ID): Promise<MessageCode[]> {
+  const sb = await userClient();
+  const { data, error } = await sb.from("message_codes").select("*").eq("workspace_id", wsId).order("created_at");
+  if (error) return []; // banco sem a atualização: a seção abre vazia
+  return (data ?? []).map(toCode);
+}
+
+export async function saveMessageCode(wsId: ID, id: ID | null, input: { code: string; name: string; defaults: Attribution }) {
+  const sb = await userClient();
+  const r = id
+    ? await sb.from("message_codes").update(input).eq("workspace_id", wsId).eq("id", id).select("*").maybeSingle()
+    : await sb.from("message_codes").insert({ ...input, workspace_id: wsId }).select("*").single();
+  if (r.error?.code === "23505") throw new DomainError("invalid", "Esse código já está cadastrado.");
+  if (r.error?.code === "42P01") throw new DomainError("invalid", "Rode a atualização do banco (atualizacao-codigos.sql) para usar códigos.");
+  const row = check(r);
+  if (!row) throw new DomainError("forbidden", "Só administradores podem alterar códigos.");
+  return toCode(row);
+}
+
+export async function deleteMessageCode(wsId: ID, id: ID) {
+  const sb = await userClient();
+  const r = check(await sb.from("message_codes").delete().eq("workspace_id", wsId).eq("id", id).select("id"));
+  if (!r.length) throw new DomainError("forbidden", "Só administradores podem apagar códigos.");
 }

@@ -4,4 +4,4 @@
 -- que também pode guardar a etapa (só leads daquela etapa).
 alter table robots drop constraint if exists robots_trigger_check;
 alter table robots add constraint robots_trigger_check
-  check (trigger in ('stage_enter','lead_created','message_in','new_contact','responsible_changed'));
+  check (trigger in ('stage_enter','lead_created','message_in','new_contact','responsible_changed','tag_added','field_changed','no_reply','schedule_daily')); -- já aceita os gatilhos novos: rodar de novo não quebra robôs existentes
