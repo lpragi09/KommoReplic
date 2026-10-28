@@ -57,9 +57,37 @@ export function fromSearch(search: string | URLSearchParams): Record<string, str
   return out;
 }
 
-/** "(ref: K7Q2M)" na mensagem do cliente → "K7Q2M" */
-export const REF_RE = /\bref[:\s#-]*([A-Z0-9]{5,8})\b/i;
+/** código que vai no fim da mensagem do WhatsApp (o cliente vê; o sistema usa para saber de qual link veio) */
+export const refText = (ref: string) => `Código do atendimento: ${ref}`;
+/** "Código do atendimento: K7Q2M" (ou o antigo "(ref: K7Q2M)") na mensagem do cliente → "K7Q2M" */
+export const REF_RE = /(?:\bref|c[oó]digo do atendimento|\bc[oó]d(?:igo)?)[:\s#.-]*([A-Z0-9]{5,8})\b/i;
 export const findRef = (body: string) => body.match(REF_RE)?.[1]?.toUpperCase() ?? null;
+
+/** de onde veio, numa palavra (para o filtro do funil): "instagram", "google", "meta", "chat do site"... */
+export function originOf(a: Attribution | null | undefined): string | null {
+  if (!a) return null;
+  const s = a.utm_source ?? (a.via === "meta_ad" ? "meta" : a.gclid ? "google" : a.fbclid ? "facebook" : a.via === "webchat" ? "chat do site" : a.via === "link" ? (a.link_name ?? "link rastreável") : null);
+  return s ? s.trim().toLowerCase().slice(0, 60) : null;
+}
+
+const hasSource = (a: Attribution) => !!(a.utm_source || a.utm_campaign || a.ad_id || a.link_name || a.gclid || a.fbclid);
+const sameTouch = (x: Attribution, y: Attribution) =>
+  (x.utm_source ?? "") === (y.utm_source ?? "") && (x.utm_campaign ?? "") === (y.utm_campaign ?? "") && (x.ad_id ?? "") === (y.ad_id ?? "") && (x.link_name ?? "") === (y.link_name ?? "");
+function bare(a: Attribution): Attribution {
+  const { first: _f, history: _h, ...rest } = a;
+  return rest;
+}
+const touchOf = (a: Attribution) => ({ at: a.at, via: a.via, label: attrSummary(bare(a)) ?? "Sem origem" });
+
+/** Junta uma origem nova à que o lead já tem: a mais nova vira a principal, a 1ª fica guardada e o caminho cresce.
+    Devolve null quando não há nada novo (mesma campanha de novo, ou visita sem campanha). */
+export function addTouch(cur: Attribution | null | undefined, next: Attribution): Attribution | null {
+  if (!cur) return { ...bare(next), history: [touchOf(next)] };
+  if (!hasSource(next) || sameTouch(cur, next)) return null;
+  const first = cur.first ?? bare(cur);
+  const history = [...(cur.history ?? [touchOf(cur)]), touchOf(next)].slice(-10);
+  return { ...bare(next), first, history };
+}
 
 /** fonte / campanha legível para listas e relatórios */
 export function attrSummary(a: Attribution | null | undefined) {

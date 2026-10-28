@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { clickTrackingLink } from "@/data";
-import { cleanAttribution, fromSearch } from "@/lib/utm";
+import { cleanAttribution, fromSearch, refText } from "@/lib/utm";
 import { rateLimit } from "@/lib/rate-limit";
 
 /* Link rastreável de WhatsApp: /w/{código}?utm_source=...
@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
   const hit = await clickTrackingLink(code, attr);
   if (!hit) return new Response("link não encontrado", { status: 404 });
 
-  const text = [hit.message.trim(), `(ref: ${hit.ref})`].filter(Boolean).join("\n\n");
+  const text = [hit.message.trim(), refText(hit.ref)].filter(Boolean).join("\n\n");
   const phone = hit.phone;
   return new Response(null, {
     status: 302,

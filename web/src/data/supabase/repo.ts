@@ -1,4 +1,5 @@
 import "server-only";
+import { originOf } from "@/lib/utm";
 import { randomUUID } from "node:crypto";
 import { kindOf, safeName } from "@/lib/attachments";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -227,6 +228,23 @@ export async function signUp(name: string, email: string, password: string, sign
   return "";
 }
 
+/** pede o email de nova senha. Nunca diz se o email existe (ninguém descobre quem tem conta). */
+export async function requestPasswordReset(email: string, redirectTo: string): Promise<string | null> {
+  const sb = await userClient();
+  await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+  return null;
+}
+
+/** grava a senha nova de quem abriu o link do email (a sessão de recuperação já está nos cookies) */
+export async function resetPassword(_token: string | null, password: string): Promise<string> {
+  const sb = await userClient();
+  const { data } = await sb.auth.getUser();
+  if (!data.user) throw new DomainError("invalid", "O link expirou ou já foi usado. Peça um novo.");
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) throw new DomainError("invalid", error.message.includes("different") ? "A senha nova precisa ser diferente da antiga." : "Não deu para trocar a senha. Tente de novo.");
+  return "";
+}
+
 export async function signOut(_token?: string) {
   const sb = await userClient();
   await sb.auth.signOut({ scope: "local" });
@@ -353,6 +371,7 @@ export async function listTaskTypes(wsId: ID): Promise<(TaskType & { workspaceId
 function applyFilter(rows: LeadCard[], f: LeadFilter) {
   const now = new Date().toISOString();
   return rows.filter((l) => {
+    if (f.origin && (originOf(l.attribution) ?? "none") !== f.origin) return false;
     if (f.owner && l.responsibleUserId !== f.owner) return false;
     if (f.tag && !l.tags.includes(f.tag)) return false;
     if (f.task === "none" && l.closestTaskAt) return false;
@@ -378,7 +397,10 @@ export async function getBoard(wsId: ID, pipelineId: ID | undefined, f: LeadFilt
   const pipelines = await listPipelines(wsId);
   const pipeline = pipelines.find((p) => p.id === pipelineId) ?? pipelines[0];
   if (!pipeline) throw new DomainError("not_found");
-  const leads = await leadCards(wsId, { ...f, pipelineId: pipeline.id });
+  // uma consulta só: as origens para o filtro saem do funil antes de aplicar o próprio filtro de origem
+  const all = await leadCards(wsId, { ...f, origin: undefined, pipelineId: pipeline.id });
+  const origins = [...new Set(all.map((l) => originOf(l.attribution) ?? "none"))].sort();
+  const leads = f.origin ? applyFilter(all, { origin: f.origin }) : all;
   const columns = [...pipeline.stages]
     .sort((a, b) => a.sort - b.sort)
     .map((stage) => {
@@ -404,7 +426,7 @@ export async function getBoard(wsId: ID, pipelineId: ID | undefined, f: LeadFilt
     resolvedBy: r.resolved_by,
     createdAt: isoReq(r.created_at),
   }));
-  return { pipeline, pipelines, columns, incoming };
+  return { pipeline, pipelines, columns, incoming, origins };
 }
 
 export async function listLeads(wsId: ID, f: LeadFilter & { pipelineId?: ID; stageId?: ID } = {}) {

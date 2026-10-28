@@ -97,6 +97,36 @@ export async function signInAction(_: FormState, form: FormData): Promise<FormSt
   return {};
 }
 
+/** "Esqueci minha senha": manda o link. A resposta é sempre a mesma, exista a conta ou não. */
+export async function requestResetAction(_: FormState, form: FormData): Promise<FormState & { sent?: boolean; devLink?: string }> {
+  const email = String(form.get("email") ?? "").trim();
+  const values = { email };
+  if (!z.string().email().safeParse(email).success) return { error: "Digite um email válido.", values };
+  if (!(await rateLimit(`reset:${await clientIp()}`, 5, 10 * 60_000))) return { error: "Muitos pedidos. Espere alguns minutos.", values };
+  const h = await headers();
+  const origin = process.env.APP_URL ?? `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+  const devLink = await data.requestPasswordReset(email, `${origin}/auth/callback?next=/nova-senha`);
+  return { sent: true, values, devLink: devLink ?? undefined };
+}
+
+/** grava a senha nova e já entra */
+export async function resetPasswordAction(_: FormState, form: FormData): Promise<FormState> {
+  const password = String(form.get("password") ?? "");
+  if (password.length < 8) return { error: "A senha precisa de pelo menos 8 caracteres." };
+  if (password.length > 72) return { error: "Senha longa demais." };
+  if (password !== String(form.get("again") ?? "")) return { error: "As duas senhas não são iguais." };
+  if (!(await rateLimit(`reset-set:${await clientIp()}`, 10, 10 * 60_000))) return { error: "Muitas tentativas. Espere alguns minutos." };
+  try {
+    const session = await data.resetPassword(String(form.get("token") ?? "") || null, password);
+    if (session) await setSession(session);
+  } catch (e) {
+    if (e instanceof DomainError) return { error: e.message };
+    throw e;
+  }
+  await afterLogin();
+  return {};
+}
+
 /** único "next" aceito no login: a página de um convite (nada de redirecionar para fora) */
 const INVITE_PATH = /^\/convite\/[A-Za-z0-9_-]{20,60}$/;
 
@@ -171,7 +201,7 @@ const wsSchema = z
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9-]{3,40}$/, "Use de 3 a 40 letras minúsculas, números ou hífen.")
-    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite", "descadastrar", "admin"].includes(s), "Esse endereço é reservado."),
+    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite", "descadastrar", "admin", "esqueci", "nova-senha", "auth"].includes(s), "Esse endereço é reservado."),
   timezone: z.string().min(1),
   currency: z.enum(["BRL", "USD", "EUR"]),
   ...docFields,

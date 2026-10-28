@@ -2,7 +2,7 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
-import { findRef } from "@/lib/utm";
+import { addTouch, findRef } from "@/lib/utm";
 import { DomainError, type Attribution, type ID, type TrackingLink } from "../types";
 
 /* Origem dos leads e links rastreáveis — Supabase.
@@ -40,7 +40,7 @@ const toLink = (r: Row): TrackingLink => ({
 export async function attributeInbound(conversationId: ID, body: string, extra?: Attribution | null) {
   const a = adminClient();
   const conv = check(await a.from("conversations").select("id, workspace_id, attribution").eq("id", conversationId).maybeSingle());
-  if (!conv || conv.attribution) return;
+  if (!conv) return;
   let attr = extra ?? null;
   const ref = findRef(body);
   if (ref) {
@@ -52,7 +52,8 @@ export async function attributeInbound(conversationId: ID, body: string, extra?:
       if (link) await a.from("tracking_links").update({ matched: (link.matched ?? 0) + 1 }).eq("id", click.link_id);
     }
   }
-  if (attr) await a.from("conversations").update({ attribution: attr }).eq("id", conversationId).is("attribution", null);
+  const merged = attr ? addTouch(conv.attribution, attr) : null;
+  if (merged) await a.from("conversations").update({ attribution: merged }).eq("id", conversationId); // a trigger leva para o lead
 }
 
 /** No Supabase a trigger attribution_to_lead já copia a origem quando a conversa ganha lead. */
@@ -104,7 +105,7 @@ export async function clickTrackingLink(code: string, attr: Attribution | null) 
     workspace_id: l.workspace_id,
     link_id: l.id,
     ref,
-    attribution: { ...(l.defaults ?? {}), ...(attr ?? {}), via: attr?.via ?? "link", link_name: l.name, at: new Date().toISOString() },
+    attribution: { ...(l.defaults ?? {}), ...(attr ?? {}), via: attr?.via ?? "link", link_name: l.name, link_id: l.id, at: new Date().toISOString() },
   });
   await a.from("tracking_links").update({ clicks: (l.clicks ?? 0) + 1 }).eq("id", l.id);
   return { phone: l.phone as string, message: (l.message as string) ?? "", ref };

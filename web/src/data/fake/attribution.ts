@@ -2,7 +2,7 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { connection } from "next/server";
 import { db, now, uid } from "./store";
-import { findRef } from "@/lib/utm";
+import { addTouch, findRef } from "@/lib/utm";
 import { DomainError, type Attribution, type ID, type TrackingLink } from "../types";
 
 /* Origem dos leads e links rastreáveis — banco em memória. */
@@ -16,12 +16,17 @@ const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sem 0/O/1/I para ninguém co
 const newRef = (n = 5) => Array.from({ length: n }, () => ALPHA[randomInt(ALPHA.length)]).join("");
 const newCode = () => Array.from({ length: 8 }, () => "abcdefghjkmnpqrstuvwxyz23456789"[randomInt(31)]).join("");
 
-/** grava a origem na conversa (só se ainda não tem) e passa para o lead dela */
+/** junta a origem à da conversa (1º contato guardado, caminho do lead) e passa para o lead dela */
 function setConversationAttribution(conversationId: ID, attr: Attribution) {
   const c = db.conversations.find((x) => x.id === conversationId);
-  if (!c || c.attribution) return;
-  c.attribution = attr;
-  if (c.leadId) copyToLead(c.leadId, attr);
+  if (!c) return;
+  const merged = addTouch(c.attribution, attr);
+  if (!merged) return;
+  c.attribution = merged;
+  if (c.leadId) {
+    const l = db.leads.find((x) => x.id === c.leadId);
+    if (l) l.attribution = merged;
+  }
 }
 function copyToLead(leadId: ID, attr: Attribution | null | undefined) {
   const l = db.leads.find((x) => x.id === leadId);
@@ -90,6 +95,6 @@ export async function clickTrackingLink(code: string, attr: Attribution | null) 
   if (!l) return null;
   const ref = newRef();
   l.clicks += 1;
-  store.clicks.push({ id: uid(), workspaceId: l.workspaceId, linkId: l.id, ref, attribution: { ...l.defaults, ...(attr ?? {}), via: attr?.via ?? "link", link_name: l.name, at: now() }, conversationId: null, createdAt: now() });
+  store.clicks.push({ id: uid(), workspaceId: l.workspaceId, linkId: l.id, ref, attribution: { ...l.defaults, ...(attr ?? {}), via: attr?.via ?? "link", link_name: l.name, link_id: l.id, at: now() }, conversationId: null, createdAt: now() });
   return { phone: l.phone, message: l.message, ref };
 }

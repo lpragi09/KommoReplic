@@ -1,4 +1,5 @@
 import "server-only";
+import { originOf } from "@/lib/utm";
 import { connection } from "next/server";
 import { db, hash, now, seedWorkspaceBasics, uid } from "./store";
 import { accessOf } from "../access";
@@ -79,6 +80,30 @@ export async function signUp(name: string, email: string, password: string, sign
   const token = uid();
   db.sessions.push({ token, userId: u.id });
   return token;
+}
+
+const g = globalThis as unknown as { __crmResets?: Map<string, { userId: string; until: number }> };
+const resets = (g.__crmResets ??= new Map());
+
+/** sem servidor de email no modo de desenvolvimento: devolve o link para a tela mostrar */
+export async function requestPasswordReset(email: string, _redirectTo: string): Promise<string | null> {
+  const u = db.users.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
+  if (!u) return null;
+  const token = uid();
+  resets.set(token, { userId: u.id, until: Date.now() + 60 * 60_000 });
+  return `/nova-senha?token=${token}`;
+}
+
+export async function resetPassword(token: string | null, password: string): Promise<string> {
+  const r = token ? resets.get(token) : undefined;
+  if (!r || r.until < Date.now()) throw new DomainError("invalid", "O link expirou ou já foi usado. Peça um novo.");
+  resets.delete(token!);
+  const u = db.users.find((x) => x.id === r.userId);
+  if (!u) throw new DomainError("not_found");
+  u.passwordHash = hash(password);
+  const session = uid();
+  db.sessions.push({ token: session, userId: u.id });
+  return session;
 }
 
 export async function signOut(token: string) {
@@ -191,9 +216,10 @@ function toCard(l: Lead): LeadCard {
   return { ...l, mainContact, hasUnread: (conv?.unreadCount ?? 0) > 0, channelKind: channel?.kind ?? null, taskState };
 }
 
-export type LeadFilter = { q?: string; owner?: ID; tag?: string; task?: "none" | "late" };
+export type LeadFilter = { q?: string; owner?: ID; tag?: string; task?: "none" | "late"; /** origem ("instagram", "meta"...) ou "none" = sem origem */ origin?: string };
 
 function matches(l: Lead, f: LeadFilter) {
+  if (f.origin && (originOf(l.attribution) ?? "none") !== f.origin) return false;
   if (f.owner && l.responsibleUserId !== f.owner) return false;
   if (f.tag && !l.tags.includes(f.tag)) return false;
   if (f.task === "none" && l.closestTaskAt) return false;
@@ -214,6 +240,8 @@ export async function getBoard(wsId: ID, pipelineId: ID | undefined, f: LeadFilt
   const pipeline = pipelines.find((p) => p.id === pipelineId) ?? pipelines[0];
   if (!pipeline) throw new DomainError("not_found");
   const leads = db.leads.filter((l) => l.pipelineId === pipeline.id && matches(l, f));
+  // origens que existem neste funil (para o filtro), sem contar o próprio filtro de origem
+  const origins = [...new Set(db.leads.filter((l) => l.pipelineId === pipeline.id && matches(l, { ...f, origin: undefined })).map((l) => originOf(l.attribution) ?? "none"))].sort();
   const columns = [...pipeline.stages]
     .sort((a, b) => a.sort - b.sort)
     .map((stage) => {
@@ -223,7 +251,7 @@ export async function getBoard(wsId: ID, pipelineId: ID | undefined, f: LeadFilt
   const incoming = db.incoming
     .filter((i) => i.pipelineId === pipeline.id && i.status === "pending")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { pipeline, pipelines, columns, incoming };
+  return { pipeline, pipelines, columns, incoming, origins };
 }
 
 export async function listLeads(wsId: ID, f: LeadFilter & { pipelineId?: ID; stageId?: ID } = {}) {

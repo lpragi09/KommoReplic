@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
 import { Pencil, Link2 } from "@/components/ui/icons";
-import { ATTR_KEYS, ATTR_LABEL, VIA_LABEL } from "@/lib/utm";
+import { ATTR_KEYS, ATTR_LABEL, VIA_LABEL, attrSummary } from "@/lib/utm";
+
+const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "America/Sao_Paulo" }) : "");
 
 const EDITABLE = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
 
@@ -45,7 +47,33 @@ export function LeadOrigin({ slug, leadId, attribution }: { slug: string; leadId
             </div>
           ))}
         </dl>
-      ) : (
+      ) : null}
+      {/* veio por mais de uma campanha: o 1º contato e o caminho inteiro */}
+      {a?.first && (
+        <div className="rounded-md bg-surface px-3 py-2 shadow-[inset_0_0_0_1px_var(--border)]">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">1º contato (como ele chegou a primeira vez)</p>
+          <p className="mt-0.5 text-fg">
+            {attrSummary(a.first) ?? "Sem origem"} <span className="text-xs text-muted">{day(a.first.at)}</span>
+          </p>
+        </div>
+      )}
+      {a?.history && a.history.length > 1 && (
+        <div>
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">Caminho até aqui</p>
+          <ol className="relative flex flex-col gap-2 border-l-2 border-border pl-4">
+            {a.history.map((t, i) => (
+              <li key={i} className="relative">
+                <span className={`absolute -left-[21px] top-1.5 size-2.5 rounded-pill ${i === a.history!.length - 1 ? "bg-accent" : "bg-border-input"}`} aria-hidden />
+                <span className="text-fg">{t.label}</span>
+                <span className="ml-2 text-xs text-muted">
+                  {t.via ? VIA_LABEL[t.via] : ""} {day(t.at)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {!rows.length && (
         <p className="text-muted">Origem desconhecida. Use os links rastreáveis (Configurações → Rastreamento e UTMs) para saber de qual campanha vem cada lead.</p>
       )}
       <Button

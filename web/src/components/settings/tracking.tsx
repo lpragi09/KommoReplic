@@ -33,7 +33,20 @@ function useCopy() {
   return { copied, copy };
 }
 
-export function TrackingManager({ slug, origin, links, chatKey }: { slug: string; origin: string; links: TrackingLink[]; chatKey: string | null }) {
+export function TrackingManager({
+  slug,
+  origin,
+  links,
+  chatKey,
+  stats = {},
+}: {
+  slug: string;
+  origin: string;
+  links: TrackingLink[];
+  chatKey: string | null;
+  /** por link: leads que vieram por ele, vendas ganhas e quanto faturaram */
+  stats?: Record<string, { leads: number; won: number; cents: number }>;
+}) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -107,9 +120,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
                   <li key={l.id} className="rounded-md p-3 shadow-[inset_0_0_0_1px_var(--border)]">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="min-w-0 flex-1 truncate font-medium text-fg">{l.name}</p>
-                      <span className="text-xs tabular-nums text-muted">
-                        {l.clicks} cliques · {l.matched} conversas
-                      </span>
+                      <LinkFunnel clicks={l.clicks} talks={l.matched} s={stats[l.id]} />
                       <IconButton label={`Editar ${l.name}`} size={28} onClick={() => setDraft({ id: l.id, name: l.name, phone: maskPhone(l.phone.replace(/^55/, "")), message: l.message, defaults: { ...(l.defaults as Record<string, string>) } })}>
                         <Pencil className="size-4" />
                       </IconButton>
@@ -185,6 +196,9 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
           )}
         </section>
 
+        {/* 3½. link de página com UTM */}
+        <PageLinkBuilder />
+
         {/* 4. anúncios da Meta */}
         <section className={card} aria-labelledby="meta-t">
           <h2 id="meta-t" className="font-semibold text-fg">
@@ -234,7 +248,7 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
                 onChange={(e) => setDraft({ ...draft, message: e.target.value })}
                 className="resize-y rounded-sm border border-border bg-bg px-3 py-2 text-base font-normal text-fg hover:border-border-input focus:border-focus focus:outline-none"
               />
-              <span className="text-xs font-normal text-muted">O código de rastreio (ex.: “ref: K7Q2M”) entra no fim automaticamente.</span>
+              <span className="text-xs font-normal text-muted">No fim entra “Código do atendimento: K7Q2M”. Se o cliente apagar, a conversa chega sem a campanha.</span>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               {UTM_FIELDS.map(([k, label, ph]) => (
@@ -250,5 +264,82 @@ export function TrackingManager({ slug, origin, links, chatKey }: { slug: string
         )}
       </Dialog>
     </div>
+  );
+}
+
+const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/** do clique até a venda, em uma linha: cliques → conversas → leads → vendas (R$) */
+function LinkFunnel({ clicks, talks, s }: { clicks: number; talks: number; s?: { leads: number; won: number; cents: number } }) {
+  const steps = [
+    { n: clicks, label: clicks === 1 ? "clique" : "cliques" },
+    { n: talks, label: talks === 1 ? "conversa" : "conversas" },
+    { n: s?.leads ?? 0, label: (s?.leads ?? 0) === 1 ? "lead" : "leads" },
+    { n: s?.won ?? 0, label: (s?.won ?? 0) === 1 ? "venda" : "vendas" },
+  ];
+  return (
+    <span className="flex flex-wrap items-center gap-1 text-xs tabular-nums text-muted">
+      {steps.map((x, i) => (
+        <span key={x.label} className="inline-flex items-center gap-1">
+          {i > 0 && <span aria-hidden>→</span>}
+          <strong className={i === 3 && x.n ? "text-success" : "text-fg"}>{x.n}</strong> {x.label}
+        </span>
+      ))}
+      {!!s?.cents && <span className="ml-1 rounded-pill bg-success-soft px-2 py-0.5 font-medium text-success">{brl(s.cents)}</span>}
+    </span>
+  );
+}
+
+/** monta o endereço de uma página com as UTMs, para usar em anúncios, posts e emails */
+function PageLinkBuilder() {
+  const [url, setUrl] = useState("");
+  const [utm, setUtm] = useState<Record<string, string>>({ utm_source: "", utm_medium: "", utm_campaign: "", utm_content: "" });
+  const { copied, copy } = useCopy();
+  const built = useMemo(() => {
+    const raw = url.trim();
+    if (!raw) return null;
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      for (const [k, v] of Object.entries(utm)) {
+        const t = v.trim().toLowerCase().replace(/\s+/g, "-");
+        if (t) u.searchParams.set(k, t);
+        else u.searchParams.delete(k);
+      }
+      return u.toString();
+    } catch {
+      return "";
+    }
+  }, [url, utm]);
+  return (
+    <section className="rounded-lg bg-bg p-5 shadow-[0_0_0_1px_var(--border),0_1px_2px_rgba(20,28,24,.06)]" aria-labelledby="pagina-t">
+      <div className="flex items-start gap-3">
+        <span className="fx-tile size-10 shrink-0" aria-hidden>
+          <Link2 className="size-5" weight="fill" />
+        </span>
+        <div>
+          <h2 id="pagina-t" className="font-semibold text-fg">
+            Link de página com UTM
+          </h2>
+          <p className="text-sm text-muted">Para anúncios e posts que levam ao seu site. Com o script do site instalado, a campanha vai junto quando a pessoa chamar no WhatsApp ou no chat.</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Field label="Endereço da página" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="seusite.com.br/promocao" inputMode="url" spellCheck={false} />
+        </div>
+        {UTM_FIELDS.filter(([k]) => k !== "utm_term").map(([k, label, ph]) => (
+          <Field key={k} label={`${label} da página (${k})`} value={utm[k] ?? ""} placeholder={ph} onChange={(e) => setUtm({ ...utm, [k]: e.target.value })} />
+        ))}
+      </div>
+      {built === "" && <p className="mt-3 text-sm text-danger">Esse endereço não parece válido.</p>}
+      {built && (
+        <div className="mt-3 flex items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-1.5 text-sm">{built}</code>
+          <Button size="sm" variant="secondary" icon={<Copy className="size-4" aria-hidden />} onClick={() => copy("pagina", built)}>
+            {copied === "pagina" ? "Copiado" : "Copiar"}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }

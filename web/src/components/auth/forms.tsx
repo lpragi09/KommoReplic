@@ -11,6 +11,8 @@ import Link from "next/link";
 import {
   createWorkspaceAction,
   googleSignInAction,
+  requestResetAction,
+  resetPasswordAction,
   signInAction,
   signUpAction,
   type FormState,
@@ -157,6 +159,9 @@ export function SignInForm() {
           autoComplete="current-password"
           required
         />
+        <Link href="/esqueci" className="-mt-2 w-fit self-end text-sm font-medium text-accent-text hover:underline">
+          Esqueci minha senha
+        </Link>
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Entrar
         </Button>
@@ -361,5 +366,72 @@ function CompanyOnboarding({
         }}
       />
     </div>
+  );
+}
+
+const readParam = (k: string) => () => new URLSearchParams(window.location.search).get(k) ?? "";
+
+/** "Esqueci minha senha": pede o email e manda o link (a resposta não diz se a conta existe) */
+export function ForgotForm() {
+  const [state, action, pending] = useActionState(requestResetAction, {});
+  const expired = useSyncExternalStore(noSubscribe, readParam("expirado"), () => "");
+  return (
+    <AuthShell
+      title="Esqueci minha senha"
+      subtitle="Mandamos um link para você criar uma senha nova."
+      footer={
+        <>
+          Lembrou?{" "}
+          <Link href="/login" className="font-medium text-accent-text underline">
+            Voltar para o login
+          </Link>
+        </>
+      }
+    >
+      {state.sent ? (
+        <div role="status" className="flex flex-col gap-3 rounded-md bg-success-soft px-4 py-4 text-sm text-success">
+          <p className="font-semibold">Pronto! Confira seu email.</p>
+          <p>
+            Se existir uma conta com <strong>{state.values?.email}</strong>, o link chega em instantes. Ele vale por 1 hora. Olhe também a caixa de spam.
+          </p>
+          {state.devLink && (
+            <Link href={state.devLink} className="font-medium underline">
+              Abrir o link (modo de desenvolvimento, sem email)
+            </Link>
+          )}
+        </div>
+      ) : (
+        <form action={action} className="flex flex-col gap-4" noValidate>
+          {expired && <p className="rounded-sm bg-warning-soft px-3 py-2 text-sm text-warning">O link anterior expirou ou já foi usado. Peça um novo.</p>}
+          <FormError state={state} />
+          <Field label="Email da conta" name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={state.values?.email} required autoFocus />
+          <Button type="submit" size="lg" loading={pending} className="fx-shine">
+            Mandar link
+          </Button>
+        </form>
+      )}
+    </AuthShell>
+  );
+}
+
+/** chegou pelo link do email: escolhe a senha nova e já entra */
+export function NewPasswordForm() {
+  const [state, action, pending] = useActionState(resetPasswordAction, {});
+  const token = useSyncExternalStore(noSubscribe, readParam("token"), () => "");
+  return (
+    <AuthShell title="Senha nova" subtitle="Escolha uma senha com pelo menos 8 caracteres.">
+      <form action={action} className="flex flex-col gap-4" noValidate>
+        <FormError state={state} />
+        <input type="hidden" name="token" value={token} />
+        <Field label="Senha nova" name="password" type="password" autoComplete="new-password" required autoFocus />
+        <Field label="Repita a senha nova" name="again" type="password" autoComplete="new-password" required />
+        <Button type="submit" size="lg" loading={pending} className="fx-shine">
+          Salvar e entrar
+        </Button>
+        <Link href="/esqueci" className="w-fit text-sm text-muted hover:text-fg hover:underline">
+          Pedir outro link
+        </Link>
+      </form>
+    </AuthShell>
   );
 }

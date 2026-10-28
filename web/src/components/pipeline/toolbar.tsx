@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useInstantParams } from "@/components/ui/instant-link";
 import { Popover } from "radix-ui";
-import { AlarmClock, CalendarCheck, Check, Filter, Funnel, KanbanIcon, ListBullets, Search, Users, X } from "@/components/ui/icons";
+import { AlarmClock, CalendarCheck, Check, Filter, Funnel, KanbanIcon, ListBullets, Search, Users, X, Globe } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/bits";
 import { SegmentedControl } from "@/components/ui/interactive";
 import { Select } from "@/components/ui/select";
@@ -17,7 +17,20 @@ const TASKS: { v: string; label: string; icon: ReactNode }[] = [
   { v: "late", label: "Atrasadas", icon: <AlarmClock className="size-4" aria-hidden /> },
 ];
 
-export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: string; pipelines: { id: string; name: string }[]; users: { id: string; name: string }[]; pipelineId: string }) {
+export function LeadsToolbar({
+  slug,
+  pipelines,
+  users,
+  pipelineId,
+  origins = [],
+}: {
+  slug: string;
+  pipelines: { id: string; name: string }[];
+  users: { id: string; name: string }[];
+  pipelineId: string;
+  /** origens dos leads deste funil ("none" = sem origem) */
+  origins?: string[];
+}) {
   const path = usePathname();
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
@@ -26,7 +39,9 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
   const view = (sp.get("view") as "kanban" | "list") ?? "kanban";
   const owner = params.get("owner") ?? "";
   const task = params.get("task") ?? "";
-  const activeFilters = [owner, task, params.get("tag")].filter(Boolean).length;
+  const origin = params.get("origin") ?? "";
+  const activeFilters = [owner, task, origin, params.get("tag")].filter(Boolean).length;
+  const originLabel = (o: string) => (o === "none" ? "Sem origem" : o.charAt(0).toUpperCase() + o.slice(1));
   const ownerName = users.find((u) => u.id === owner)?.name;
   const current = pipelines.find((p) => p.id === pipelineId);
 
@@ -127,7 +142,7 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <p className="font-semibold text-fg">Filtrar leads</p>
               {activeFilters > 0 && (
-                <button type="button" onClick={() => set({ owner: null, task: null, tag: null })} className="text-sm font-medium text-accent-text hover:underline">
+                <button type="button" onClick={() => set({ owner: null, task: null, tag: null, origin: null })} className="text-sm font-medium text-accent-text hover:underline">
                   Limpar tudo
                 </button>
               )}
@@ -161,6 +176,23 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
                   ))}
                 </div>
               </fieldset>
+              {origins.length > 0 && (
+                <fieldset>
+                  <legend className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                    <Globe className="size-3.5" aria-hidden /> Origem
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" aria-pressed={!origin} onClick={() => set({ origin: null })} className={chip(!origin)}>
+                      Todas
+                    </button>
+                    {origins.map((o) => (
+                      <button key={o} type="button" aria-pressed={origin === o} onClick={() => set({ origin: origin === o ? null : o })} className={chip(origin === o)}>
+                        {originLabel(o)}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
             </div>
           </Popover.Content>
         </Popover.Portal>
@@ -170,6 +202,13 @@ export function LeadsToolbar({ slug, pipelines, users, pipelineId }: { slug: str
       {ownerName && (
         <button type="button" onClick={() => set({ owner: null })} className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-surface pl-1 pr-2.5 text-sm text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-canvas">
           <Avatar name={ownerName} size={24} /> {ownerName.split(" ")[0]}
+          <X className="size-3.5 text-muted" aria-hidden />
+          <span className="sr-only">(tirar filtro)</span>
+        </button>
+      )}
+      {origin && (
+        <button type="button" onClick={() => set({ origin: null })} className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-surface px-2.5 text-sm text-fg shadow-[inset_0_0_0_1px_var(--border)] hover:bg-canvas">
+          <Globe className="size-3.5 text-muted" aria-hidden /> {originLabel(origin)}
           <X className="size-3.5 text-muted" aria-hidden />
           <span className="sr-only">(tirar filtro)</span>
         </button>

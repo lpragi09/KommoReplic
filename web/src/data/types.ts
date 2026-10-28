@@ -429,8 +429,14 @@ export type Attribution = {
   /** por onde a origem chegou */
   via?: "link" | "site" | "webchat" | "meta_ad" | "manual";
   link_name?: string;
+  link_id?: string;
   at?: ISO;
+  /** primeiro contato (quando o lead voltou depois por outra campanha) */
+  first?: Attribution;
+  /** caminho do lead: cada campanha diferente por onde ele chegou, da mais antiga à mais nova (até 10) */
+  history?: AttributionTouch[];
 };
+export type AttributionTouch = { at?: ISO; via?: Attribution["via"]; label: string };
 export type TrackingLink = { id: ID; name: string; code: string; phone: string; message: string; defaults: Attribution; clicks: number; matched: number; createdAt: ISO };
 
 /* ---------- marcações no calendário (etiqueta num dia: promoção, folga, feriado municipal) ---------- */

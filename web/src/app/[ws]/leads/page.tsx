@@ -16,13 +16,13 @@ export const metadata = { title: "Funil de vendas" };
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
-type SP = { pipeline?: string; view?: string; q?: string; owner?: string; task?: string; tag?: string };
+type SP = { pipeline?: string; view?: string; q?: string; owner?: string; task?: string; tag?: string; origin?: string };
 
 export default async function LeadsPage({ params, searchParams }: PageProps<"/[ws]/leads">) {
   const { ws: slug } = await params;
   const sp = (await searchParams) as SP;
   const { ws } = await requireWorkspace(slug);
-  const filter: LeadFilter = { q: sp.q, owner: sp.owner, tag: sp.tag, task: sp.task === "none" || sp.task === "late" ? sp.task : undefined };
+  const filter: LeadFilter = { q: sp.q, owner: sp.owner, tag: sp.tag, task: sp.task === "none" || sp.task === "late" ? sp.task : undefined, origin: sp.origin?.slice(0, 60) || undefined };
   const [board, users, lossReasons] = await Promise.all([getBoard(ws.id, sp.pipeline, filter), listUsers(ws.id), listLossReasons(ws.id)]);
   const firstOpen = board.columns.find((c) => c.stage.kind === "open")!.stage;
   const userName = (id: string | null) => users.find((u) => u.id === id)?.name ?? "Sem responsável";
@@ -43,7 +43,7 @@ export default async function LeadsPage({ params, searchParams }: PageProps<"/[w
           </>
         }
       >
-        <LeadsToolbar slug={slug} pipelines={board.pipelines} users={users} pipelineId={board.pipeline.id} />
+        <LeadsToolbar slug={slug} pipelines={board.pipelines} users={users} pipelineId={board.pipeline.id} origins={board.origins} />
       </PageHeader>
 
       <LeadsViews
