@@ -34,9 +34,9 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
 /** Teste grátis / plano: decide se a tela abre ou mostra o aviso para ativar. */
 async function Gate({ params, children }: { params: Promise<{ ws: string }>; children: React.ReactNode }) {
   const { ws: slug } = await params;
-  const { ws } = await requireWorkspace(slug);
+  const { user, ws } = await requireWorkspace(slug);
   return (
-    <AccessGate slug={slug} access={await getAccess(ws.id)}>
+    <AccessGate slug={slug} access={await getAccess(ws.id)} platformAdmin={isPlatformAdmin(user.email)}>
       {children}
     </AccessGate>
   );

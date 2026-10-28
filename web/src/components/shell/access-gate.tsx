@@ -12,12 +12,12 @@ import { cn } from "@/lib/cn";
    - Em teste: faixa fina no topo com os dias que faltam (fica mais forte nos últimos 3).
    - Travado: toda tela vira o aviso para ativar o plano; só "Plano e cobrança" continua abrindo.
    O servidor também recusa as ações (requireActive): esconder a tela não é a única barreira. */
-export function AccessGate({ slug, access, children }: { slug: string; access: Access; children: ReactNode }) {
+export function AccessGate({ slug, access, children, platformAdmin = false }: { slug: string; access: Access; children: ReactNode; platformAdmin?: boolean }) {
   const path = usePathname();
   const billing = `/${slug}/settings/billing`;
   const onBilling = path.startsWith(billing);
 
-  if (access.state === "locked" && !onBilling) return <Paywall billing={billing} access={access} />;
+  if (access.state === "locked" && !onBilling) return <Paywall billing={billing} access={access} platformAdmin={platformAdmin} />;
 
   const urgent = access.state === "trial" && access.daysLeft !== null && access.daysLeft <= 2;
   return (
@@ -67,7 +67,7 @@ const copy: Record<NonNullable<Access["reason"]>, { title: string; text: string 
   },
 };
 
-function Paywall({ billing, access }: { billing: string; access: Access }) {
+function Paywall({ billing, access, platformAdmin }: { billing: string; access: Access; platformAdmin: boolean }) {
   const c = copy[access.reason ?? "trial_over"];
   return (
     <div className="fx-aurora grid flex-1 place-items-center overflow-y-auto p-4">
@@ -84,6 +84,12 @@ function Paywall({ billing, access }: { billing: string; access: Access }) {
           Ver planos e ativar
         </Link>
         <p className="mt-4 text-xs text-muted">Sem fidelidade. Cancela em um clique.</p>
+        {/* dono do netzer: libera a própria empresa como cortesia pela Central */}
+        {platformAdmin && (
+          <Link href="/admin?aba=empresas" className="mt-5 inline-flex items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-medium text-accent-text shadow-[inset_0_0_0_1px_var(--border-input)] hover:bg-accent-soft">
+            Você é dono do netzer: liberar pela Central
+          </Link>
+        )}
       </div>
     </div>
   );
