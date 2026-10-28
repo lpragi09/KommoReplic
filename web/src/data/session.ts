@@ -23,3 +23,12 @@ export async function requireWorkspace(slug: string) {
     throw e;
   }
 }
+
+/** Central da plataforma: só os donos do netzer (PLATFORM_ADMINS). Para os outros a página nem existe (404). */
+export async function requirePlatformAdmin() {
+  const user = await currentUser();
+  if (!user) redirect("/login");
+  const { isPlatformAdmin } = await import("@/lib/platform");
+  if (!isPlatformAdmin(user.email)) notFound();
+  return user;
+}

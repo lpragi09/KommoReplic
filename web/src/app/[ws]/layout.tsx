@@ -9,6 +9,7 @@ import { loadNotifications } from "@/data/notifications";
 import { AvatarSeed } from "@/components/ui/avatar";
 import { AccessGate } from "@/components/shell/access-gate";
 import { BrowserAlerts } from "@/components/shell/notify";
+import { isPlatformAdmin } from "@/lib/platform";
 
 // Telas atrás de login leem a sessão a cada pedido: a navegação bloqueia no servidor de propósito.
 // Revisitar com "use cache: private" quando os dados vierem do Supabase.
@@ -22,7 +23,7 @@ async function Nav({ params, mobile }: { params: Promise<{ ws: string }>; mobile
   return (
     <>
       <AvatarSeed people={people} />
-      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} notifications={unseen} notificationItems={items.slice(0, 20)} />
+      <NavRail slug={slug} userName={user.name} userAvatar={people.find((p) => p.id === user.id)?.avatar ?? null} workspaceName={ws.name} unread={convs.length} incoming={board.incoming.length} notifications={unseen} notificationItems={items.slice(0, 20)} platformAdmin={isPlatformAdmin(user.email)} />
       <BrowserAlerts unseen={unseen} latest={items.find((n) => n.kind !== "today") ?? null} />
       <LiveRefresh wsId={ws.id} slug={ws.slug} />
       <NavTracker />

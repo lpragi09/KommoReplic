@@ -50,6 +50,7 @@ export function NavRail({
   incoming = 0,
   notifications = 0,
   notificationItems = [],
+  platformAdmin = false,
 }: {
   slug: string;
   userName: string;
@@ -61,6 +62,8 @@ export function NavRail({
   notifications?: number;
   /** últimas notificações para a prévia do sino */
   notificationItems?: NotificationItem[];
+  /** dono do netzer: mostra o atalho para a Central da plataforma */
+  platformAdmin?: boolean;
 }) {
   const path = usePathname();
   const expanded = useSyncExternalStore(subscribeNav, readNav, () => false);
@@ -177,6 +180,13 @@ export function NavRail({
                     <UserCircle className="size-4" aria-hidden /> Meu perfil e foto
                   </Link>
                 </DropdownMenu.Item>
+                {platformAdmin && (
+                  <DropdownMenu.Item asChild>
+                    <Link href="/admin" className="flex h-8 items-center gap-2 rounded-sm px-2 text-sm font-medium text-accent-text outline-none data-[highlighted]:bg-accent-soft">
+                      <Sparkle className="size-4" aria-hidden /> Central da plataforma
+                    </Link>
+                  </DropdownMenu.Item>
+                )}
                 <DropdownMenu.Item asChild>
                   <Link href={`${base}/settings`} className="flex h-8 items-center gap-2 rounded-sm px-2 text-sm text-fg outline-none data-[highlighted]:bg-surface">
                     <Settings className="size-4" aria-hidden /> Configurações

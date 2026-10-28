@@ -24,7 +24,8 @@ export default defineConfig({
     command: `npm run dev -- --port ${PORT}`,
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: true,
-    env: { AI_FAKE: "1" }, // agente de IA com respostas previsíveis (sem chamar a Anthropic)
+    // AI_FAKE: agente de IA com respostas previsíveis (sem chamar a Anthropic); PLATFORM_ADMINS: a conta de exemplo entra na Central
+    env: { AI_FAKE: "1", PLATFORM_ADMINS: "demo@exemplo.com" },
     timeout: 120_000,
   },
 });

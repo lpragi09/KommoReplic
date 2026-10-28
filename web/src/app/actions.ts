@@ -171,7 +171,7 @@ const wsSchema = z
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9-]{3,40}$/, "Use de 3 a 40 letras minúsculas, números ou hífen.")
-    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite", "descadastrar"].includes(s), "Esse endereço é reservado."),
+    .refine((s) => !["login", "signup", "onboarding", "chat", "design", "api", "_next", "termos", "privacidade", "app", "sair", "convite", "descadastrar", "admin"].includes(s), "Esse endereço é reservado."),
   timezone: z.string().min(1),
   currency: z.enum(["BRL", "USD", "EUR"]),
   ...docFields,
