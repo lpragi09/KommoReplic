@@ -439,6 +439,8 @@ export type Attribution = {
 export type AttributionTouch = { at?: ISO; via?: Attribution["via"]; label: string };
 /** código no texto pronto do anúncio (ex.: "G-01-34"): quando a mensagem chega com ele, a origem é preenchida sozinha */
 export type MessageCode = { id: ID; code: string; name: string; defaults: Attribution; matched: number; createdAt: ISO };
+/** de onde os leads de um funil vêm além do canal padrão: "mensagem do WhatsApp com a palavra orçamento → funil Orçamentos" */
+export type SourceRule = { id: ID; pipelineId: ID; channelId: ID | null; match: "keyword" | "code" | "link" | "ad"; value: string; matched: number; createdAt: ISO };
 export type TrackingLink = { id: ID; name: string; code: string; phone: string; message: string; defaults: Attribution; clicks: number; matched: number; createdAt: ISO };
 
 /* ---------- marcações no calendário (etiqueta num dia: promoção, folga, feriado municipal) ---------- */

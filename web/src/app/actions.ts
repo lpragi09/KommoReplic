@@ -1141,6 +1141,47 @@ export async function deleteMessageCodeAction(slug: string, codeId: string) {
   });
 }
 
+const sourceRule = z
+  .object({
+    pipelineId: z.string().uuid(),
+    channelId: z.string().uuid().nullable(),
+    match: z.enum(["keyword", "code", "link", "ad"]),
+    value: z.string().trim().max(200),
+  })
+  .refine((v) => v.match === "ad" || v.value.length > 0, { message: "Preencha a condição da regra.", path: ["value"] });
+
+/** regra de entrada: contato novo que bate com ela entra neste funil em vez do funil padrão do canal */
+export async function saveSourceRuleAction(slug: string, input: z.input<typeof sourceRule>) {
+  return run(async () => {
+    await requireActive(slug);
+    const { ws } = await requireAdmin(slug);
+    const v = sourceRule.parse(input);
+    await data.saveSourceRule(ws.id, { ...v, value: v.match === "ad" ? "" : v.value });
+    refresh();
+    return null;
+  });
+}
+
+export async function deleteSourceRuleAction(slug: string, ruleId: string) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    await data.deleteSourceRule(ws.id, id.parse(ruleId));
+    refresh();
+    return null;
+  });
+}
+
+/** canal passa a mandar os contatos novos para este funil */
+export async function setChannelPipelineAction(slug: string, channelId: string, pipelineId: string) {
+  return run(async () => {
+    await requireActive(slug);
+    const { ws } = await requireAdmin(slug);
+    await data.setChannelPipeline(ws.id, id.parse(channelId), id.parse(pipelineId));
+    refresh();
+    return null;
+  });
+}
+
 export async function deleteTrackingLinkAction(slug: string, linkId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);

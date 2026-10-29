@@ -16,5 +16,6 @@ export const {
   getAiWallet, setAiOwnKey, addAiCredits, spendAiCredit, refundAiCredit, getAiOwnKey, getUsageCounts,
   getActivity, getMessageStats, listGoals, saveGoals, listRoiReports, saveRoiReport, deleteRoiReport,
   attributeInbound, syncLeadAttribution, getLeadAttribution, setLeadAttribution, listTrackingLinks, saveTrackingLink, deleteTrackingLink, clickTrackingLink, listMessageCodes, saveMessageCode, deleteMessageCode,
+  listSourceRules, saveSourceRule, deleteSourceRule, setChannelPipeline,
 } = impl;
 export type { ConvFilter, LeadFilter } from "./fake/repo";

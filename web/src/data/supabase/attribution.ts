@@ -3,6 +3,7 @@ import { randomInt } from "node:crypto";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { addTouch, findRef, matchCode } from "@/lib/utm";
+import { routeInbound } from "./sources";
 import { DomainError, type Attribution, type ID, type MessageCode, type TrackingLink } from "../types";
 
 /* Origem dos leads e links rastreáveis — Supabase.
@@ -38,6 +39,11 @@ const toLink = (r: Row): TrackingLink => ({
 
 /** Mensagem recebida: procura o código do link rastreável e/ou grava a origem que veio junto. A trigger passa para o lead. */
 export async function attributeInbound(conversationId: ID, body: string, extra?: Attribution | null) {
+  await attachOrigin(conversationId, body, extra);
+  await routeInbound(conversationId, body); // com a origem já gravada, escolhe o funil pelas regras de entrada
+}
+
+async function attachOrigin(conversationId: ID, body: string, extra?: Attribution | null) {
   const a = adminClient();
   const conv = check(await a.from("conversations").select("id, workspace_id, attribution").eq("id", conversationId).maybeSingle());
   if (!conv) return;

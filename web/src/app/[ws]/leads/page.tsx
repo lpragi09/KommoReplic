@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Bot, Columns3 } from "@/components/ui/icons";
-import { getBoard, listLeads, listLossReasons, listUsers, type LeadFilter } from "@/data";
+import { getBoard, listChannels, listLeads, listLossReasons, listMembers, listMessageCodes, listSourceRules, listTrackingLinks, listUsers, type LeadFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -10,6 +10,7 @@ import { stageBar } from "@/lib/stage-colors";
 import { LeadsToolbar } from "@/components/pipeline/toolbar";
 import { NewLeadButton } from "@/components/pipeline/new-lead";
 import { LeadsViews } from "@/components/pipeline/views";
+import { SourcesPanel } from "@/components/pipeline/sources";
 import { Avatar, EmptyState, Tag } from "@/components/ui/bits";
 
 export const metadata = { title: "Funil de vendas" };
@@ -21,9 +22,18 @@ type SP = { pipeline?: string; view?: string; q?: string; owner?: string; task?:
 export default async function LeadsPage({ params, searchParams }: PageProps<"/[ws]/leads">) {
   const { ws: slug } = await params;
   const sp = (await searchParams) as SP;
-  const { ws } = await requireWorkspace(slug);
+  const { user, ws } = await requireWorkspace(slug);
   const filter: LeadFilter = { q: sp.q, owner: sp.owner, tag: sp.tag, task: sp.task === "none" || sp.task === "late" ? sp.task : undefined, origin: sp.origin?.slice(0, 60) || undefined };
-  const [board, users, lossReasons] = await Promise.all([getBoard(ws.id, sp.pipeline, filter), listUsers(ws.id), listLossReasons(ws.id)]);
+  const [board, users, lossReasons, channels, rules, links, codes, members] = await Promise.all([
+    getBoard(ws.id, sp.pipeline, filter),
+    listUsers(ws.id),
+    listLossReasons(ws.id),
+    listChannels(ws.id),
+    listSourceRules(ws.id),
+    listTrackingLinks(ws.id),
+    listMessageCodes(ws.id),
+    listMembers(ws.id),
+  ]);
   const firstOpen = board.columns.find((c) => c.stage.kind === "open")!.stage;
   const userName = (id: string | null) => users.find((u) => u.id === id)?.name ?? "Sem responsável";
 
@@ -69,6 +79,18 @@ export default async function LeadsPage({ params, searchParams }: PageProps<"/[w
               lossReasons={lossReasons}
               users={users}
               linkTargets={board.columns.flatMap((c) => c.leads).map((l) => ({ id: l.id, title: `${leadTitle(l)} · #${l.number}` }))}
+              sources={
+                <SourcesPanel
+                  slug={slug}
+                  pipelineId={board.pipeline.id}
+                  pipelines={board.pipelines}
+                  channels={channels}
+                  rules={rules}
+                  links={links}
+                  codes={codes}
+                  isAdmin={!!members.members.find((m) => m.userId === user.id)?.isAdmin}
+                />
+              }
             />
           </>
         }

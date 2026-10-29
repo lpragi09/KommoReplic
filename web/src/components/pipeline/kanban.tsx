@@ -8,6 +8,7 @@ import {
   useTransition,
   type CSSProperties,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -101,6 +102,7 @@ export function Board({
   lossReasons,
   users,
   linkTargets,
+  sources,
 }: {
   slug: string;
   pipelineId: string;
@@ -109,6 +111,8 @@ export function Board({
   lossReasons: LossReason[];
   users: { id: string; name: string }[];
   linkTargets: { id: string; title: string }[];
+  /** painel "Fontes do funil", antes da coluna de entrada */
+  sources?: ReactNode;
 }) {
   const toast = useToast();
   const [, start] = useTransition();
@@ -209,6 +213,7 @@ export function Board({
       >
         <HScroll className="bg-surface">
         <div className="flex min-h-0 w-max min-w-full snap-x gap-3 p-4">
+          {sources}
           <IncomingColumn
             slug={slug}
             items={incoming}

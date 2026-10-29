@@ -2,6 +2,7 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { connection } from "next/server";
 import { db, now, uid } from "./store";
+import { routeInbound } from "./sources";
 import { addTouch, findRef, matchCode } from "@/lib/utm";
 import { DomainError, type Attribution, type ID, type MessageCode, type TrackingLink } from "../types";
 
@@ -37,6 +38,11 @@ function copyToLead(leadId: ID, attr: Attribution | null | undefined) {
 
 /** Mensagem recebida: procura o código do link rastreável e/ou grava a origem que veio junto (chat do site, anúncio). */
 export async function attributeInbound(conversationId: ID, body: string, extra?: Attribution | null) {
+  await attachOrigin(conversationId, body, extra);
+  await routeInbound(conversationId, body); // com a origem já gravada, escolhe o funil pelas regras de entrada
+}
+
+async function attachOrigin(conversationId: ID, body: string, extra?: Attribution | null) {
   const ref = findRef(body);
   const click = ref ? store.clicks.find((k) => k.ref === ref && !k.conversationId) : undefined;
   if (click) {

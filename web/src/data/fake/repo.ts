@@ -900,6 +900,7 @@ export * from "./channels";
 export * from "./agent";
 export * from "./pipelines";
 export * from "./stats";
+export * from "./sources";
 
 // ---------------------------------------------------------------------------
 // foto de perfil e logo da empresa

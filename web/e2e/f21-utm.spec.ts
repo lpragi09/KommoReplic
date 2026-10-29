@@ -64,7 +64,7 @@ test.describe("F21 UTMs e links rastreáveis", () => {
     await page.goto(`/${slug}/leads`);
     await page.getByRole("button", { name: "Aceitar Rui Matos como lead" }).click();
     await page.getByRole("tab", { name: "Origem" }).click();
-    await expect(page.getByText("Chat do site", { exact: true })).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "Origem" }).getByText("Chat do site", { exact: true })).toBeVisible();
     await expect(page.getByText("clareamento", { exact: true })).toBeVisible();
     await axe(page);
 
