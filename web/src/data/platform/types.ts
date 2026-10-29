@@ -16,7 +16,7 @@ export type PlatformWorkspace = {
   status: SubStatus;
   trialEndsAt: string | null;
   seats: number;
-  /** tem cliente no Stripe (paga de verdade); sem isso e ativo = cortesia liberada pela central */
+  /** já pagou pelo Mercado Pago (paga de verdade); sem isso e ativo = cortesia liberada pela central */
   paying: boolean;
   members: number;
   leads: number;

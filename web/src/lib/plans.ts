@@ -37,11 +37,32 @@ export function upgradeFor(check: (l: Limits) => boolean): string {
 
 export const fmtLimit = (n: number) => (Number.isFinite(n) ? String(n) : "ilimitado");
 
-/** pacotes avulsos de créditos de IA (lookup_key do preço no Stripe → créditos). Não vencem; o plano gasta primeiro. */
+/** preço por usuário em reais: mensal (m) e anual por mês (a, cobrado 12x de uma vez). A tela e a cobrança leem daqui. */
+export const PLAN_PRICES = {
+  autonomo: { plan: "basic", name: "Autônomo", m: 59, a: 49 },
+  equipe: { plan: "advanced", name: "Equipe", m: 99, a: 82 },
+  operacao: { plan: "pro", name: "Operação", m: 159, a: 132 },
+} as const satisfies Record<string, { plan: Exclude<PlanKey, "trial">; name: string; m: number; a: number }>;
+export type PriceKey = keyof typeof PLAN_PRICES;
+export type Period = "mensal" | "anual";
+
+/** quanto cobrar (centavos) e quantos meses o pagamento cobre */
+export function planCharge(key: PriceKey, period: Period, seats: number) {
+  const p = PLAN_PRICES[key];
+  return period === "anual" ? { cents: p.a * 12 * seats * 100, months: 12 } : { cents: p.m * seats * 100, months: 1 };
+}
+
+/** valor de um dia do plano (centavos), para aproveitar o tempo que sobrou ao trocar de plano */
+export const dailyCents = (plan: PlanKey, seats: number) => {
+  const p = Object.values(PLAN_PRICES).find((x) => x.plan === plan);
+  return p ? (p.m * 100 * seats) / 30 : 0;
+};
+
+/** pacotes avulsos de créditos de IA. Não vencem; o plano gasta primeiro. */
 export const AI_PACKS = [
-  { key: "ia_500", credits: 500 },
-  { key: "ia_2000", credits: 2000 },
-  { key: "ia_5000", credits: 5000 },
+  { key: "ia_500", credits: 500, cents: 2900 },
+  { key: "ia_2000", credits: 2000, cents: 9900 },
+  { key: "ia_5000", credits: 5000, cents: 21900 },
 ] as const;
 export type AiPackKey = (typeof AI_PACKS)[number]["key"];
 

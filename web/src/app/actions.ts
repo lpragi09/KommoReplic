@@ -13,7 +13,8 @@ import { cleanAttribution } from "@/lib/utm";
 import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { emailOn, inviteEmail, sendEmail } from "@/lib/email";
 import { checkTemplate } from "@/lib/template-rules";
-import { AI_PACKS, aiMonth, limitsOf, upgradeFor, type Limits } from "@/lib/plans";
+import { AI_PACKS, PLAN_PRICES, aiMonth, limitsOf, planCharge, upgradeFor, type Limits, type PriceKey } from "@/lib/plans";
+import { createCheckout, mpOn } from "@/lib/mercadopago";
 import { MetaError, verifyAccount } from "@/lib/meta";
 import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
 import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
@@ -577,34 +578,33 @@ export async function deleteAccountAction() {
   redirect("/");
 }
 
-async function stripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new DomainError("invalid", "Cobrança ainda não configurada.");
-  const { default: Stripe } = await import("stripe");
-  return new Stripe(key);
+const PLAN = z.enum(Object.keys(PLAN_PRICES) as [PriceKey, ...PriceKey[]]);
+const PERIOD = z.enum(["mensal", "anual"]);
+
+async function checkoutOrigin() {
+  if (!mpOn()) throw new DomainError("invalid", "Cobrança ainda não configurada.");
+  return (await headers()).get("origin") ?? process.env.APP_URL ?? "";
 }
 
-const LOOKUP = z.enum(["autonomo_mensal", "autonomo_anual", "equipe_mensal", "equipe_anual", "operacao_mensal", "operacao_anual"]);
-
-/** Stripe Checkout para assinar um plano. Nada de formulário de cartão nosso. */
-export async function startCheckoutAction(slug: string, lookupKey: string, seats: number) {
+/** Checkout do Mercado Pago para pagar um período do plano (Pix, cartão ou boleto). Nada de formulário de cartão nosso.
+    Usuários = quem está na empresa hoje, contado aqui no servidor. */
+export async function startCheckoutAction(slug: string, planKey: string, period: string) {
   return run(async () => {
     const { user, ws } = await requireWorkspace(slug);
-    const s = await stripe();
-    const prices = await s.prices.list({ lookup_keys: [LOOKUP.parse(lookupKey)], limit: 1 });
-    if (!prices.data[0]) throw new DomainError("invalid", "Plano não encontrado no Stripe.");
-    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-    const session = await s.checkout.sessions.create({
-      mode: "subscription",
-      client_reference_id: ws.id,
-      customer_email: user.email,
-      // formas de pagamento (cartão, Pix) vêm do painel do Stripe
-      line_items: [{ price: prices.data[0].id, quantity: Math.max(1, Math.min(500, Math.round(seats))) }],
-      subscription_data: { metadata: { workspace_id: ws.id } },
-      success_url: `${origin}/${slug}/settings/billing?ok=1`,
-      cancel_url: `${origin}/${slug}/settings/billing`,
+    const origin = await checkoutOrigin();
+    const key = PLAN.parse(planKey);
+    const per = PERIOD.parse(period);
+    const seats = Math.max(1, (await data.listMembers(ws.id)).members.length);
+    const { cents } = planCharge(key, per, seats);
+    const url = await createCheckout({
+      purchase: { kind: "plan", ws: ws.id, key, period: per, seats },
+      title: `netzer ${PLAN_PRICES[key].name} · ${per === "anual" ? "1 ano" : "1 mês"} · ${seats} ${seats === 1 ? "usuário" : "usuários"}`,
+      cents,
+      email: user.email,
+      backUrl: `${origin}/${slug}/settings/billing?ok=1`,
+      installments: per === "anual" ? 12 : 1,
     });
-    return { url: session.url };
+    return { url };
   });
 }
 
@@ -615,28 +615,23 @@ async function requireAdmin(slug: string) {
   return ctx;
 }
 
-/** compra avulsa de créditos de IA (pagamento único no Stripe; o webhook soma os créditos) */
+/** compra avulsa de créditos de IA (pagamento único no Mercado Pago; o webhook soma os créditos) */
 export async function buyAiCreditsAction(slug: string, pack: string) {
   return run(async () => {
     const { user, ws } = await requireAdmin(slug);
     const p = AI_PACKS.find((x) => x.key === pack);
     if (!p) throw new DomainError("invalid", "Pacote não encontrado.");
-    const s = await stripe();
-    const prices = await s.prices.list({ lookup_keys: [p.key], limit: 1 });
-    if (!prices.data[0]) throw new DomainError("invalid", "Este pacote ainda não foi criado no Stripe.");
-    const { stripeCustomerId } = await data.getSubscription(ws.id);
-    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-    const session = await s.checkout.sessions.create({
-      mode: "payment",
-      client_reference_id: ws.id,
-      ...(stripeCustomerId ? { customer: stripeCustomerId } : { customer_email: user.email }),
-      line_items: [{ price: prices.data[0].id, quantity: 1 }],
-      // quantos créditos: definido aqui no servidor, nunca pela tela
-      metadata: { kind: "ai_credits", workspace_id: ws.id, credits: String(p.credits) },
-      success_url: `${origin}/${slug}/settings/billing?aba=complementos&creditos=1`,
-      cancel_url: `${origin}/${slug}/settings/billing?aba=complementos`,
+    const origin = await checkoutOrigin();
+    // quantos créditos e quanto custa: definido aqui no servidor, nunca pela tela
+    const url = await createCheckout({
+      purchase: { kind: "credits", ws: ws.id, pack: p.key },
+      title: `netzer · ${p.credits} respostas da IA`,
+      cents: p.cents,
+      email: user.email,
+      backUrl: `${origin}/${slug}/settings/billing?aba=complementos&creditos=1`,
+      installments: 1,
     });
-    return { url: session.url };
+    return { url };
   });
 }
 
@@ -655,20 +650,6 @@ export async function saveAiKeyAction(slug: string, key: string | null) {
     }
     await data.setAiOwnKey(ws.id, k);
     return null;
-  });
-}
-
-/** Portal do Stripe: trocar plano, cartão, usuários — e cancelar em um clique. */
-export async function openBillingPortalAction(slug: string) {
-  return run(async () => {
-    const { ws } = await requireWorkspace(slug);
-    // o cliente do Stripe vem do banco, nunca da tela; só admin lê a assinatura (RLS)
-    const { stripeCustomerId } = await data.getSubscription(ws.id);
-    if (!stripeCustomerId) throw new DomainError("invalid", "Só administradores com plano ativo gerenciam a cobrança.");
-    const s = await stripe();
-    const origin = (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-    const portal = await s.billingPortal.sessions.create({ customer: stripeCustomerId, return_url: `${origin}/${slug}/settings/billing` });
-    return { url: portal.url };
   });
 }
 

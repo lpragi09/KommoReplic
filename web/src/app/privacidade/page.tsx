@@ -23,7 +23,7 @@ export default function Privacidade() {
         <ul>
           <li>Supabase — banco de dados, login e arquivos.</li>
           <li>Vercel — hospedagem do site e do app.</li>
-          <li>Stripe — pagamentos (nós não vemos os dados do seu cartão).</li>
+          <li>Mercado Pago — pagamentos (nós não vemos os dados do seu cartão).</li>
           <li>Meta — quando você conecta WhatsApp, Instagram ou Messenger, as mensagens passam pela API oficial deles.</li>
           <li>Resend — envio de emails do sistema (convites, avisos de cobrança).</li>
         </ul>

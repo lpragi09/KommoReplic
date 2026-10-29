@@ -5,25 +5,23 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Sparkle, Trash2 } from "@/components/ui/icons";
 import type { Access, Subscription } from "@/data/types";
-import { deleteAccountAction, openBillingPortalAction, startCheckoutAction } from "@/app/actions";
+import { deleteAccountAction, startCheckoutAction } from "@/app/actions";
+import { PLAN_PRICES, type PriceKey } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
 import { Switch } from "@/components/robots/parts";
 
-const plans = [
-  { key: "autonomo", name: "Autônomo", who: "1 a 2 pessoas", m: 59, a: 49, items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel", "Robôs de boas-vindas", "IA com créditos avulsos"] },
+const plans: { key: PriceKey; who: string; items: string[]; hot?: boolean }[] = [
+  { key: "autonomo", who: "1 a 2 pessoas", items: ["1 funil", "Chat do site + 1 WhatsApp", "Tarefas e painel", "Robôs de boas-vindas", "IA com créditos avulsos"] },
   {
     key: "equipe",
-    name: "Equipe",
     who: "o time de vendas",
-    m: 99,
-    a: 82,
     items: ["Funis ilimitados", "3 canais", "Papéis: todos, equipe ou só os meus", "Robôs ilimitados e disparos", "Agente de IA: 500 respostas/mês"],
     hot: true,
   },
-  { key: "operacao", name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Canais ilimitados", "Agente de IA: 2.000 respostas/mês", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
-] as const;
+  { key: "operacao", who: "filiais e alto volume", items: ["Canais ilimitados", "Agente de IA: 2.000 respostas/mês", "Relatórios completos", "Histórico de auditoria", "Suporte com prazo de resposta"] },
+];
 const planOf = { trial: "Teste grátis", basic: "Autônomo", advanced: "Equipe", pro: "Operação" };
 const statusOf = { trialing: "em teste", active: "ativo", past_due: "pagamento pendente", canceled: "cancelado", unpaid: "não pago" };
 
@@ -96,10 +94,12 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
             )}
           </p>
         </div>
-        {sub.stripeCustomerId && (
-          <Button variant="secondary" loading={pending && picked === null} onClick={() => go(null, openBillingPortalAction(slug))}>
-            Trocar plano, cartão ou cancelar
-          </Button>
+        {sub.currentPeriodEnd && sub.status !== "trialing" && (
+          <p className={cn("text-sm", sub.status === "active" ? "text-muted" : "text-danger")}>
+            {sub.status === "active" ? "Pago até" : "Venceu em"}{" "}
+            <span className="font-medium text-fg">{new Date(sub.currentPeriodEnd).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
+            {sub.status !== "active" && " · renove abaixo"}
+          </p>
         )}
       </section>
 
@@ -116,7 +116,9 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
         </div>
         <ul className="grid gap-4 lg:grid-cols-3">
           {plans.map((p) => {
-            const hot = "hot" in p && p.hot;
+            const hot = !!p.hot;
+            const price = PLAN_PRICES[p.key];
+            const current = sub.status !== "trialing" && sub.plan === price.plan;
             return (
               <li
                 key={p.key}
@@ -128,13 +130,13 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
                 )}
               >
                 {hot && <span className="absolute -top-3 left-6 rounded-pill bg-accent px-2.5 py-0.5 text-xs font-semibold text-on-accent">Mais escolhido</span>}
-                <h3 className="text-base font-semibold text-fg">{p.name}</h3>
+                <h3 className="text-base font-semibold text-fg">{price.name}</h3>
                 <p className="text-sm text-muted">Para {p.who}</p>
                 <p className="mt-5 flex items-baseline gap-1">
-                  <span className="text-4xl font-semibold tracking-tight tabular-nums text-fg">R$ {annual ? p.a : p.m}</span>
+                  <span className="text-4xl font-semibold tracking-tight tabular-nums text-fg">R$ {annual ? price.a : price.m}</span>
                   <span className="text-sm text-muted">/usuário/mês</span>
                 </p>
-                <p className="mt-1 h-5 text-xs text-muted">{annual ? `cobrado R$ ${p.a * 12} por ano, por usuário` : ""}</p>
+                <p className="mt-1 h-5 text-xs text-muted">{annual ? `R$ ${price.a * 12} por ano, por usuário (até 12x)` : ""}</p>
                 <ul className="mt-5 flex flex-1 flex-col gap-2.5 border-t border-border pt-5">
                   {p.items.map((i) => (
                     <li key={i} className="flex gap-2 text-sm text-fg">
@@ -148,16 +150,16 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
                   size="lg"
                   loading={pending && picked === p.key}
                   disabled={pending && picked !== p.key}
-                  onClick={() => go(p.key, startCheckoutAction(slug, `${p.key}_${annual ? "anual" : "mensal"}`, sub.seats))}
+                  onClick={() => go(p.key, startCheckoutAction(slug, p.key, annual ? "anual" : "mensal"))}
                 >
-                  Assinar {p.name}
+                  {current ? "Renovar" : "Assinar"} {price.name}
                 </Button>
               </li>
             );
           })}
         </ul>
         <p className="mt-4 flex items-center gap-1.5 text-sm text-muted">
-          <Check className="size-4 text-success" aria-hidden /> Sem fidelidade: cancela em um clique. Pagamento seguro pelo Stripe (cartão ou Pix).
+          <Check className="size-4 text-success" aria-hidden /> Pix, cartão ou boleto pelo Mercado Pago. Sem fidelidade e sem cobrança automática: você paga o mês (ou o ano) quando quiser continuar.
         </p>
         {error && (
           <p role="alert" className="mt-2 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">

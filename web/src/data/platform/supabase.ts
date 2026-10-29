@@ -98,7 +98,7 @@ export const platform: PlatformRepo = {
   },
 
   async setPlan(wsId, plan) {
-    const patch = plan === "trial" ? { plan, status: "trialing", trial_ends_at: new Date(Date.now() + 14 * 864e5).toISOString() } : { plan, status: "active" };
+    const patch = plan === "trial" ? { plan, status: "trialing", trial_ends_at: new Date(Date.now() + 14 * 864e5).toISOString() } : { plan, status: "active", ...(await courtesyEnd(wsId)) };
     fail((await adminClient().from("subscriptions").update(patch).eq("workspace_id", wsId)).error);
   },
 
@@ -109,7 +109,7 @@ export const platform: PlatformRepo = {
     const patch =
       !data || data.plan === "trial"
         ? { status: "trialing", trial_ends_at: new Date(Math.max(Date.now() + 7 * 864e5, data?.trial_ends_at ? Date.parse(data.trial_ends_at) : 0)).toISOString() }
-        : { status: "active" };
+        : { status: "active", ...(await courtesyEnd(wsId)) };
     fail((await a.from("subscriptions").update(patch).eq("workspace_id", wsId)).error);
   },
 
@@ -140,3 +140,9 @@ export const platform: PlatformRepo = {
     fail((await adminClient().rpc("platform_reset_demo", { p_ws: wsId })).error);
   },
 };
+
+/** liberar pela Central com o período pago já vencido vira cortesia sem data de fim (senão o cron trava de novo) */
+async function courtesyEnd(wsId: string) {
+  const { data } = await adminClient().from("subscriptions").select("current_period_end").eq("workspace_id", wsId).maybeSingle();
+  return data?.current_period_end && Date.parse(data.current_period_end) < Date.now() ? { current_period_end: null } : {};
+}

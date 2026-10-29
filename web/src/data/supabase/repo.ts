@@ -264,6 +264,13 @@ export async function markNotificationsSeen(wsId: ID, _userId: ID) {
   if (error) throw toDomain(error);
 }
 
+/** cron: plano pago vencido vira pendente e, 3 dias depois, trava (sem renovação automática no Mercado Pago) */
+export async function expireSubscriptions() {
+  const { data, error } = await adminClient().rpc("expire_subscriptions");
+  if (error) return 0; // banco ainda sem a atualização do Mercado Pago
+  return Number(data ?? 0);
+}
+
 export async function getAccess(wsId: ID): Promise<Access> {
   const sb = await userClient();
   const { data, error } = await sb.rpc("workspace_access", { p_ws: wsId }).maybeSingle();

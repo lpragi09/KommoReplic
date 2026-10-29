@@ -18,20 +18,8 @@ const TABS = [
   { v: "uso", label: "Uso" },
 ] as const;
 
-/** preço de cada pacote de créditos, lido do Stripe (lookup_key). Sem Stripe, a tela mostra "preço na próxima tela". */
-async function packPrices(): Promise<Record<string, string>> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return {};
-  try {
-    const { default: Stripe } = await import("stripe");
-    const r = await new Stripe(key).prices.list({ lookup_keys: AI_PACKS.map((p) => p.key), limit: 10 });
-    return Object.fromEntries(
-      r.data.filter((p) => p.lookup_key && p.unit_amount != null).map((p) => [p.lookup_key!, new Intl.NumberFormat("pt-BR", { style: "currency", currency: p.currency.toUpperCase() }).format(p.unit_amount! / 100)]),
-    );
-  } catch {
-    return {};
-  }
-}
+const brl = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+const packPrices = Object.fromEntries(AI_PACKS.map((p) => [p.key, brl(p.cents)]));
 
 export default async function BillingPage({ params, searchParams }: PageProps<"/[ws]/settings/billing">) {
   const { ws: slug } = await params;
@@ -66,9 +54,9 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 }
 
 async function Addons({ slug, wsId, userId, bought }: { slug: string; wsId: string; userId: string; bought: boolean }) {
-  const [wallet, prices, members] = await Promise.all([getAiWallet(wsId), packPrices(), listMembers(wsId)]);
+  const [wallet, members] = await Promise.all([getAiWallet(wsId), listMembers(wsId)]);
   const isAdmin = !!members.members.find((m) => m.userId === userId)?.isAdmin;
-  return <AiAddons slug={slug} wallet={wallet} prices={prices} isAdmin={isAdmin} bought={bought} />;
+  return <AiAddons slug={slug} wallet={wallet} prices={packPrices} isAdmin={isAdmin} bought={bought} />;
 }
 
 async function Usage({ slug, wsId, access }: { slug: string; wsId: string; access: Awaited<ReturnType<typeof getAccess>> }) {

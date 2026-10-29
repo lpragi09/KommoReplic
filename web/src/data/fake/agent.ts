@@ -37,7 +37,7 @@ export async function setAiOwnKey(wsId: ID, key: string | null) {
   w.hint = key ? `…${key.slice(-4)}` : null;
 }
 
-/** compra confirmada pelo Stripe: soma uma vez por sessão (o webhook pode repetir) */
+/** compra confirmada pelo Mercado Pago: soma uma vez por sessão (o webhook pode repetir) */
 export async function addAiCredits(wsId: ID, sessionId: string, credits: number) {
   const w = wallet(wsId);
   if (w.purchases.has(sessionId)) return false;

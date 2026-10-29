@@ -1,4 +1,4 @@
-import { deliverQueued, tickRobots } from "@/data";
+import { deliverQueued, expireSubscriptions, tickRobots } from "@/data";
 
 /* Rede de segurança dos robôs com "Esperar": a Vercel chama esta rota no horário do vercel.json.
    No dia a dia quem continua os robôs é a própria tela aberta (a cada ~30s) e cada ação no funil. */
@@ -12,5 +12,6 @@ export async function GET(req: Request) {
     if (n === 0) break;
   }
   const delivered = await deliverQueued(null).catch(() => 0);
-  return Response.json({ ok: true, processed: total, delivered });
+  const expired = await expireSubscriptions().catch(() => 0);
+  return Response.json({ ok: true, processed: total, delivered, expired });
 }

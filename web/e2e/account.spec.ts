@@ -24,7 +24,7 @@ test.describe("conta e cobrança", () => {
     await expect(page.getByText("Não encontramos esta página")).toBeVisible();
   });
 
-  test("A-N1 assinar sem Stripe configurado avisa, sem quebrar", async ({ page }) => {
+  test("A-N1 assinar sem Mercado Pago configurado avisa, sem quebrar", async ({ page }) => {
     const { slug } = await signUp(page);
     await page.goto(`/${slug}/settings/billing`);
     await page.getByRole("button", { name: "Assinar" }).first().click();

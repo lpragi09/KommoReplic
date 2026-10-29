@@ -129,6 +129,11 @@ export async function markNotificationsSeen(wsId: ID, userId: ID) {
   if (m) m.notificationsSeenAt = now();
 }
 
+/** cron: plano pago vencido vira pendente e, 3 dias depois, trava. No modo exemplo não há pagamento. */
+export async function expireSubscriptions() {
+  return 0;
+}
+
 export async function getAccess(wsId: ID): Promise<Access> {
   const s = await getSubscription(wsId);
   return accessOf(s.status, s.trialEndsAt, s.plan);
