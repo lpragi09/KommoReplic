@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { buyAiCreditsAction, saveAiKeyAction } from "@/app/actions";
+import Link from "next/link";
+import { saveAiKeyAction } from "@/app/actions";
 import type { AiWallet } from "@/data/types";
 import { AI_PACKS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Check, Sparkle } from "@/components/ui/icons";
 
@@ -45,14 +46,6 @@ export function AiAddons({ slug, wallet, prices, isAdmin, bought }: { slug: stri
   const [key, setKey] = useState("");
   const [keyMsg, setKeyMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const buy = (pack: string) =>
-    start(async () => {
-      setPicked(pack);
-      setError(null);
-      const r = await buyAiCreditsAction(slug, pack);
-      if (!r.ok) return setError(r.error);
-      if (r.data.url) window.location.href = r.data.url;
-    });
   const saveKey = (ev: FormEvent | null, value: string | null) => {
     ev?.preventDefault();
     start(async () => {
@@ -94,9 +87,15 @@ export function AiAddons({ slug, wallet, prices, isAdmin, bought }: { slug: stri
               <p className="text-2xl font-semibold tabular-nums tracking-tight text-fg">{fmt(p.credits)}</p>
               <p className="text-sm text-muted">respostas da IA</p>
               <p className="mt-3 text-sm font-medium text-fg">{prices[p.key] ?? "Preço na próxima tela"}</p>
-              <Button className="mt-3" variant={i === 1 ? "primary" : "secondary"} size="sm" disabled={!isAdmin || (pending && picked !== p.key)} loading={pending && picked === p.key} onClick={() => buy(p.key)}>
-                Adicionar créditos
-              </Button>
+              {isAdmin ? (
+                <Link href={`/${slug}/settings/billing/checkout?pacote=${p.key}`} className={cn(buttonClass(i === 1 ? "primary" : "secondary", "sm"), "mt-3")}>
+                  Adicionar créditos
+                </Link>
+              ) : (
+                <Button className="mt-3" variant={i === 1 ? "primary" : "secondary"} size="sm" disabled>
+                  Adicionar créditos
+                </Button>
+              )}
             </li>
           ))}
         </ul>

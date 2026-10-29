@@ -13,9 +13,12 @@ import { cleanAttribution } from "@/lib/utm";
 import { MAX_ATTACHMENT, kindOf } from "@/lib/attachments";
 import { emailOn, inviteEmail, sendEmail } from "@/lib/email";
 import { checkTemplate } from "@/lib/template-rules";
-import { AI_PACKS, PLAN_PRICES, aiMonth, limitsOf, planCharge, upgradeFor, type Limits, type PriceKey } from "@/lib/plans";
-import { createCheckout, mpOn } from "@/lib/mercadopago";
+import { AI_PACKS, PLAN_PRICES, aiMonth, limitsOf, planCharge, upgradeFor, type AiPackKey, type Limits, type PriceKey } from "@/lib/plans";
+import { createPayment, getPayment, decodeRef, mpOn, type MpPayment, type Payer, type Purchase } from "@/lib/mercadopago";
+import { applyPayment } from "@/lib/billing-apply";
+import { randomUUID } from "node:crypto";
 import { MetaError, verifyAccount } from "@/lib/meta";
+import { META_PICK_COOKIE, listPages, readPick, subscribePage } from "@/lib/meta-login";
 import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
 import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
 import { after } from "next/server";
@@ -581,33 +584,6 @@ export async function deleteAccountAction() {
 const PLAN = z.enum(Object.keys(PLAN_PRICES) as [PriceKey, ...PriceKey[]]);
 const PERIOD = z.enum(["mensal", "anual"]);
 
-async function checkoutOrigin() {
-  if (!mpOn()) throw new DomainError("invalid", "Cobrança ainda não configurada.");
-  return (await headers()).get("origin") ?? process.env.APP_URL ?? "";
-}
-
-/** Checkout do Mercado Pago para pagar um período do plano (Pix, cartão ou boleto). Nada de formulário de cartão nosso.
-    Usuários = quem está na empresa hoje, contado aqui no servidor. */
-export async function startCheckoutAction(slug: string, planKey: string, period: string) {
-  return run(async () => {
-    const { user, ws } = await requireWorkspace(slug);
-    const origin = await checkoutOrigin();
-    const key = PLAN.parse(planKey);
-    const per = PERIOD.parse(period);
-    const seats = Math.max(1, (await data.listMembers(ws.id)).members.length);
-    const { cents } = planCharge(key, per, seats);
-    const url = await createCheckout({
-      purchase: { kind: "plan", ws: ws.id, key, period: per, seats },
-      title: `netzer ${PLAN_PRICES[key].name} · ${per === "anual" ? "1 ano" : "1 mês"} · ${seats} ${seats === 1 ? "usuário" : "usuários"}`,
-      cents,
-      email: user.email,
-      backUrl: `${origin}/${slug}/settings/billing?ok=1`,
-      installments: per === "anual" ? 12 : 1,
-    });
-    return { url };
-  });
-}
-
 async function requireAdmin(slug: string) {
   const ctx = await requireWorkspace(slug);
   const me = (await data.listMembers(ctx.ws.id)).members.find((m) => m.userId === ctx.user.id);
@@ -615,23 +591,131 @@ async function requireAdmin(slug: string) {
   return ctx;
 }
 
-/** compra avulsa de créditos de IA (pagamento único no Mercado Pago; o webhook soma os créditos) */
-export async function buyAiCreditsAction(slug: string, pack: string) {
+// ---------------------------------------------------------------------------
+// checkout no próprio site: dados de cobrança → Pix, boleto ou cartão (Mercado Pago)
+// ---------------------------------------------------------------------------
+const billingInput = z
+  .object({
+    person: z.enum(["pf", "pj"]),
+    doc: z.string().transform(digits),
+    name: z.string().trim().min(2, "Escreva o nome completo ou a razão social.").max(120),
+    email: z.string().trim().toLowerCase().email("Email inválido.").max(200),
+    phone: z.string().transform(digits).pipe(z.string().max(13)),
+    address: z.object({
+      zip: z.string().transform(digits).pipe(z.string().length(8, "CEP com 8 números.")),
+      street: z.string().trim().min(2, "Escreva a rua.").max(120),
+      number: z.string().trim().min(1, "Escreva o número (ou S/N).").max(10),
+      complement: z.string().trim().max(60),
+      district: z.string().trim().min(2, "Escreva o bairro.").max(80),
+      city: z.string().trim().min(2, "Escreva a cidade.").max(80),
+      state: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "UF com 2 letras."),
+    }),
+  })
+  .refine((v) => validDoc(v.person === "pf" ? "cpf" : "cnpj", v.doc), { message: "CPF ou CNPJ inválido.", path: ["doc"] });
+
+export async function saveBillingProfileAction(slug: string, input: z.input<typeof billingInput>) {
   return run(async () => {
-    const { user, ws } = await requireAdmin(slug);
-    const p = AI_PACKS.find((x) => x.key === pack);
-    if (!p) throw new DomainError("invalid", "Pacote não encontrado.");
-    const origin = await checkoutOrigin();
-    // quantos créditos e quanto custa: definido aqui no servidor, nunca pela tela
-    const url = await createCheckout({
-      purchase: { kind: "credits", ws: ws.id, pack: p.key },
-      title: `netzer · ${p.credits} respostas da IA`,
-      cents: p.cents,
-      email: user.email,
-      backUrl: `${origin}/${slug}/settings/billing?aba=complementos&creditos=1`,
-      installments: 1,
-    });
-    return { url };
+    const { ws } = await requireAdmin(slug);
+    await data.saveBillingProfile(ws.id, billingInput.parse(input));
+    return null;
+  });
+}
+
+const PACK = z.enum(AI_PACKS.map((p) => p.key) as [AiPackKey, ...AiPackKey[]]);
+const purchaseInput = z.discriminatedUnion("kind", [z.object({ kind: z.literal("plan"), plan: PLAN, period: PERIOD }), z.object({ kind: z.literal("credits"), pack: PACK })]);
+const methodInput = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("pix") }),
+  z.object({ kind: z.literal("boleto") }),
+  z.object({
+    kind: z.literal("card"),
+    token: z.string().min(8).max(200),
+    paymentMethodId: z.string().regex(/^[a-z_]{2,30}$/),
+    issuerId: z.string().max(20).optional(),
+    installments: z.number().int().min(1).max(12),
+  }),
+]);
+
+/** o que está sendo comprado, com preço e usuários calculados aqui no servidor */
+async function purchaseQuote(wsId: string, input: z.input<typeof purchaseInput>) {
+  const v = purchaseInput.parse(input);
+  if (v.kind === "credits") {
+    const p = AI_PACKS.find((x) => x.key === v.pack)!;
+    return { purchase: { kind: "credits", ws: wsId, pack: p.key } as Purchase, title: `netzer · ${p.credits} respostas da IA`, cents: p.cents, maxInstallments: 1 };
+  }
+  const seats = Math.max(1, (await data.listMembers(wsId)).members.length);
+  const { cents } = planCharge(v.plan, v.period, seats);
+  return {
+    purchase: { kind: "plan", ws: wsId, key: v.plan, period: v.period, seats } as Purchase,
+    title: `netzer ${PLAN_PRICES[v.plan].name} · ${v.period === "anual" ? "1 ano" : "1 mês"} · ${seats} ${seats === 1 ? "usuário" : "usuários"}`,
+    cents,
+    maxInstallments: v.period === "anual" ? 12 : 1,
+  };
+}
+
+const REJECTED: Record<string, string> = {
+  cc_rejected_insufficient_amount: "Cartão sem limite para este valor.",
+  cc_rejected_bad_filled_security_code: "Código de segurança (CVV) errado.",
+  cc_rejected_bad_filled_date: "Data de validade errada.",
+  cc_rejected_bad_filled_other: "Confira os dados do cartão.",
+  cc_rejected_call_for_authorize: "O banco pediu para você autorizar a compra. Ligue para o banco e tente de novo.",
+  cc_rejected_card_disabled: "Cartão bloqueado. Ligue para o banco para liberar.",
+  cc_rejected_duplicated_payment: "Você já fez um pagamento igual agora há pouco.",
+  cc_rejected_high_risk: "O pagamento foi recusado pela análise de segurança. Tente Pix ou outro cartão.",
+  cc_rejected_max_attempts: "Muitas tentativas com este cartão. Use outro cartão ou Pix.",
+};
+
+/** o que a tela precisa saber do pagamento: situação e, no Pix e no boleto, como pagar */
+function paymentView(p: MpPayment) {
+  const td = p.point_of_interaction?.transaction_data;
+  return {
+    id: String(p.id),
+    status: p.status as "approved" | "pending" | "in_process" | "rejected" | "cancelled" | string,
+    message: p.status === "rejected" ? (REJECTED[p.status_detail ?? ""] ?? "Pagamento recusado. Confira os dados ou use outra forma de pagamento.") : null,
+    pix: td?.qr_code ? { code: td.qr_code, image: td.qr_code_base64 ?? null } : null,
+    boleto: p.transaction_details?.external_resource_url ? { url: p.transaction_details.external_resource_url, barcode: p.barcode?.content ?? null } : null,
+    expiresAt: p.date_of_expiration ?? null,
+  };
+}
+
+export async function payAction(slug: string, purchase: z.input<typeof purchaseInput>, method: z.input<typeof methodInput>) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    if (!mpOn()) throw new DomainError("invalid", "Cobrança ainda não configurada.");
+    if (!(await rateLimit(`pay:${ws.id}`, 10, 10 * 60_000))) throw new DomainError("invalid", "Muitas tentativas de pagamento. Espere alguns minutos.");
+    const q = await purchaseQuote(ws.id, purchase);
+    const m = methodInput.parse(method);
+    if (m.kind === "card" && m.installments > q.maxInstallments) throw new DomainError("invalid", q.maxInstallments === 1 ? "Este pagamento é à vista." : `Até ${q.maxInstallments}x.`);
+    const b = await data.getBillingProfile(ws.id);
+    if (!b) throw new DomainError("invalid", "Preencha os dados de cobrança primeiro.");
+    const [first, ...rest] = b.name.split(/\s+/);
+    const payer: Payer = {
+      email: b.email,
+      first_name: first,
+      last_name: rest.join(" ") || first,
+      identification: { type: b.person === "pf" ? "CPF" : "CNPJ", number: b.doc },
+      address: { zip_code: b.address.zip, street_name: b.address.street, street_number: b.address.number, neighborhood: b.address.district, city: b.address.city, federal_unit: b.address.state },
+    };
+    let pay: MpPayment;
+    try {
+      pay = await createPayment({ purchase: q.purchase, title: q.title, cents: q.cents, payer, method: m, idempotencyKey: randomUUID() });
+    } catch (e) {
+      console.error("[mercadopago] pagamento", e instanceof Error ? e.message : e);
+      throw new DomainError("invalid", "O Mercado Pago não aceitou o pagamento agora. Confira os dados e tente de novo.");
+    }
+    if (await applyPayment(pay).catch(() => false)) refresh();
+    return paymentView(pay);
+  });
+}
+
+/** a tela do Pix pergunta de tempos em tempos se já caiu; quando cai, libera na hora (sem esperar o webhook) */
+export async function paymentStatusAction(slug: string, paymentId: string) {
+  return run(async () => {
+    const { ws } = await requireWorkspace(slug);
+    if (!/^\d{1,30}$/.test(paymentId)) throw new DomainError("not_found");
+    const pay = await getPayment(paymentId);
+    if (decodeRef(pay.external_reference)?.ws !== ws.id) throw new DomainError("not_found");
+    if (await applyPayment(pay).catch(() => false)) refresh();
+    return paymentView(pay);
   });
 }
 
@@ -1250,11 +1334,7 @@ export async function connectChannelAction(slug: string, input: z.input<typeof c
   return run(async () => {
     const { user, ws } = await requireActive(slug);
     const v = connectInput.parse(input);
-    const { l, over } = await planLimits(ws.id);
-    const social = (await data.listChannels(ws.id)).filter((c) => c.kind !== "webchat" && c.status === "connected");
-    // reconectar é a mesma conta; outro número do mesmo tipo conta como canal novo
-    const isReconnect = social.some((c) => c.kind === v.kind && c.externalId === v.externalId);
-    if (!isReconnect && social.length + 1 > l.socialChannels) throw over("canais de rede social", l.socialChannels, (x) => x.socialChannels > social.length);
+    await checkChannelLimit(ws.id, v.kind, v.externalId);
     let name: string;
     try {
       name = await verifyAccount(v.kind, v.externalId, v.token); // a Meta confirma que o ID e o token batem
@@ -1263,6 +1343,42 @@ export async function connectChannelAction(slug: string, input: z.input<typeof c
     }
     const ch = await data.connectChannel(ws.id, user.id, { ...v, name });
     return { id: ch.id, name };
+  });
+}
+
+/** limite de canais de rede social do plano. Reconectar é a mesma conta; outro número do mesmo tipo conta como canal novo */
+async function checkChannelLimit(wsId: string, kind: string, externalId: string) {
+  const { l, over } = await planLimits(wsId);
+  const social = (await data.listChannels(wsId)).filter((c) => c.kind !== "webchat" && c.status === "connected");
+  const isReconnect = social.some((c) => c.kind === kind && c.externalId === externalId);
+  if (!isReconnect && social.length + 1 > l.socialChannels) throw over("canais de rede social", l.socialChannels, (x) => x.socialChannels > social.length);
+}
+
+/** "Conectar com Facebook": a pessoa escolheu a página na volta do login da Meta. O token vem do cookie cifrado,
+    e a página é procurada de novo na Meta (a tela só manda o id). */
+export async function connectMetaPageAction(slug: string, pageId: string, pipelineId: string | null) {
+  return run(async () => {
+    await requireActive(slug);
+    const { user, ws } = await requireAdmin(slug);
+    const pick = await readPick(slug, user.id);
+    if (!pick) throw new DomainError("invalid", "O login da Meta expirou. Clique em “Conectar com Facebook” de novo.");
+    const pid = pipelineId ? id.parse(pipelineId) : null;
+    try {
+      const page = (await listPages(pick.token)).find((p) => p.id === pageId);
+      if (!page) throw new DomainError("invalid", "Página não encontrada. Ela foi liberada no login da Meta?");
+      if (pick.kind === "instagram" && !page.ig) throw new DomainError("invalid", "Essa página não tem um Instagram profissional ligado. Ligue em Configurações da página → Contas vinculadas.");
+      const externalId = pick.kind === "instagram" ? page.ig!.id : page.id;
+      await checkChannelLimit(ws.id, pick.kind, externalId);
+      await subscribePage(page.id, page.token);
+      const name = pick.kind === "instagram" ? `@${page.ig!.username}` : page.name;
+      await data.connectChannel(ws.id, user.id, { kind: pick.kind, externalId, pageId: pick.kind === "instagram" ? page.id : undefined, token: page.token, name, pipelineId: pid });
+    } catch (e) {
+      if (e instanceof MetaError) throw new DomainError("invalid", e.message);
+      throw e;
+    }
+    (await cookies()).delete(META_PICK_COOKIE);
+    refresh();
+    return null;
   });
 }
 

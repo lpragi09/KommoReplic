@@ -300,6 +300,16 @@ export type Template = {
 };
 export type TemplateInput = Pick<Template, "name" | "shortcut" | "body" | "network" | "category" | "header" | "footer" | "buttons">;
 
+/** dados de cobrança da empresa (nota e boleto pedem documento e endereço) */
+export type BillingProfile = {
+  person: "pf" | "pj";
+  doc: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: { zip: string; street: string; number: string; complement: string; district: string; city: string; state: string };
+};
+
 export type Subscription = {
   plan: "trial" | "basic" | "advanced" | "pro";
   status: "trialing" | "active" | "past_due" | "canceled" | "unpaid";

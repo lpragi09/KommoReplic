@@ -5,10 +5,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Sparkle, Trash2 } from "@/components/ui/icons";
 import type { Access, Subscription } from "@/data/types";
-import { deleteAccountAction, startCheckoutAction } from "@/app/actions";
+import { deleteAccountAction } from "@/app/actions";
 import { PLAN_PRICES, type PriceKey } from "@/lib/plans";
 import { cn } from "@/lib/cn";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
 import { Switch } from "@/components/robots/parts";
 
@@ -27,17 +27,6 @@ const statusOf = { trialing: "em teste", active: "ativo", past_due: "pagamento p
 
 export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Subscription; access: Access; welcome: "new" | "no_trial" | null }) {
   const [annual, setAnnual] = useState(false);
-  const [error, setError] = useState<string>();
-  const [pending, start] = useTransition();
-  const [picked, setPicked] = useState<string | null>(null);
-  const go = (key: string | null, p: Promise<{ ok: true; data: { url: string | null } } | { ok: false; error: string }>) =>
-    start(async () => {
-      setPicked(key);
-      const r = await p;
-      if (!r.ok) return setError(r.error);
-      if (r.data.url) window.location.href = r.data.url;
-    });
-
   const locked = access.state === "locked";
   return (
     <div className="flex flex-col gap-6">
@@ -144,16 +133,12 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
                     </li>
                   ))}
                 </ul>
-                <Button
-                  className="mt-6 w-full"
-                  variant={hot ? "primary" : "secondary"}
-                  size="lg"
-                  loading={pending && picked === p.key}
-                  disabled={pending && picked !== p.key}
-                  onClick={() => go(p.key, startCheckoutAction(slug, p.key, annual ? "anual" : "mensal"))}
+                <Link
+                  href={`/${slug}/settings/billing/checkout?plano=${p.key}&periodo=${annual ? "anual" : "mensal"}`}
+                  className={cn(buttonClass(hot ? "primary" : "secondary", "lg"), "mt-6 w-full")}
                 >
                   {current ? "Renovar" : "Assinar"} {price.name}
-                </Button>
+                </Link>
               </li>
             );
           })}
@@ -161,11 +146,6 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
         <p className="mt-4 flex items-center gap-1.5 text-sm text-muted">
           <Check className="size-4 text-success" aria-hidden /> Pix, cartão ou boleto pelo Mercado Pago. Sem fidelidade e sem cobrança automática: você paga o mês (ou o ano) quando quiser continuar.
         </p>
-        {error && (
-          <p role="alert" className="mt-2 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
-            {error}
-          </p>
-        )}
       </section>
     </div>
   );

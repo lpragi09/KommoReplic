@@ -28,6 +28,15 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: ReactNode;
 };
 
+/** as mesmas classes do Button, para um <Link> com cara de botão */
+export const buttonClass = (variant: keyof typeof variants = "primary", size: keyof typeof sizes = "md") =>
+  cn(
+    "inline-flex select-none items-center justify-center whitespace-nowrap font-medium",
+    "transition-[background-color,box-shadow,transform,filter] duration-fast ease-out active:scale-[0.98]",
+    variants[variant],
+    sizes[size],
+  );
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "primary", size = "md", loading, icon, className, children, disabled, ...props },
   ref,

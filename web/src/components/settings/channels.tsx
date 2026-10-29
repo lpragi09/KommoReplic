@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Channel, Pipeline } from "@/data/types";
-import { connectChannelAction, disconnectChannelAction } from "@/app/actions";
+import { connectChannelAction, connectMetaPageAction, disconnectChannelAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Check, Copy, ExternalLink, Globe, InstagramLogo, MessengerLogo, WhatsappLogo, type LucideIcon, MessageSquare } from "@/components/ui/icons";
+import { Check, Copy, ExternalLink, FacebookLogo, Globe, InstagramLogo, MessengerLogo, WhatsappLogo, type LucideIcon, MessageSquare } from "@/components/ui/icons";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
 type Social = "whatsapp" | "instagram" | "messenger";
+
+/** páginas que voltaram do login da Meta, para escolher qual conectar */
+export type MetaPickOptions = { kind: "instagram" | "messenger"; pages: { id: string; name: string; ig: string | null }[] };
 
 const widgetTag = (base: string, key: string | null) => `<script src="${base}/widget.js" data-chat="${key ?? ""}" async></script>`;
 
@@ -57,7 +62,26 @@ const NETS: Record<Social, { label: string; icon: LucideIcon; tint: string; idLa
   },
 };
 
-export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBase }: { slug: string; channels: Channel[]; pipelines: Pipeline[]; webhookUrl: string; chatBase: string }) {
+export function ChannelsManager({
+  slug,
+  channels,
+  pipelines,
+  webhookUrl,
+  chatBase,
+  metaLogin,
+  pick,
+  notice,
+}: {
+  slug: string;
+  channels: Channel[];
+  pipelines: Pipeline[];
+  webhookUrl: string;
+  chatBase: string;
+  /** login com Facebook configurado no servidor (Instagram e Messenger em 1 clique) */
+  metaLogin: boolean;
+  pick: MetaPickOptions | null;
+  notice: string | null;
+}) {
   const [open, setOpen] = useState<Social | null>(null);
   const [form, setForm] = useState({ externalId: "", pageId: "", token: "", appSecret: "", pipelineId: pipelines[0]?.id ?? "" });
   const [error, setError] = useState<string | null>(null);
@@ -92,11 +116,12 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
   return (
     <div className="flex-1 overflow-y-auto bg-surface">
       <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 sm:p-6">
-        {error && !open && (
+        {(error || notice) && !open && (
           <p role="alert" className="rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
-            {error}
+            {error ?? notice}
           </p>
         )}
+        {pick && <PagePicker slug={slug} pick={pick} pipelines={pipelines} />}
         {webchat.map((c) => (
           <section key={c.id} className={card} aria-labelledby={`ch-${c.id}`}>
             <div className="flex items-center gap-3">
@@ -154,6 +179,25 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
                   <Button variant="secondary" size="sm" onClick={() => disconnect(on)} disabled={pending}>
                     Desconectar
                   </Button>
+                ) : metaLogin && k !== "whatsapp" ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-muted underline-offset-2 hover:text-fg hover:underline"
+                      onClick={() => {
+                        setError(null);
+                        setOpen(k);
+                      }}
+                    >
+                      Conectar manualmente
+                    </button>
+                    <a
+                      href={`/api/meta/connect?ws=${encodeURIComponent(slug)}&kind=${k}`}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-[#1877f2] px-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-[filter] duration-fast hover:brightness-110"
+                    >
+                      <FacebookLogo className="size-4" weight="fill" aria-hidden /> Conectar com Facebook
+                    </a>
+                  </div>
                 ) : (
                   <Button
                     size="sm"
@@ -262,5 +306,78 @@ export function ChannelsManager({ slug, channels, pipelines, webhookUrl, chatBas
         )}
       </Dialog>
     </div>
+  );
+}
+
+/** volta do login da Meta: escolhe a página (e o funil) e conecta sem copiar ID nem token */
+function PagePicker({ slug, pick, pipelines }: { slug: string; pick: MetaPickOptions; pipelines: Pipeline[] }) {
+  const router = useRouter();
+  const usable = pick.kind === "messenger" ? pick.pages : pick.pages.filter((p) => p.ig);
+  const [pageId, setPageId] = useState(usable[0]?.id ?? "");
+  const [pipelineId, setPipelineId] = useState(pipelines[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const n = NETS[pick.kind];
+  const close = () => router.replace(`/${slug}/settings/channels`);
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && close()}
+      icon={<n.icon className="size-5" weight="fill" />}
+      title={pick.kind === "instagram" ? "Qual Instagram conectar?" : "Qual página conectar?"}
+      description="Você entrou na Meta. Escolha a conta e o funil onde os contatos novos caem."
+      footer={
+        <>
+          <Button variant="secondary" onClick={close}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={!pageId}
+            loading={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await connectMetaPageAction(slug, pageId, pipelineId || null);
+                if (!res.ok) return setError(res.error);
+                close();
+              })
+            }
+          >
+            Conectar {n.label}
+          </Button>
+        </>
+      }
+    >
+      {usable.length === 0 ? (
+        <p className="text-sm text-muted">
+          {pick.kind === "instagram"
+            ? "Nenhuma página autorizada tem um Instagram profissional ligado. Ligue o Instagram à página do Facebook e entre de novo, marcando a página."
+            : "Nenhuma página foi autorizada. Entre de novo e marque a página da empresa."}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-fg">{pick.kind === "instagram" ? "Conta do Instagram" : "Página do Facebook"}</legend>
+            {usable.map((p) => (
+              <label
+                key={p.id}
+                className={cn("flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 shadow-[0_0_0_1px_var(--border)]", pageId === p.id && "shadow-[0_0_0_2px_var(--accent)]")}
+              >
+                <input type="radio" name="meta-page" value={p.id} checked={pageId === p.id} onChange={() => setPageId(p.id)} className="accent-[var(--accent)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-fg">{pick.kind === "instagram" ? `@${p.ig}` : p.name}</span>
+                  {pick.kind === "instagram" && <span className="block truncate text-xs text-muted">página {p.name}</span>}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <Select label="Funil onde os contatos novos caem" value={pipelineId} onValueChange={setPipelineId} options={pipelines.map((p) => ({ value: p.id, label: p.name }))} />
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </Dialog>
   );
 }

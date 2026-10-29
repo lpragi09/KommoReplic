@@ -938,6 +938,7 @@ export * from "./agent";
 export * from "./pipelines";
 export * from "./stats";
 export * from "./sources";
+export * from "./billing";
 
 // ---------------------------------------------------------------------------
 // foto de perfil e logo da empresa

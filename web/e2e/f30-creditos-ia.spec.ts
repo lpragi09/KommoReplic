@@ -50,7 +50,8 @@ test("F30-H2 créditos de IA: teste gasta crédito, aba Uso mostra limites, chav
   await expect(page.getByText("Abrimos às 9h.").last()).toBeVisible();
   await page.goto(`/${slug}/settings/billing?aba=complementos`);
   await expect(page.getByRole("meter", { name: "Créditos de IA usados" })).toHaveAttribute("aria-valuenow", "1");
-  await expect(page.getByRole("button", { name: "Adicionar créditos" })).toHaveCount(3);
+  await expect(page.getByRole("link", { name: "Adicionar créditos" })).toHaveCount(3);
+  await expect(page.getByRole("link", { name: "Adicionar créditos" }).first()).toHaveAttribute("href", /checkout\?pacote=ia_500$/);
   await axe(page);
 
   // chave própria: formato errado é recusado; a de teste passa e a IA deixa de gastar crédito
