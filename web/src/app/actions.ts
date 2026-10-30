@@ -699,7 +699,12 @@ export async function payAction(slug: string, purchase: z.input<typeof purchaseI
     try {
       pay = await createPayment({ purchase: q.purchase, title: q.title, cents: q.cents, payer, method: m, idempotencyKey: randomUUID() });
     } catch (e) {
-      console.error("[mercadopago] pagamento", e instanceof Error ? e.message : e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[mercadopago] pagamento", msg);
+      // quem paga é admin da empresa: dizer o motivo ajuda a resolver sem abrir os logs
+      if (/live credentials/i.test(msg)) throw new DomainError("invalid", "Credenciais de teste do Mercado Pago só aceitam comprador de teste. Use as credenciais de produção para cobrar de verdade.");
+      if (/respondeu 401/.test(msg)) throw new DomainError("invalid", "A chave do Mercado Pago (MP_ACCESS_TOKEN) foi recusada. Confira se é o Access Token de produção atual.");
+      if (/payer|identification|email/i.test(msg)) throw new DomainError("invalid", "O Mercado Pago recusou os dados do pagador. Confira CPF/CNPJ e email em Alterar dados.");
       throw new DomainError("invalid", "O Mercado Pago não aceitou o pagamento agora. Confira os dados e tente de novo.");
     }
     if (await applyPayment(pay).catch(() => false)) refresh();

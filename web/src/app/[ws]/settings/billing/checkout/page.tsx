@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { getBillingProfile, listMembers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { mpOn } from "@/lib/mercadopago";
@@ -10,6 +11,7 @@ export const instant = false; // tela atrás de login: bloqueia no servidor (ver
 export const metadata = { title: "Pagamento" };
 
 export default async function CheckoutPage({ params, searchParams }: PageProps<"/[ws]/settings/billing/checkout">) {
+  await connection(); // dados de cobrança e sessão do Supabase: sempre na hora do pedido
   const { ws: slug } = await params;
   const sp = (await searchParams) as { plano?: string; periodo?: string; pacote?: string };
   const { user, ws } = await requireWorkspace(slug);
