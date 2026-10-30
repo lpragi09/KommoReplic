@@ -12,6 +12,8 @@ import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
 import { AiSwitch } from "@/components/lead/ai-switch";
 import { FunnelPicker } from "@/components/chat/funnel-picker";
+import { after } from "next/server";
+import { fillMissingPhotos } from "@/lib/zap-photos";
 
 export const metadata = { title: "Caixa de entrada" };
 
@@ -31,6 +33,10 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
   const f = filters.some((x) => x.v === sp.f) ? sp.f! : "all";
   const { user, ws } = await requireWorkspace(slug);
   const [convs, users, taskTypes, agent, pipelines] = await Promise.all([listConversations(ws.id, user.id, f), listUsers(ws.id), listTaskTypes(ws.id), getAgent(ws.id), listPipelines(ws.id)]);
+  // quem ainda não tem foto: busca no WhatsApp depois de responder (aparece no próximo refresh)
+  after(() =>
+    fillMissingPhotos(convs.map((c) => ({ contactId: c.contact.id, thread: c.externalThreadId, channelExternalId: c.channel.externalId, hasPhoto: !!c.contact.avatarUrl }))).catch(() => {}),
+  );
   const activeId = sp.c ?? null;
   const active = activeId ? await getConversation(ws.id, activeId).catch(() => null) : null;
   const leadData = active?.lead ? await getLead(ws.id, active.lead.id) : null;

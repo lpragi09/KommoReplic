@@ -38,3 +38,9 @@ export function zapSignatureOk(body: string, signature: string | null) {
   const got = Buffer.from(signature);
   return want.length === got.length && timingSafeEqual(want, got);
 }
+
+/** foto de perfil de um contato (null se não tem ou é privada) */
+export async function zapPhoto(session: string, thread: string) {
+  const r = await bridge<{ url: string | null }>(`/sessions/${session}/photo?to=${encodeURIComponent(thread)}`);
+  return r.url;
+}

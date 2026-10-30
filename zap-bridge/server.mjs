@@ -217,6 +217,12 @@ createServer(async (req, res) => {
       rmSync(join(DATA, id), { recursive: true, force: true });
       return send(res, 200, { ok: true });
     }
+    if (req.method === "GET" && action === "photo") {
+      const s = sessions.get(id);
+      const to = url.searchParams.get("to") ?? "";
+      if (!s || s.status !== "open" || !/^(lid:)?\d{6,25}$/.test(to)) return send(res, 200, { url: null });
+      return send(res, 200, { url: await photoOf(s.sock, to) });
+    }
     if (req.method === "POST" && action === "send") {
       const s = sessions.get(id);
       if (!s || s.status !== "open") return send(res, 409, { error: "WhatsApp desconectado: leia o QR code de novo." });
