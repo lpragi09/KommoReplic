@@ -10,6 +10,7 @@ import { QR_PREFIX, zapSignatureOk } from "@/lib/zap";
 type ZapEvent =
   | { type: "message"; session: string; from: string; name: string; text: string; id: string; photo?: string | null }
   | { type: "photos"; session: string; photos: { from: string; url: string }[] }
+  | { type: "names"; session: string; names: { from: string; name: string }[] }
   | { type: "status"; session: string; status: "open" | "logged_out"; me?: { phone: string; name: string } }
   | { type: "history"; session: string; messages: { from: string; out: boolean; name: string; text: string; id: string; at: string }[] };
 
@@ -61,6 +62,20 @@ export async function POST(req: Request) {
     const { data: ident } = await db.from("contact_identities").select("contact_id").eq("workspace_id", ch.workspace_id).eq("kind", "whatsapp").eq("value", thread).maybeSingle();
     if (ident) await db.from("contacts").update({ avatar_url: url }).eq("id", ident.contact_id);
   };
+  // nome salvo na agenda do celular: só troca nome que o próprio netzer inventou (nunca o que a equipe editou)
+  if (ev.type === "names") {
+    let renamed = 0;
+    for (const n of (ev.names ?? []).slice(0, 300)) {
+      const name = String(n.name ?? "").trim().slice(0, 80);
+      if (!name || !THREAD.test(n.from)) continue;
+      const { data: ident } = await db.from("contact_identities").select("contact_id, contacts(name)").eq("workspace_id", ch.workspace_id).eq("kind", "whatsapp").eq("value", n.from).maybeSingle();
+      const current = (ident?.contacts as { name?: string } | null)?.name ?? "";
+      if (!ident || current === name || !/^(Contato WhatsApp \d{1,4}|\+?\d{6,25}|Visitante \S{1,6})$/.test(current)) continue;
+      await db.from("contacts").update({ name }).eq("id", ident.contact_id);
+      renamed++;
+    }
+    return Response.json({ ok: true, renamed });
+  }
   if (ev.type === "photos") {
     for (const p of (ev.photos ?? []).slice(0, 100)) await savePhoto(p.from, p.url);
     return new Response("ok", { status: 200 });

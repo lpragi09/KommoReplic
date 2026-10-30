@@ -27,6 +27,15 @@ const logger = pino({ level: "silent" });
 const sessions = new Map();
 const validId = (id) => /^[a-zA-Z0-9-]{8,64}$/.test(id);
 const HISTORY_DAYS = Number(process.env.HISTORY_DAYS ?? 30);
+/** "5511999@s.whatsapp.net" -> "5511999"; "123@lid" -> "lid:123"; grupo/status -> null */
+function threadOfJid(jid) {
+  if (!jid) return null;
+  const base = jid.split("@")[0].split(":")[0];
+  if (jid.endsWith("@s.whatsapp.net")) return base;
+  if (jid.endsWith("@lid")) return `lid:${base}`;
+  return null;
+}
+
 /** jid -> { url, at }: a foto muda pouco e o WhatsApp limita quantas consultas aceita */
 const photoCache = new Map();
 const jidOf = (thread) => (thread.startsWith("lid:") ? `${thread.slice(4)}@lid` : `${thread}@s.whatsapp.net`);
@@ -120,6 +129,30 @@ async function start(id) {
       }
     }
   });
+  // nomes da agenda do celular chegam na sincronização de contatos (depois de conectar): junta e manda em lotes
+  const pendingNames = new Map();
+  let namesTimer = null;
+  const queueNames = (list) => {
+    for (const c of list ?? []) {
+      const name = c.name ?? c.notify ?? c.verifiedName; // "name" é o nome salvo na agenda: tem preferência
+      if (!name) continue;
+      for (const jid of [c.id, c.lid, c.phoneNumber]) {
+        const t = threadOfJid(jid);
+        if (t && (c.name || !pendingNames.has(t))) pendingNames.set(t, name);
+      }
+    }
+    if (!pendingNames.size || namesTimer) return;
+    namesTimer = setTimeout(async () => {
+      namesTimer = null;
+      const all = [...pendingNames].map(([from, name]) => ({ from, name }));
+      pendingNames.clear();
+      console.log(`[nomes] ${id}: ${all.length} contatos`);
+      for (let i = 0; i < all.length; i += 300) await notify({ type: "names", session: id, names: all.slice(i, i + 300) });
+    }, 4000);
+  };
+  sock.ev.on("contacts.upsert", queueNames);
+  sock.ev.on("contacts.update", queueNames);
+
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
     if (type !== "notify") return;
     for (const m of messages) {
@@ -133,6 +166,7 @@ async function start(id) {
 
   // histórico que o WhatsApp manda ao conectar: só conversas individuais dos últimos HISTORY_DAYS dias, em lotes
   sock.ev.on("messaging-history.set", async ({ messages, contacts, chats }) => {
+    queueNames(contacts);
     // nome de cada conversa: agenda do celular, nome público do perfil ou o nome da conversa
     const names = new Map();
     for (const c of chats ?? []) if (c.name) names.set(c.id, c.name);
