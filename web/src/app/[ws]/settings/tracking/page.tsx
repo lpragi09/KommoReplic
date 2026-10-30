@@ -2,14 +2,18 @@ import { headers } from "next/headers";
 import { listChannels, listLeads, listMessageCodes, listTrackingLinks } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { PageHeader } from "@/components/shell/page-header";
-import { TrackingManager } from "@/components/settings/tracking";
+import { TrackingManager, type Way } from "@/components/settings/tracking";
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
 export const metadata = { title: "Rastreamento e UTMs" };
 
-export default async function TrackingPage({ params }: PageProps<"/[ws]/settings/tracking">) {
+const WAYS: Way[] = ["whatsapp", "mensagem", "site", "chat", "meta"];
+
+export default async function TrackingPage({ params, searchParams }: PageProps<"/[ws]/settings/tracking">) {
   const { ws: slug } = await params;
+  const como = (await searchParams).como;
+  const initialWay = WAYS.find((w) => w === como) ?? "whatsapp";
   const { ws } = await requireWorkspace(slug);
   const [links, channels, leads, codes] = await Promise.all([listTrackingLinks(ws.id), listChannels(ws.id), listLeads(ws.id), listMessageCodes(ws.id)]);
   const stats: Record<string, { leads: number; won: number; cents: number }> = {};
@@ -32,7 +36,7 @@ export default async function TrackingPage({ params }: PageProps<"/[ws]/settings
   return (
     <>
       <PageHeader title="Rastreamento e UTMs" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
-      <TrackingManager slug={slug} origin={origin} links={links} stats={stats} codes={codes} chatKey={channels.find((c) => c.kind === "webchat")?.publicKey ?? null} />
+      <TrackingManager slug={slug} origin={origin} links={links} stats={stats} codes={codes} chatKey={channels.find((c) => c.kind === "webchat")?.publicKey ?? null} initialWay={initialWay} />
     </>
   );
 }

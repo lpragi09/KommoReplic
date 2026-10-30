@@ -42,9 +42,11 @@ test.describe("F21 UTMs e links rastreáveis", () => {
     await expect(page.getByRole("region", { name: "Campanhas" }).getByText("instagram · outubro")).toBeVisible();
 
     await page.goto(`/${slug}/settings/tracking`);
+    await expect(page.getByText("clique nos links", { exact: true })).toBeVisible();
     // do clique à venda, por link
     await expect(page.getByRole("listitem").filter({ hasText: "Instagram outubro" })).toContainText(/1\s*clique.*1\s*conversa.*1\s*lead.*0\s*vendas/);
-    // gerador de link de página com UTM
+    // gerador de link de página com UTM, na aba do site
+    await page.getByRole("tab", { name: /Tenho um site/ }).click();
     await page.getByLabel("Endereço da página").fill("minhaloja.com.br/promo");
     await page.getByLabel("Fonte da página (utm_source)").fill("Instagram");
     await page.getByLabel("Campanha da página (utm_campaign)").fill("Black Friday");
@@ -93,6 +95,7 @@ test("F21-H3 código na mensagem do anúncio vira a origem do lead", async ({ pa
   test.setTimeout(120_000);
   const { slug } = await signUp(page);
   await page.goto(`/${slug}/settings/tracking`);
+  await page.getByRole("tab", { name: /Anúncio com texto pronto/ }).click();
   await page.getByRole("button", { name: "Novo código" }).click();
   await page.getByLabel("Código", { exact: true }).fill("G-01-34");
   await page.getByLabel("Nome", { exact: true }).fill("Anúncio revisão");
@@ -118,6 +121,6 @@ test("F21-H3 código na mensagem do anúncio vira a origem do lead", async ({ pa
   await expect(page.getByText("oficina-outubro", { exact: true })).toBeVisible();
   await expect(page.getByText("AD34_IMG_REVISAO", { exact: true })).toBeVisible();
 
-  await page.goto(`/${slug}/settings/tracking`);
+  await page.goto(`/${slug}/settings/tracking?como=mensagem`);
   await expect(page.getByRole("listitem").filter({ hasText: "G-01-34" })).toContainText("1 conversa");
 });
