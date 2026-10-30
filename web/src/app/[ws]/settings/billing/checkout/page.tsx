@@ -29,7 +29,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
     item = {
       purchase: { kind: "plan", plan: key, period },
       title: `Plano ${PLAN_PRICES[key].name} · ${period === "anual" ? "anual" : "mensal"}`,
-      detail: `${seats} ${seats === 1 ? "usuário" : "usuários"} · R$ ${period === "anual" ? PLAN_PRICES[key].a : PLAN_PRICES[key].m}/usuário/mês`,
+      detail: `${seats} ${seats === 1 ? "usuário" : "usuários"} (inclui ${PLAN_PRICES[key].included})${seats > PLAN_PRICES[key].included ? ` · +R$ ${PLAN_PRICES[key].extra} por usuário a mais` : ""}${period === "anual" ? " · 12 meses pelo preço de 10" : ""}`,
       cents: planCharge(key, period, seats).cents,
       maxInstallments: period === "anual" ? 12 : 1,
     };

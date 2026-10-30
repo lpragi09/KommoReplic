@@ -12,24 +12,23 @@ import { IslandNav } from "./island-nav";
    (o que é, como funciona, 3 motivos, preço, dúvidas) e nada mais.
    Regras: nenhum dado inventado (sem depoimentos, números de clientes ou logos de "quem usa"). Animação só por CSS. */
 
+import { ANNUAL_MONTHS, PLAN_PRICES, type PriceKey } from "@/lib/plans";
 const d = (n: number) => ({ "--d": n }) as CSSProperties;
 
-const plans = [
-  { name: "Autônomo", who: "1 a 2 pessoas", m: 59, a: 49, items: ["1 funil, até 2 pessoas", "Chat do site + 1 rede social", "3 robôs ligados", "IA com créditos avulsos"] },
+const plans: { key: PriceKey; who: string; items: string[]; highlight?: boolean }[] = [
+  { key: "autonomo", who: "1 a 2 pessoas", items: ["1 funil, até 2 pessoas", "Chat do site + 1 rede social", "3 robôs ligados", "IA com créditos avulsos"] },
   {
-    name: "Equipe",
+    key: "equipe",
     who: "o time de vendas",
-    m: 99,
-    a: 82,
-    items: ["Funis e pessoas ilimitados", "Chat do site + 3 redes sociais", "Agente de IA: 500 respostas/mês", "Robôs, disparos e estatísticas", "Papéis: todos, equipe ou só os meus"],
+    items: ["Funis ilimitados, até 5 pessoas", "Chat do site + 3 redes sociais", "Agente de IA: 500 respostas/mês", "Robôs, disparos e estatísticas", "Papéis: todos, equipe ou só os meus"],
     highlight: true,
   },
-  { name: "Operação", who: "filiais e alto volume", m: 159, a: 132, items: ["Tudo do Equipe", "Redes sociais ilimitadas", "Agente de IA: 2.000 respostas/mês", "Suporte com prazo de resposta"] },
+  { key: "operacao", who: "filiais e alto volume", items: ["Tudo do Equipe, até 10 pessoas", "Redes sociais ilimitadas", "Agente de IA: 2.000 respostas/mês", "Suporte com prazo de resposta"] },
 ];
 
 const faq = [
   { q: "Preciso de cartão para testar?", a: "Não. São 14 dias com tudo liberado, sem cartão. No fim, você escolhe um plano ou o painel pausa; nada é apagado." },
-  { q: "Tem fidelidade?", a: "Não. O plano é mensal e cancela em um clique, dentro do app. No anual (2 meses grátis), se cancelar no meio, devolvemos o proporcional." },
+  { q: "Tem fidelidade?", a: "Não. Você paga o mês (ou o ano, com 2 meses grátis) por Pix, cartão ou boleto, e não existe cobrança automática: se não renovar, o painel pausa e nada é apagado." },
   { q: "Funciona com o meu WhatsApp?", a: "Sim, pela API oficial da Meta, com o número da sua empresa. Instagram Direct e Messenger entram do mesmo jeito, e o chat do site já vem pronto." },
   { q: "A IA responde meus clientes sozinha?", a: "Se você quiser. Ela responde com o que você ensinar (preços, horários, serviços) e passa para a equipe quando precisa. Cada plano inclui respostas por mês; dá para comprar mais ou usar a sua própria chave da Anthropic." },
   { q: "Consigo trazer meus contatos de outra ferramenta?", a: "Sim. Envie uma planilha CSV com nome, telefone e email em Contatos → Importar. Exportar é do mesmo jeito." },
@@ -268,19 +267,21 @@ export function Landing() {
           <SectionHead id="precos" center eyebrow="Preços" title={<>Mensal, sem fidelidade. <span className="text-on-night-muted">14 dias grátis.</span></>} />
           <div className="mt-14 grid gap-5 lg:grid-cols-3 lg:items-stretch">
             {plans.map((p) => (
-              <div key={p.name} className="fx-reveal">
+              <div key={p.key} className="fx-reveal">
                 <div className={cn("fx-bezel fx-plan h-full", p.highlight && "is-hot lg:-translate-y-4")}>
                 <div className="fx-core flex h-full flex-col p-8">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-lg text-on-night">{p.name}</h3>
+                    <h3 className="text-lg text-on-night">{PLAN_PRICES[p.key].name}</h3>
                     {p.highlight && <span className="rounded-xs bg-accent px-2 py-0.5 text-xs font-medium text-on-accent">Mais escolhido</span>}
                   </div>
                   <p className="text-sm text-on-night-muted">Para {p.who}</p>
                   <p className="mt-8 flex items-baseline gap-1">
-                    <span className="fx-plan-price text-[3rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-on-night">R$ {p.m}</span>
-                    <span className="text-sm text-on-night-muted">/usuário/mês</span>
+                    <span className="fx-plan-price text-[3rem] font-semibold leading-none tracking-[-0.04em] tabular-nums text-on-night">R$ {PLAN_PRICES[p.key].base}</span>
+                    <span className="text-sm text-on-night-muted">/mês</span>
                   </p>
-                  <p className="mt-2 text-sm text-on-night-muted">ou R$ {p.a}/mês no anual</p>
+                  <p className="mt-2 text-sm text-on-night-muted">
+                    até {PLAN_PRICES[p.key].included} pessoas{PLAN_PRICES[p.key].extra ? ` · +R$ ${PLAN_PRICES[p.key].extra} por pessoa a mais` : ""} · ou R$ {Math.round((PLAN_PRICES[p.key].base * ANNUAL_MONTHS) / 12)}/mês no anual
+                  </p>
                   <ul className="mt-8 flex flex-1 flex-col gap-3 border-t border-night-line pt-6">
                     {p.items.map((i) => (
                       <li key={i} className="flex gap-2.5 text-sm text-on-night">

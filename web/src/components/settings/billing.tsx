@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Check, Sparkle, Trash2 } from "@/components/ui/icons";
 import type { Access, Subscription } from "@/data/types";
 import { deleteAccountAction } from "@/app/actions";
-import { PLAN_PRICES, type PriceKey } from "@/lib/plans";
+import { ANNUAL_MONTHS, PLAN_PRICES, type PriceKey } from "@/lib/plans";
 import { cn } from "@/lib/cn";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/overlay";
@@ -122,10 +122,13 @@ export function Billing({ slug, sub, access, welcome }: { slug: string; sub: Sub
                 <h3 className="text-base font-semibold text-fg">{price.name}</h3>
                 <p className="text-sm text-muted">Para {p.who}</p>
                 <p className="mt-5 flex items-baseline gap-1">
-                  <span className="text-4xl font-semibold tracking-tight tabular-nums text-fg">R$ {annual ? price.a : price.m}</span>
-                  <span className="text-sm text-muted">/usuário/mês</span>
+                  <span className="text-4xl font-semibold tracking-tight tabular-nums text-fg">R$ {annual ? Math.round((price.base * ANNUAL_MONTHS) / 12) : price.base}</span>
+                  <span className="text-sm text-muted">/mês</span>
                 </p>
-                <p className="mt-1 h-5 text-xs text-muted">{annual ? `R$ ${price.a * 12} por ano, por usuário (até 12x)` : ""}</p>
+                <p className="mt-1 text-xs text-muted">
+                  até {price.included} usuários{price.extra ? ` · +R$ ${price.extra} por usuário a mais` : ""}
+                  {annual && <> · R$ {(price.base * ANNUAL_MONTHS).toLocaleString("pt-BR")} por ano (até 12x)</>}
+                </p>
                 <ul className="mt-5 flex flex-1 flex-col gap-2.5 border-t border-border pt-5">
                   {p.items.map((i) => (
                     <li key={i} className="flex gap-2 text-sm text-fg">

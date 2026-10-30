@@ -37,25 +37,33 @@ export function upgradeFor(check: (l: Limits) => boolean): string {
 
 export const fmtLimit = (n: number) => (Number.isFinite(n) ? String(n) : "ilimitado");
 
-/** preço por usuário em reais: mensal (m) e anual por mês (a, cobrado 12x de uma vez). A tela e a cobrança leem daqui. */
+/** preço por empresa em reais: mensal com N usuários incluídos e valor por usuário a mais (0 = não aceita extra).
+    O anual é 10 meses (2 grátis), cobrado de uma vez. A tela, o checkout e a cobrança leem daqui. */
 export const PLAN_PRICES = {
-  autonomo: { plan: "basic", name: "Autônomo", m: 59, a: 49 },
-  equipe: { plan: "advanced", name: "Equipe", m: 99, a: 82 },
-  operacao: { plan: "pro", name: "Operação", m: 159, a: 132 },
-} as const satisfies Record<string, { plan: Exclude<PlanKey, "trial">; name: string; m: number; a: number }>;
+  autonomo: { plan: "basic", name: "Autônomo", base: 69, included: 2, extra: 0 },
+  equipe: { plan: "advanced", name: "Equipe", base: 149, included: 5, extra: 29 },
+  operacao: { plan: "pro", name: "Operação", base: 299, included: 10, extra: 25 },
+} as const satisfies Record<string, { plan: Exclude<PlanKey, "trial">; name: string; base: number; included: number; extra: number }>;
+
+/** mensal em reais para tantos usuários */
+export const monthlyPrice = (key: PriceKey, seats: number) => {
+  const p = PLAN_PRICES[key];
+  return p.base + Math.max(0, seats - p.included) * p.extra;
+};
+export const ANNUAL_MONTHS = 10; // anual = 10 meses: 2 grátis
 export type PriceKey = keyof typeof PLAN_PRICES;
 export type Period = "mensal" | "anual";
 
 /** quanto cobrar (centavos) e quantos meses o pagamento cobre */
 export function planCharge(key: PriceKey, period: Period, seats: number) {
-  const p = PLAN_PRICES[key];
-  return period === "anual" ? { cents: p.a * 12 * seats * 100, months: 12 } : { cents: p.m * seats * 100, months: 1 };
+  const m = monthlyPrice(key, seats) * 100;
+  return period === "anual" ? { cents: m * ANNUAL_MONTHS, months: 12 } : { cents: m, months: 1 };
 }
 
 /** valor de um dia do plano (centavos), para aproveitar o tempo que sobrou ao trocar de plano */
 export const dailyCents = (plan: PlanKey, seats: number) => {
-  const p = Object.values(PLAN_PRICES).find((x) => x.plan === plan);
-  return p ? (p.m * 100 * seats) / 30 : 0;
+  const key = (Object.keys(PLAN_PRICES) as PriceKey[]).find((k) => PLAN_PRICES[k].plan === plan);
+  return key ? (monthlyPrice(key, seats) * 100) / 30 : 0;
 };
 
 /** pacotes avulsos de créditos de IA. Não vencem; o plano gasta primeiro. */

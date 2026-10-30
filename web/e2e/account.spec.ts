@@ -30,7 +30,7 @@ test.describe("conta e cobrança", () => {
     await page.getByRole("link", { name: "Assinar Equipe" }).click();
     await expect(page).toHaveURL(`/${slug}/settings/billing/checkout?plano=equipe&periodo=mensal`);
     await expect(page.getByRole("alert").filter({ hasText: "Cobrança ainda não configurada" })).toBeVisible();
-    await expect(page.getByLabel("Resumo do pedido")).toContainText(/R\$\s99,00/);
+    await expect(page.getByLabel("Resumo do pedido")).toContainText(/R\$\s149,00/);
 
     // passo 1: dados de cobrança (CPF errado é recusado no servidor)
     await page.getByLabel("CPF", { exact: true }).fill("111.111.111-11");
@@ -50,7 +50,7 @@ test.describe("conta e cobrança", () => {
     await expect(page.getByRole("heading", { name: "Forma de pagamento" })).toBeVisible();
     await expect(page.getByText("Maria Souza · 529.982.247-25")).toBeVisible();
     await page.getByText("Boleto", { exact: true }).click();
-    await expect(page.getByRole("button", { name: /Gerar boleto de R\$\s99,00/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Gerar boleto de R\$\s149,00/ })).toBeDisabled();
     await axe(page);
     // os dados ficam salvos: voltar ao checkout abre direto no pagamento
     await page.reload();
