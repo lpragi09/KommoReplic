@@ -130,15 +130,15 @@ function Panel({ slug, pipelineId, pipelines, channels, rules, links, codes, isA
 
         <section aria-labelledby="src-rules" className="border-t border-border pt-3">
           <h3 id="src-rules" className="text-xs font-medium uppercase tracking-wide text-muted">
-            Regras de entrada
+            Separar por assunto
           </h3>
-          <p className="mt-1 text-xs text-muted">A mesma rede pode abastecer vários funis. Contato novo que bater com uma regra entra aqui, não no funil padrão do canal.</p>
+          <p className="mt-1 text-xs text-muted">Ex.: no mesmo WhatsApp, quem fala “orçamento” cai neste funil e o resto continua no funil de sempre.</p>
           {mine.length > 0 && (
             <ul className="mt-2 flex flex-col gap-1">
               {mine.map((r) => (
                 <li key={r.id} className="flex items-start gap-2 rounded-md bg-surface px-2.5 py-2 text-sm">
                   <span className="min-w-0 flex-1 text-fg">
-                    <span className="font-medium">{chName(r.channelId)}</span> {MATCH_LABEL[r.match]} {valueText(r)}
+                    Mensagem {r.channelId ? <>pelo <span className="font-medium">{chName(r.channelId)}</span></> : "de qualquer canal"} que {MATCH_LABEL[r.match]} {valueText(r)}
                     <span className="block text-xs text-muted">
                       {r.matched} {r.matched === 1 ? "contato trazido" : "contatos trazidos"}
                     </span>
@@ -196,17 +196,18 @@ function NewRule({
     setRound((n) => n + 1);
   };
   return (
-    <div className="mt-2 flex flex-col gap-2 rounded-md border border-dashed border-border-input p-2">
+    <div className="mt-2 flex flex-col gap-2 rounded-md border border-dashed border-border-input p-2.5">
+      <p className="text-xs font-medium text-fg">Nova regra: quando chegar mensagem…</p>
       <Select
         size="sm"
-        label="Canal da regra"
+        label="Por qual canal"
         value={channelId}
         onValueChange={setChannelId}
         options={[{ value: "", label: "Qualquer canal" }, ...channels.map((c) => ({ value: c.id, label: c.name, hint: KIND_LABEL[c.kind], icon: <ChannelIcon kind={c.kind} className="size-4" /> }))]}
       />
       <Select
         size="sm"
-        label="Quando a mensagem"
+        label="Que"
         value={match}
         onValueChange={(v) => {
           setMatch(v as SourceRule["match"]);
@@ -214,7 +215,8 @@ function NewRule({
         }}
         options={(Object.keys(MATCH_LABEL) as SourceRule["match"][]).map((k) => ({ value: k, label: MATCH_LABEL[k] }))}
       />
-      {match === "keyword" && <Field label="Palavras" hint="Separe por vírgula. Acento e maiúscula não importam." placeholder="orçamento, preço" value={value} onChange={(e) => setValue(e.target.value)} maxLength={200} />}
+      {match === "keyword" && <Field label="Palavras" hint="Qualquer uma delas já vale. Separe por vírgula." placeholder="orçamento, preço" value={value} onChange={(e) => setValue(e.target.value)} maxLength={200} />}
+      <p className="text-xs text-muted">…o contato novo entra neste funil.</p>
       {match === "code" && (
         <Select
           key={round}
@@ -237,7 +239,7 @@ function NewRule({
       )}
       {match === "ad" && <p className="text-xs text-muted">Quem chamar clicando num anúncio “clique para conversar” do Facebook ou Instagram.</p>}
       <Button size="sm" disabled={pending || (match !== "ad" && !value.trim())} loading={pending} onClick={save}>
-        Adicionar regra
+        Criar regra
       </Button>
     </div>
   );

@@ -191,6 +191,7 @@ export function RobotEditor({
         {r.trigger === "stage_enter" && (
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium text-fg">Etapa</span>
+            <span className="text-xs text-muted">Aparecem as etapas de todos os seus funis, separadas por funil. Etapa ou funil novo entra aqui sozinho.</span>
             <select
               value={r.stageId ?? ""}
               onChange={(e) => set({ stageId: e.target.value || null })}
@@ -288,31 +289,37 @@ export function RobotEditor({
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 text-sm font-medium text-fg">Só para uma campanha (opcional)</legend>
-          <p className="mb-2 text-xs text-muted">Roda só para leads cuja origem (UTM) tenha o texto. Ex.: Campanha contém “black”.</p>
-          <div className="grid grid-cols-[1fr_1.2fr] gap-2">
+          <legend className="mb-1 text-sm font-medium text-fg">Filtrar por anúncio (opcional)</legend>
+          <p className="mb-2 text-xs text-muted">Para o robô rodar só com quem veio de um anúncio ou campanha. A origem vem dos links rastreáveis e das UTMs (Configurações → Rastreamento).</p>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-fg">
+            <span>Rodar para</span>
             <select
               aria-label="Campo da UTM"
               value={r.conditions?.utmField ?? ""}
               onChange={(e) => set({ conditions: { ...r.conditions, utmField: (e.target.value || undefined) as NonNullable<RobotInput["conditions"]>["utmField"] } })}
-              className={selectCls}
+              className={cn(selectCls, "w-auto min-w-[11rem] flex-none")}
             >
-              <option value="">Qualquer origem</option>
-              <option value="utm_campaign">Campanha</option>
-              <option value="utm_source">Fonte</option>
-              <option value="utm_medium">Mídia</option>
-              <option value="utm_content">Conteúdo</option>
-              <option value="utm_term">Termo</option>
+              <option value="">todos os leads</option>
+              <option value="utm_campaign">quem veio da campanha</option>
+              <option value="utm_source">quem veio da fonte</option>
+              <option value="utm_medium">quem veio da mídia</option>
+              <option value="utm_content">quem veio do anúncio</option>
+              <option value="utm_term">quem buscou o termo</option>
             </select>
-            <Field
-              label="Contém"
-              hideLabel
-              placeholder="contém…"
-              disabled={!r.conditions?.utmField}
-              value={r.conditions?.utmContains ?? ""}
-              onChange={(e) => set({ conditions: { ...r.conditions, utmContains: e.target.value } })}
-            />
+            {r.conditions?.utmField && (
+              <Field
+                label="Contém"
+                hideLabel
+                className="min-w-[9rem] flex-1"
+                placeholder="ex.: black-friday"
+                value={r.conditions?.utmContains ?? ""}
+                onChange={(e) => set({ conditions: { ...r.conditions, utmContains: e.target.value } })}
+              />
+            )}
           </div>
+          {r.conditions?.utmField && (
+            <p className="mt-1.5 text-xs text-muted">Basta conter o texto; maiúscula não importa. Ex.: “black” pega “black-friday” e “Black Novembro”.</p>
+          )}
         </fieldset>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
           <input
