@@ -8,7 +8,7 @@ import { createServer } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import makeWASocket, { Browsers, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from "@whiskeysockets/baileys";
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import pino from "pino";
 
@@ -76,8 +76,8 @@ async function start(id) {
   sessions.set(id, s);
   const { state, saveCreds } = await useMultiFileAuthState(join(DATA, id));
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
-  // "Desktop" faz o WhatsApp mandar o histórico recente na hora de conectar (como o app do computador)
-  const sock = makeWASocket({ auth: state, logger, version, browser: Browsers.macOS("Desktop"), markOnlineOnConnect: false, syncFullHistory: true });
+  // syncFullHistory: o WhatsApp manda o histórico recente ao conectar (com a identidade "Mac OS Desktop" ele recusa a conexão)
+  const sock = makeWASocket({ auth: state, logger, version, browser: ["netzer", "Chrome", "1.0"], markOnlineOnConnect: false, syncFullHistory: true });
   s.sock = sock;
   sock.ev.on("creds.update", saveCreds);
   sock.ev.on("connection.update", async (u) => {
@@ -90,10 +90,12 @@ async function start(id) {
       s.qr = null;
       const jid = sock.user?.id ?? "";
       s.me = { phone: jid.split(":")[0].split("@")[0], name: sock.user?.name ?? "" };
+      console.log(`[conexão] ${id} conectado ${s.me.phone}`);
       notify({ type: "status", session: id, status: "open", me: s.me });
     }
     if (u.connection === "close") {
       const code = u.lastDisconnect?.error?.output?.statusCode;
+      console.log(`[conexão] ${id} fechou (${code ?? "?"})`);
       if (code === DisconnectReason.loggedOut) {
         // desconectado pelo celular: apaga a sessão e avisa o netzer
         s.status = "closed";
