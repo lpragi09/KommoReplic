@@ -1,0 +1,15 @@
+{
+  "name": "netzer-zap-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ponte do WhatsApp por QR code para o netzer",
+  "scripts": {
+    "start": "node --env-file=.env server.mjs"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.24",
+    "pino": "9.6.0",
+    "qrcode": "1.5.4"
+  }
+}

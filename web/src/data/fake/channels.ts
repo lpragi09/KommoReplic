@@ -2,15 +2,16 @@ import "server-only";
 import { db, uid } from "./store";
 import { open, seal } from "@/lib/secret-box";
 import { sendText } from "@/lib/meta";
+import { QR_PREFIX, zapSend } from "@/lib/zap";
 import { DomainError, type Channel, type ID } from "../types";
 
 /* Canais da Meta no banco em memória (mesmo comportamento do Supabase). */
 
 type Social = "whatsapp" | "instagram" | "messenger";
-const g = globalThis as unknown as { __crmSecrets?: Map<string, { token: string; pageId?: string; appSecret?: string }> };
+const g = globalThis as unknown as { __crmSecrets?: Map<string, { token: string; pageId?: string; appSecret?: string; provider?: "qr" }> };
 const secrets = (g.__crmSecrets ??= new Map());
 
-export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; appSecret?: string; name: string; pipelineId: ID | null }): Promise<Channel> {
+export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; appSecret?: string; name: string; pipelineId: ID | null; provider?: "qr"; status?: Channel["status"] }): Promise<Channel> {
   if (db.channels.some((c) => c.kind === input.kind && c.externalId === input.externalId && c.workspaceId !== wsId && c.status !== "disconnected"))
     throw new DomainError("invalid", "Essa conta já está conectada em outra empresa.");
   let ch = db.channels.find((c) => c.workspaceId === wsId && c.kind === input.kind && c.externalId === input.externalId);
@@ -18,8 +19,8 @@ export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social
     ch = { id: uid(), workspaceId: wsId, kind: input.kind, name: input.name, publicKey: null, defaultPipelineId: input.pipelineId, status: "connected" };
     db.channels.push(ch);
   }
-  Object.assign(ch, { name: input.name, status: "connected", defaultPipelineId: input.pipelineId, externalId: input.externalId });
-  secrets.set(ch.id, { token: seal(input.token), pageId: input.pageId, appSecret: input.appSecret ? seal(input.appSecret) : secrets.get(ch.id)?.appSecret });
+  Object.assign(ch, { name: input.name, status: input.status ?? "connected", defaultPipelineId: input.pipelineId, externalId: input.externalId });
+  secrets.set(ch.id, { token: seal(input.token), pageId: input.pageId, provider: input.provider, appSecret: input.appSecret ? seal(input.appSecret) : secrets.get(ch.id)?.appSecret });
   return ch;
 }
 
@@ -40,7 +41,8 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
     const ext = (ch as Channel & { externalId?: string }).externalId;
     if (!sec || !ext) continue;
     try {
-      await sendText(ch.kind as Social, ch.kind === "instagram" ? (sec.pageId ?? ext) : ext, open(sec.token), conv.externalThreadId, m.body);
+      if (sec.provider === "qr") await zapSend(ext.slice(QR_PREFIX.length), conv.externalThreadId, m.body);
+      else await sendText(ch.kind as Social, ch.kind === "instagram" ? (sec.pageId ?? ext) : ext, open(sec.token), conv.externalThreadId, m.body);
       m.status = "sent";
       sent++;
     } catch {
@@ -51,3 +53,11 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
 }
 
 export async function updateDeliveryStatus(_externalId: string, _status: string, _error?: string) {}
+
+/** canal por QR code: fica "conectando" até lerem o QR; depois "conectado" com o número no nome */
+export async function setChannelStatus(wsId: ID, channelId: ID, status: Channel["status"], name?: string) {
+  const ch = db.channels.find((c) => c.id === channelId && c.workspaceId === wsId);
+  if (!ch) throw new DomainError("not_found");
+  ch.status = status;
+  if (name) ch.name = name;
+}

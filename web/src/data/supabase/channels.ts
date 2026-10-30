@@ -3,6 +3,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { open, seal } from "@/lib/secret-box";
 import { sendMedia, sendText } from "@/lib/meta";
+import { QR_PREFIX, zapSend } from "@/lib/zap";
 import { DomainError, type Channel, type ID } from "../types";
 
 /* Canais da Meta no Supabase: conectar (token cifrado), desconectar e entregar a fila de mensagens. */
@@ -20,10 +21,11 @@ function check(r: { data: unknown; error: PostgrestError | null }): any {
   return r.data;
 }
 
-export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; appSecret?: string; name: string; pipelineId: ID | null }): Promise<Channel> {
+export async function connectChannel(wsId: ID, _actor: ID, input: { kind: Social; externalId: string; pageId?: string; token: string; appSecret?: string; name: string; pipelineId: ID | null; provider?: "qr"; status?: Channel["status"] }): Promise<Channel> {
   const sb = await userClient();
   const existing = check(await sb.from("channels").select("id").eq("workspace_id", wsId).eq("kind", input.kind).eq("external_id", input.externalId).maybeSingle());
-  const row = { name: input.name, external_id: input.externalId, status: "connected", status_detail: null, default_pipeline_id: input.pipelineId, config: input.pageId ? { page_id: input.pageId } : {} };
+  const config = input.provider ? { provider: input.provider } : input.pageId ? { page_id: input.pageId } : {};
+  const row = { name: input.name, external_id: input.externalId, status: input.status ?? "connected", status_detail: null, default_pipeline_id: input.pipelineId, config };
   const ch = existing
     ? check(await sb.from("channels").update(row).eq("id", existing.id).select("*").single())
     : check(await sb.from("channels").insert({ ...row, workspace_id: wsId, kind: input.kind }).select("*").single());
@@ -66,8 +68,12 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
         const { data: signed } = await a.storage.from("attachments").createSignedUrl(m.files.storage_path, 24 * 3600);
         if (!signed?.signedUrl) throw new Error("Não deu para gerar o link do arquivo.");
         const type = m.kind === "image" || m.kind === "audio" || m.kind === "video" ? m.kind : "file";
-        extId = await sendMedia(ch.kind, via, open(sec.token_enc), to, { type, link: signed.signedUrl, caption: m.body || undefined, filename: m.files.name });
-      } else extId = await sendText(ch.kind, via, open(sec.token_enc), to, m.body);
+        extId =
+          ch.config?.provider === "qr"
+            ? await zapSend(ch.external_id.slice(QR_PREFIX.length), to, m.body ?? "", { type, url: signed.signedUrl, filename: m.files.name })
+            : await sendMedia(ch.kind, via, open(sec.token_enc), to, { type, link: signed.signedUrl, caption: m.body || undefined, filename: m.files.name });
+      } else
+        extId = ch.config?.provider === "qr" ? await zapSend(ch.external_id.slice(QR_PREFIX.length), to, m.body) : await sendText(ch.kind, via, open(sec.token_enc), to, m.body);
       await a.from("messages").update({ status: "sent", external_id: extId, error: null }).eq("id", m.id);
       sent++;
     } catch (e) {
@@ -83,4 +89,10 @@ export async function updateDeliveryStatus(externalId: string, status: string, e
   const st = map[status];
   if (!st) return;
   await adminClient().from("messages").update({ status: st, ...(error ? { error: error.slice(0, 300) } : {}) }).eq("external_id", externalId).eq("direction", "out");
+}
+
+/** canal por QR code: fica "conectando" até lerem o QR; depois "conectado" com o número no nome */
+export async function setChannelStatus(wsId: ID, channelId: ID, status: Channel["status"], name?: string) {
+  const sb = await userClient();
+  check(await sb.from("channels").update({ status, ...(name ? { name } : {}) }).eq("workspace_id", wsId).eq("id", channelId).select("id"));
 }
