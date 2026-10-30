@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { Inbox, MessageSquare, Users } from "@/components/ui/icons";
-import { getAgent, getConversation, getLead, listConversations, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
+import { getAgent, getConversation, getLead, listConversations, listPipelines, listTaskTypes, listUsers, windowClosed, type ConvFilter } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { leadTitle, money, when } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -11,6 +11,7 @@ import { Feed } from "@/components/lead/feed";
 import { Composer } from "@/components/lead/composer";
 import { MarkRead } from "@/components/lead/mark-read";
 import { AiSwitch } from "@/components/lead/ai-switch";
+import { FunnelPicker } from "@/components/chat/funnel-picker";
 
 export const metadata = { title: "Caixa de entrada" };
 
@@ -29,7 +30,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
   const sp = (await searchParams) as { c?: string; f?: ConvFilter };
   const f = filters.some((x) => x.v === sp.f) ? sp.f! : "all";
   const { user, ws } = await requireWorkspace(slug);
-  const [convs, users, taskTypes, agent] = await Promise.all([listConversations(ws.id, user.id, f), listUsers(ws.id), listTaskTypes(ws.id), getAgent(ws.id)]);
+  const [convs, users, taskTypes, agent, pipelines] = await Promise.all([listConversations(ws.id, user.id, f), listUsers(ws.id), listTaskTypes(ws.id), getAgent(ws.id), listPipelines(ws.id)]);
   const activeId = sp.c ?? null;
   const active = activeId ? await getConversation(ws.id, activeId).catch(() => null) : null;
   const leadData = active?.lead ? await getLead(ws.id, active.lead.id) : null;
@@ -116,14 +117,11 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
               {agent.enabled && agent.channels.includes(active.channel.kind) && (
                 <AiSwitch key={active.conversation.id} slug={slug} conversationId={active.conversation.id} paused={!!active.conversation.aiPaused} />
               )}
-              {active.lead ? (
+              <FunnelPicker key={`${active.conversation.id}-${active.lead?.stageId ?? ""}`} slug={slug} conversationId={active.conversation.id} lead={active.lead ? { id: active.lead.id, stageId: active.lead.stageId } : null} pipelines={pipelines} />
+              {active.lead && (
                 <Link href={`/${slug}/leads/${active.lead.id}`} className="rounded-sm border border-border px-3 py-1.5 text-sm hover:border-border-input">
                   <span className="text-muted">Lead:</span> <span className="font-medium text-fg">{leadTitle(active.lead)}</span>{" "}
                   <span className="text-muted">· {money(active.lead.priceCents)}</span>
-                </Link>
-              ) : (
-                <Link href={`/${slug}/leads`} className="text-sm font-medium text-accent-text underline">
-                  Aceitar na etapa de entrada
                 </Link>
               )}
             </div>

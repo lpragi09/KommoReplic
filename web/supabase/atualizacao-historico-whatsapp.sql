@@ -14,7 +14,7 @@ begin
     select contact_id into ct from contact_identities where workspace_id = ch.workspace_id and kind = 'whatsapp' and value = p_thread;
     if ct is null then
       insert into contacts (workspace_id, name)
-      values (ch.workspace_id, coalesce(nullif(left(btrim(p_sender_name), 80), ''), '+' || regexp_replace(p_thread, '\D', '', 'g')))
+      values (ch.workspace_id, coalesce(nullif(left(btrim(p_sender_name), 80), ''), case when p_thread like 'lid:%' then 'Contato WhatsApp ' || right(regexp_replace(p_thread, '\D', '', 'g'), 4) else '+' || regexp_replace(p_thread, '\D', '', 'g') end))
       returning id into ct;
       insert into contact_identities (workspace_id, contact_id, kind, value) values (ch.workspace_id, ct, 'whatsapp', p_thread);
     end if;
@@ -63,3 +63,9 @@ begin
     'change', 'ws:' || rec.workspace_id::text, true);
   return null;
 end $$;
+
+-- contatos que chegam só com o código "lid" (o WhatsApp esconde o número) não viram um número inventado
+update contacts c set name = 'Contato WhatsApp ' || right(regexp_replace(ci.value, '\D', '', 'g'), 4)
+from contact_identities ci
+where ci.contact_id = c.id and ci.kind = 'whatsapp' and ci.value like 'lid:%'
+  and c.name = '+' || regexp_replace(ci.value, '\D', '', 'g');

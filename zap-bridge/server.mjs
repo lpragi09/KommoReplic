@@ -121,8 +121,15 @@ async function start(id) {
   });
 
   // histórico que o WhatsApp manda ao conectar: só conversas individuais dos últimos HISTORY_DAYS dias, em lotes
-  sock.ev.on("messaging-history.set", async ({ messages, contacts }) => {
-    const names = new Map((contacts ?? []).map((c) => [c.id, c.notify ?? c.name ?? ""]));
+  sock.ev.on("messaging-history.set", async ({ messages, contacts, chats }) => {
+    // nome de cada conversa: agenda do celular, nome público do perfil ou o nome da conversa
+    const names = new Map();
+    for (const c of chats ?? []) if (c.name) names.set(c.id, c.name);
+    for (const c of contacts ?? []) {
+      const n = c.name ?? c.notify ?? c.verifiedName;
+      if (n) names.set(c.id, n);
+      if (n && c.lid) names.set(c.lid, n);
+    }
     const since = Date.now() / 1000 - HISTORY_DAYS * 86400;
     const items = [];
     for (const m of messages ?? []) {

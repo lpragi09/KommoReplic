@@ -45,11 +45,12 @@ async function Gate({ params, children }: { params: Promise<{ ws: string }>; chi
 export default function WorkspaceLayout({ children, params }: LayoutProps<"/[ws]">) {
   const p = params as Promise<{ ws: string }>;
   return (
-    <div className="flex h-dvh flex-col md:flex-row">
+    // a página em si nunca rola (só as listas dentro dela): senão o painel inteiro sobe e sobra um vão vazio
+    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <Suspense fallback={<div className="hidden w-[var(--nav-collapsed)] shrink-0 bg-nav-bg md:block" />}>
         <Nav params={p} />
       </Suspense>
-      <main id="conteudo" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <main id="conteudo" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={null}>
           <Gate params={p}>{children}</Gate>
         </Suspense>

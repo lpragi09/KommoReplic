@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { DomainError } from "./types";
 import { userBySessionToken, workspaceForUser } from ".";
@@ -13,6 +14,8 @@ export async function currentUser() {
 
 /** Usuário logado e membro do workspace da URL, ou redireciona / 404. */
 export async function requireWorkspace(slug: string) {
+  // sessão do Supabase usa o relógio: tela atrás de login sempre renderiza na hora do pedido
+  await connection();
   const user = await currentUser();
   if (!user) redirect("/login");
   try {

@@ -992,3 +992,22 @@ export async function setWorkspaceLogo(wsId: ID, logo: string | null) {
   if (error) throw toDomain(error);
   if (!data?.length) throw new DomainError("forbidden", "Só administradores podem trocar o logo da empresa.");
 }
+
+/** conversa sem lead (ex.: histórico importado): cria o lead na etapa escolhida, ligado ao contato e à conversa */
+export async function leadFromConversation(wsId: ID, actor: ID, conversationId: ID, pipelineId: ID, stageId: ID) {
+  const sb = await userClient();
+  const conv = check(await sb.from("conversations").select("id, contact_id, lead_id, channels(kind)").eq("id", conversationId).eq("workspace_id", wsId).maybeSingle());
+  if (!conv) throw new DomainError("not_found");
+  if (conv.lead_id) throw new DomainError("already_resolved", "Essa conversa já tem lead.");
+  const lead = check(
+    await sb
+      .from("leads")
+      .insert({ workspace_id: wsId, pipeline_id: pipelineId, stage_id: stageId, name: "", price_cents: 0, responsible_user_id: actor, created_by: actor, source: conv.channels?.kind ?? "manual" })
+      .select("id")
+      .single(),
+  );
+  check(await sb.from("lead_contacts").insert({ lead_id: lead.id, contact_id: conv.contact_id, workspace_id: wsId, is_main: true }));
+  check(await sb.from("conversations").update({ lead_id: lead.id, assigned_user_id: actor }).eq("id", conversationId).eq("workspace_id", wsId));
+  await sb.from("incoming_leads").update({ status: "linked", resolved_lead_id: lead.id, resolved_by: actor, resolved_at: new Date().toISOString() }).eq("conversation_id", conversationId).eq("status", "pending");
+  return leadRow(lead.id);
+}

@@ -282,6 +282,19 @@ export async function createLeadAction(slug: string, input: z.input<typeof newLe
   });
 }
 
+/** chat sem lead (histórico importado, contato antigo): coloca no funil, na etapa escolhida, sem sair da conversa */
+export async function leadFromConversationAction(slug: string, conversationId: string, stageId: string) {
+  return run(async () => {
+    const { user, ws } = await requireActive(slug);
+    const stage = (await data.listPipelines(ws.id)).flatMap((p) => p.stages).find((s) => s.id === id.parse(stageId));
+    if (!stage) throw new DomainError("invalid", "Etapa não encontrada.");
+    const l = await data.leadFromConversation(ws.id, user.id, id.parse(conversationId), stage.pipelineId, stage.id);
+    await robotsForNewLead(ws.id, l.id, l.stageId);
+    refresh();
+    return { id: l.id };
+  });
+}
+
 const leadPatch = z.object({
   name: z.string().trim().max(200).optional(),
   price: z.string().optional(),

@@ -944,3 +944,21 @@ export async function setWorkspaceLogo(wsId: ID, logo: string | null) {
   const w = db.workspaces.find((x) => x.id === wsId);
   if (w) w.logo = logo;
 }
+
+/** conversa sem lead (ex.: histórico importado): cria o lead na etapa escolhida, ligado ao contato e à conversa */
+export async function leadFromConversation(wsId: ID, actor: ID, conversationId: ID, pipelineId: ID, stageId: ID) {
+  const conv = db.conversations.find((c) => c.id === conversationId && c.workspaceId === wsId);
+  if (!conv) throw new DomainError("not_found");
+  if (conv.leadId) throw new DomainError("already_resolved", "Essa conversa já tem lead.");
+  const contact = db.contacts.find((c) => c.id === conv.contactId);
+  const l = await createLead(wsId, actor, { pipelineId, stageId, name: "", priceCents: 0 });
+  if (contact) db.leadContacts.push({ leadId: l.id, contactId: contact.id, isMain: true });
+  conv.leadId = l.id;
+  conv.assignedUserId ??= actor;
+  for (const il of db.incoming.filter((i) => i.conversationId === conversationId && i.status === "pending")) {
+    il.status = "linked";
+    il.resolvedLeadId = l.id;
+    il.resolvedBy = actor;
+  }
+  return l;
+}
