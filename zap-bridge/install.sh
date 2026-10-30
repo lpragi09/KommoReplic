@@ -63,9 +63,16 @@ if [ ! -x /usr/local/bin/caddy ]; then
   chmod +x /usr/local/bin/caddy
 fi
 busy() { ss -ltn "( sport = :$1 )" | grep -q LISTEN; }
-HTTPS_PORT=443
-if busy 443; then HTTPS_PORT=8443; fi
-if busy 80; then echo "A porta 80 já está em uso: o HTTPS automático precisa dela. Me mande esta mensagem."; exit 1; fi
+if [ -f /etc/caddy/Caddyfile ] && grep -q "reverse_proxy 127.0.0.1:3210" /etc/caddy/Caddyfile; then
+  # reinstalação: o HTTPS já é nosso (é ele que ocupa a 80 e a 443); só mantém a porta escolhida antes
+  HTTPS_PORT=$(sed -n 's/^ *https_port \([0-9]*\).*/\1/p' /etc/caddy/Caddyfile)
+  HTTPS_PORT=${HTTPS_PORT:-443}
+  systemctl stop netzer-caddy 2>/dev/null || true
+else
+  HTTPS_PORT=443
+  if busy 443; then HTTPS_PORT=8443; fi
+  if busy 80; then echo "A porta 80 já está em uso: o HTTPS automático precisa dela. Me mande esta mensagem."; exit 1; fi
+fi
 mkdir -p /etc/caddy /var/lib/caddy
 id caddy >/dev/null 2>&1 || useradd --system --home /var/lib/caddy --shell /usr/sbin/nologin caddy
 chown caddy:caddy /var/lib/caddy
