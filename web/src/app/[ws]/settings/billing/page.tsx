@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
-import { getAccess, getAiWallet, getSubscription, getUsageCounts, listMembers } from "@/data";
+import { connection } from "next/server";
+import { getAccess, getAiWallet, getSubscription, getUsageCounts, listCheckoutPayments, listMembers } from "@/data";
+import { refreshOpenPayments } from "@/lib/billing-apply";
+import { PaymentsHistory } from "@/components/settings/payments";
 import { requireWorkspace } from "@/data/session";
 import { AI_PACKS } from "@/lib/plans";
 import { cn } from "@/lib/cn";
@@ -42,6 +45,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           {tab === "plano" && (
             <>
               <Billing slug={slug} sub={sub} access={access} welcome={sp.semteste ? "no_trial" : sp.bemvindo ? "new" : null} />
+              <Payments slug={slug} wsId={ws.id} />
               <DeleteAccount />
             </>
           )}
@@ -62,4 +66,16 @@ async function Addons({ slug, wsId, userId, bought }: { slug: string; wsId: stri
 async function Usage({ slug, wsId, access }: { slug: string; wsId: string; access: Awaited<ReturnType<typeof getAccess>> }) {
   const [usage, wallet] = await Promise.all([getUsageCounts(wsId), getAiWallet(wsId)]);
   return <UsagePanel slug={slug} access={access} usage={usage} wallet={wallet} />;
+}
+
+/** histórico do checkout; o que está em aberto é conferido no Mercado Pago antes de mostrar */
+async function Payments({ slug, wsId }: { slug: string; wsId: string }) {
+  const { payments, now } = await loadPayments(wsId);
+  return <PaymentsHistory slug={slug} payments={payments} now={now} />;
+}
+
+async function loadPayments(wsId: string) {
+  await connection();
+  const now = Date.now();
+  return { payments: await refreshOpenPayments(await listCheckoutPayments(wsId), now), now };
 }

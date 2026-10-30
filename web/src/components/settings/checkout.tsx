@@ -420,17 +420,6 @@ function CardBrick({
 
 function ResultView({ slug, result, onRetry, onUpdate }: { slug: string; result: Result; onRetry: () => void; onUpdate: (r: Result) => void }) {
   const [copied, setCopied] = useState(false);
-  const waiting = result.status === "pending" || result.status === "in_process";
-
-  // Pix/boleto em aberto: pergunta a cada 5 s se já caiu (o webhook também libera, isto só mostra na hora)
-  useEffect(() => {
-    if (!waiting || !result.pix) return;
-    const t = setInterval(async () => {
-      const r = await paymentStatusAction(slug, result.id);
-      if (r.ok && r.data.status !== result.status) onUpdate(r.data);
-    }, 5000);
-    return () => clearInterval(t);
-  }, [slug, result, waiting, onUpdate]);
 
   const copy = async (text: string) => {
     try {
@@ -471,25 +460,10 @@ function ResultView({ slug, result, onRetry, onUpdate }: { slug: string; result:
   if (result.pix)
     return (
       <section className={box} aria-labelledby="pix-t">
-        <div>
-          <h2 id="pix-t" className="text-lg font-semibold text-fg">
-            Pague com Pix
-          </h2>
-          <p className="text-sm text-muted">Abra o app do banco, escolha Pix e leia o QR code ou cole o código. Esta tela atualiza sozinha quando o pagamento cair.</p>
-        </div>
-        {result.pix.image && (
-          // eslint-disable-next-line @next/next/no-img-element -- QR code em base64 vindo do Mercado Pago
-          <img src={`data:image/png;base64,${result.pix.image}`} alt="QR code do Pix" className="size-56 self-center rounded-lg bg-white p-2 shadow-[0_0_0_1px_var(--border)]" />
-        )}
-        <div className="flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-2 text-sm">{result.pix.code}</code>
-          <Button variant="secondary" size="sm" icon={copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={() => copy(result.pix!.code)}>
-            {copied ? "Copiado" : "Copiar código"}
-          </Button>
-        </div>
-        <p className="flex items-center gap-2 text-sm text-muted" role="status">
-          <span className="size-2 animate-pulse rounded-full bg-warning" aria-hidden /> Aguardando o pagamento…
-        </p>
+        <h2 id="pix-t" className="text-lg font-semibold text-fg">
+          Pague com Pix
+        </h2>
+        <PixBox slug={slug} paymentId={result.id} pix={result.pix} onChange={(status) => onUpdate({ ...result, status })} />
       </section>
     );
 
@@ -524,5 +498,46 @@ function ResultView({ slug, result, onRetry, onUpdate }: { slug: string; result:
         Voltar para Plano e cobrança
       </Link>
     </section>
+  );
+}
+
+/** QR code + copia e cola do Pix; pergunta a cada 5 s se já caiu (o webhook também libera, isto só mostra na hora) */
+export function PixBox({ slug, paymentId, pix, onChange }: { slug: string; paymentId: string; pix: { code: string; image: string | null }; onChange: (status: string) => void }) {
+  const [copied, setCopied] = useState(false);
+  const changed = useRef(onChange);
+  useEffect(() => {
+    changed.current = onChange;
+  });
+  useEffect(() => {
+    const t = setInterval(async () => {
+      const r = await paymentStatusAction(slug, paymentId);
+      if (r.ok && r.data.status !== "pending" && r.data.status !== "in_process") changed.current(r.data.status);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [slug, paymentId]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(pix.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted">Abra o app do banco, escolha Pix e leia o QR code ou cole o código. Esta tela atualiza sozinha quando o pagamento cair.</p>
+      {pix.image && (
+        // eslint-disable-next-line @next/next/no-img-element -- QR code em base64 vindo do Mercado Pago
+        <img src={`data:image/png;base64,${pix.image}`} alt="QR code do Pix" className="size-56 self-center rounded-lg bg-white p-2 shadow-[0_0_0_1px_var(--border)]" />
+      )}
+      <div className="flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-sm bg-surface px-2 py-2 text-sm">{pix.code}</code>
+        <Button variant="secondary" size="sm" icon={copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={copy}>
+          {copied ? "Copiado" : "Copiar código"}
+        </Button>
+      </div>
+      <p className="flex items-center gap-2 text-sm text-muted" role="status">
+        <span className="size-2 animate-pulse rounded-full bg-warning" aria-hidden /> Aguardando o pagamento…
+      </p>
+    </div>
   );
 }

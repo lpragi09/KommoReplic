@@ -310,6 +310,19 @@ export type BillingProfile = {
   address: { zip: string; street: string; number: string; complement: string; district: string; city: string; state: string };
 };
 
+/** pagamento gerado no checkout (aprovado ou não); no Pix/boleto em aberto, guarda como pagar */
+export type CheckoutPayment = {
+  id: string;
+  title: string;
+  cents: number;
+  method: "pix" | "boleto" | "card";
+  status: string;
+  pix: { code: string; image: string | null } | null;
+  boleto: { url: string; barcode: string | null } | null;
+  expiresAt: ISO | null;
+  createdAt: ISO;
+};
+
 export type Subscription = {
   plan: "trial" | "basic" | "advanced" | "pro";
   status: "trialing" | "active" | "past_due" | "canceled" | "unpaid";

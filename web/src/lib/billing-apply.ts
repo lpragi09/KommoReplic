@@ -1,6 +1,8 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/clients";
-import { decodeRef, type MpPayment } from "@/lib/mercadopago";
+import { decodeRef, getPayment, mpOn, type MpPayment } from "@/lib/mercadopago";
+import { setCheckoutPaymentStatus } from "@/data";
+import type { CheckoutPayment } from "@/data/types";
 import { AI_PACKS, PLAN_PRICES, dailyCents, planCharge } from "@/lib/plans";
 
 /* Pagamento aprovado → libera o que foi comprado. Chamado pelo webhook e pela própria tela de checkout
@@ -48,4 +50,25 @@ export async function applyPayment(pay: MpPayment) {
   });
   if (error) throw new Error(error.message);
   return true;
+}
+
+/** Pix/boleto ainda em aberto: confere no Mercado Pago ao abrir a aba de cobrança (rede de segurança se um aviso se perdeu) */
+export async function refreshOpenPayments(list: CheckoutPayment[], now: number) {
+  if (!mpOn()) return list;
+  const open = list.filter((p) => (p.status === "pending" || p.status === "in_process") && (!p.expiresAt || Date.parse(p.expiresAt) > now)).slice(0, 3);
+  const fresh = new Map<string, string>();
+  await Promise.all(
+    open.map(async (p) => {
+      try {
+        const pay = await getPayment(p.id);
+        if (pay.status === p.status) return;
+        await setCheckoutPaymentStatus(p.id, pay.status);
+        await applyPayment(pay);
+        fresh.set(p.id, pay.status);
+      } catch (e) {
+        console.error("[pagamentos] conferir", p.id, e instanceof Error ? e.message : e);
+      }
+    }),
+  );
+  return fresh.size ? list.map((p) => (fresh.has(p.id) ? { ...p, status: fresh.get(p.id)! } : p)) : list;
 }

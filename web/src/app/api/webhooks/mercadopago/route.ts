@@ -1,5 +1,6 @@
 import { getPayment, mpOn } from "@/lib/mercadopago";
 import { applyPayment } from "@/lib/billing-apply";
+import { setCheckoutPaymentStatus } from "@/data";
 
 /* Webhook do Mercado Pago.
    O aviso só traz o id do pagamento; relemos o pagamento na API com o nosso token (aviso falso não libera nada)
@@ -15,7 +16,9 @@ export async function POST(req: Request) {
   if (type !== "payment" || !/^\d{1,30}$/.test(id)) return new Response("ok (ignorado)", { status: 200 });
 
   try {
-    await applyPayment(await getPayment(id));
+    const pay = await getPayment(id);
+    await setCheckoutPaymentStatus(id, pay.status);
+    await applyPayment(pay);
   } catch (e) {
     console.error("[mercadopago] aviso", id, e instanceof Error ? e.message : e);
     return new Response("erro ao processar", { status: 500 }); // o Mercado Pago tenta de novo

@@ -707,8 +707,10 @@ export async function payAction(slug: string, purchase: z.input<typeof purchaseI
       if (/payer|identification|email/i.test(msg)) throw new DomainError("invalid", "O Mercado Pago recusou os dados do pagador. Confira CPF/CNPJ e email em Alterar dados.");
       throw new DomainError("invalid", "O Mercado Pago não aceitou o pagamento agora. Confira os dados e tente de novo.");
     }
+    const view = paymentView(pay);
+    await data.saveCheckoutPayment(ws.id, { id: view.id, title: q.title, cents: q.cents, method: m.kind, status: view.status, pix: view.pix, boleto: view.boleto, expiresAt: view.expiresAt, createdAt: new Date().toISOString() });
     if (await applyPayment(pay).catch(() => false)) refresh();
-    return paymentView(pay);
+    return view;
   });
 }
 
@@ -719,6 +721,7 @@ export async function paymentStatusAction(slug: string, paymentId: string) {
     if (!/^\d{1,30}$/.test(paymentId)) throw new DomainError("not_found");
     const pay = await getPayment(paymentId);
     if (decodeRef(pay.external_reference)?.ws !== ws.id) throw new DomainError("not_found");
+    await data.setCheckoutPaymentStatus(String(pay.id), pay.status);
     if (await applyPayment(pay).catch(() => false)) refresh();
     return paymentView(pay);
   });
