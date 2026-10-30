@@ -3,6 +3,7 @@ import { InstantLink, LinkGroup } from "@/components/ui/instant-link";
 import { connection } from "next/server";
 import { getAccess, getAiWallet, getSubscription, getUsageCounts, listCheckoutPayments, listMembers } from "@/data";
 import { refreshOpenPayments } from "@/lib/billing-apply";
+import { aiAvailable } from "@/lib/ai-agent";
 import { PaymentsHistory } from "@/components/settings/payments";
 import { requireWorkspace } from "@/data/session";
 import { AI_PACKS } from "@/lib/plans";
@@ -60,7 +61,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 async function Addons({ slug, wsId, userId, bought }: { slug: string; wsId: string; userId: string; bought: boolean }) {
   const [wallet, members] = await Promise.all([getAiWallet(wsId), listMembers(wsId)]);
   const isAdmin = !!members.members.find((m) => m.userId === userId)?.isAdmin;
-  return <AiAddons slug={slug} wallet={wallet} prices={packPrices} isAdmin={isAdmin} bought={bought} />;
+  return <AiAddons slug={slug} wallet={wallet} prices={packPrices} isAdmin={isAdmin} bought={bought} onSale={aiAvailable()} />;
 }
 
 async function Usage({ slug, wsId, access }: { slug: string; wsId: string; access: Awaited<ReturnType<typeof getAccess>> }) {

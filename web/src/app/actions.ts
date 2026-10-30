@@ -639,6 +639,7 @@ const methodInput = z.discriminatedUnion("kind", [
 async function purchaseQuote(wsId: string, input: z.input<typeof purchaseInput>) {
   const v = purchaseInput.parse(input);
   if (v.kind === "credits") {
+    if (!aiAvailable()) throw new DomainError("invalid", "Os créditos de IA ainda não estão à venda. Use a sua chave da Anthropic por enquanto.");
     const p = AI_PACKS.find((x) => x.key === v.pack)!;
     return { purchase: { kind: "credits", ws: wsId, pack: p.key } as Purchase, title: `netzer · ${p.credits} respostas da IA`, cents: p.cents, maxInstallments: 1 };
   }

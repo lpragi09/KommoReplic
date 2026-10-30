@@ -39,7 +39,7 @@ export function AiCreditsMeter({ wallet, compact }: { wallet: AiWallet; compact?
   );
 }
 
-export function AiAddons({ slug, wallet, prices, isAdmin, bought }: { slug: string; wallet: AiWallet; prices: Record<string, string>; isAdmin: boolean; bought: boolean }) {
+export function AiAddons({ slug, wallet, prices, isAdmin, bought, onSale }: { slug: string; wallet: AiWallet; prices: Record<string, string>; isAdmin: boolean; bought: boolean; onSale: boolean }) {
   const [pending, start] = useTransition();
   const [picked, setPicked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +87,11 @@ export function AiAddons({ slug, wallet, prices, isAdmin, bought }: { slug: stri
               <p className="text-2xl font-semibold tabular-nums tracking-tight text-fg">{fmt(p.credits)}</p>
               <p className="text-sm text-muted">respostas da IA</p>
               <p className="mt-3 text-sm font-medium text-fg">{prices[p.key] ?? "Preço na próxima tela"}</p>
-              {isAdmin ? (
+              {!onSale ? (
+                <Button className="mt-3" variant="secondary" size="sm" disabled>
+                  Em breve
+                </Button>
+              ) : isAdmin ? (
                 <Link href={`/${slug}/settings/billing/checkout?pacote=${p.key}`} className={cn(buttonClass(i === 1 ? "primary" : "secondary", "sm"), "mt-3")}>
                   Adicionar créditos
                 </Link>

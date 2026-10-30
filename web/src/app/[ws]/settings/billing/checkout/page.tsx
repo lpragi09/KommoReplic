@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { getBillingProfile, listMembers } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { mpOn } from "@/lib/mercadopago";
+import { aiAvailable } from "@/lib/ai-agent";
 import { AI_PACKS, PLAN_PRICES, planCharge, type PriceKey } from "@/lib/plans";
 import { PageHeader } from "@/components/shell/page-header";
 import { Checkout, type CheckoutItem } from "@/components/settings/checkout";
@@ -20,7 +21,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps<"
 
   // o mesmo cálculo do servidor na hora de cobrar (o valor final sai de lá, não desta tela)
   let item: CheckoutItem;
-  const pack = AI_PACKS.find((p) => p.key === sp.pacote);
+  const pack = aiAvailable() ? AI_PACKS.find((p) => p.key === sp.pacote) : undefined;
   if (pack) item = { purchase: { kind: "credits", pack: pack.key }, title: `${pack.credits.toLocaleString("pt-BR")} respostas da IA`, detail: "Créditos avulsos, não vencem", cents: pack.cents, maxInstallments: 1 };
   else if (sp.plano && Object.hasOwn(PLAN_PRICES, sp.plano)) {
     const key = sp.plano as PriceKey;

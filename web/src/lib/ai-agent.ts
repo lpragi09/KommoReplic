@@ -6,7 +6,9 @@ import type { AgentConfig, ChannelKind } from "@/data/types";
    Uma chamada por mensagem recebida: o histórico vem do banco (só texto), a base de conhecimento da empresa
    vai no system com cache, e a única ferramenta é "passar para um humano". */
 
-const MODEL = process.env.AI_MODEL || "claude-opus-5-5";
+const MODEL = process.env.AI_MODEL || "claude-haiku-5-5";
+// o Haiku não tem troca automática de modelo quando recusa: aí a conversa vai para a equipe (refusal abaixo)
+const FALLBACK = MODEL.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const };
 
 export const aiAvailable = () => !!process.env.ANTHROPIC_API_KEY || process.env.AI_FAKE === "1";
 
@@ -94,8 +96,7 @@ export async function askAgent(cfg: AgentConfig, ctx: { company: string; channel
   const res = await api.beta.messages.create({
     model: MODEL,
     max_tokens: 2048,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
+    ...FALLBACK,
     output_config: { effort: "low" }, // conversa curta: rápido e barato
     tools: [handoffTool],
     system: [
