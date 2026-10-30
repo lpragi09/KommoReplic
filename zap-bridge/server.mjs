@@ -112,6 +112,15 @@ async function start(id) {
       const jid = sock.user?.id ?? "";
       s.me = { phone: jid.split(":")[0].split("@")[0], name: sock.user?.name ?? "" };
       console.log(`[conexão] ${id} conectado ${s.me.phone}`);
+      // a agenda do celular (nomes salvos) vem na sincronização de contatos; pede depois que as chaves chegam
+      setTimeout(async () => {
+        try {
+          await sock.resyncAppState(["critical_unblock_low"], true);
+          console.log(`[nomes] ${id}: agenda pedida ao WhatsApp`);
+        } catch (e) {
+          console.log(`[nomes] ${id}: não deu para pedir a agenda (${e?.message ?? e})`);
+        }
+      }, 15000);
       notify({ type: "status", session: id, status: "open", me: s.me });
     }
     if (u.connection === "close") {
@@ -133,6 +142,7 @@ async function start(id) {
   const pendingNames = new Map();
   let namesTimer = null;
   const queueNames = (list) => {
+    if (list?.length) console.log(`[nomes] ${id}: chegaram ${list.length} contatos`);
     for (const c of list ?? []) {
       const name = c.name ?? c.notify ?? c.verifiedName; // "name" é o nome salvo na agenda: tem preferência
       if (!name) continue;

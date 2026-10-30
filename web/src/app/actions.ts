@@ -1423,9 +1423,12 @@ export async function startZapQrAction(slug: string, pipelineId: string | null) 
     const { user, ws } = await requireAdmin(slug);
     if (!zapOn()) throw new DomainError("invalid", "O WhatsApp por QR code ainda não foi ligado no servidor.");
     // reaproveita um canal por QR que ficou pela metade, em vez de criar outro
-    const pending = (await data.listChannels(ws.id)).find((c) => c.kind === "whatsapp" && c.externalId?.startsWith(QR_PREFIX) && c.status === "connecting");
+    // reconectar usa o mesmo canal (e a mesma sessão): senão cada reconexão duplicava as conversas
+    const qr = (await data.listChannels(ws.id)).filter((c) => c.kind === "whatsapp" && c.externalId?.startsWith(QR_PREFIX));
+    const pending = qr.find((c) => c.status === "connecting") ?? qr.find((c) => c.status !== "connected");
     const session = pending?.externalId?.slice(QR_PREFIX.length) ?? crypto.randomUUID();
     if (!pending) await checkChannelLimit(ws.id, "whatsapp", `${QR_PREFIX}${session}`);
+    else if (pending.status !== "connecting") await data.setChannelStatus(ws.id, pending.id, "connecting");
     const ch =
       pending ??
       (await data.connectChannel(ws.id, user.id, { kind: "whatsapp", externalId: `${QR_PREFIX}${session}`, token: "qr", name: "WhatsApp (QR code)", pipelineId: pipelineId ? id.parse(pipelineId) : null, provider: "qr", status: "connecting" }));
