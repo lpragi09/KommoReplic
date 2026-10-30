@@ -27,13 +27,16 @@ export function LiveRefresh({ wsId, slug, ms = 4000 }: { wsId: string; slug: str
     if (process.env.NEXT_PUBLIC_DATA_BACKEND === "supabase") {
       const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
       let pending: ReturnType<typeof setTimeout> | null = null;
+      let last = 0;
       const refresh = () => {
-        // junta rajadas de eventos (ex.: 20 mensagens chegando) num refresh só
+        // no máximo um refresh a cada 3 s: rajadas de eventos (muitas mensagens chegando) viram um só
         if (pending) return;
+        const wait = Math.max(300, last + 3000 - Date.now());
         pending = setTimeout(() => {
           pending = null;
+          last = Date.now();
           if (!editing()) router.refresh();
-        }, 300);
+        }, wait);
       };
       let channel: ReturnType<typeof sb.channel> | null = null;
       let fallback: ReturnType<typeof setInterval> | null = null;

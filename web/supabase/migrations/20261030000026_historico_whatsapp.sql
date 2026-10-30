@@ -5,6 +5,7 @@ create or replace function public.import_history(p_channel uuid, p_thread text, 
 returns boolean language plpgsql security definer set search_path = public as $$
 declare ch channels; conv conversations; ct uuid; msg uuid; lead uuid; body text := left(btrim(p_body), 4000);
 begin
+  perform set_config('netzer.quiet', '1', true); -- sem aviso ao vivo por mensagem (ver private.broadcast_change)
   select * into ch from channels where id = p_channel and status = 'connected';
   if ch.id is null or body = '' then return false; end if;
 
@@ -48,3 +49,17 @@ grant execute on function public.import_history(uuid, text, text, text, text, bo
 update conversations c set status = 'open'
 from channels ch
 where ch.id = c.channel_id and ch.config->>'provider' = 'qr' and c.status = 'closed' and c.unread_count = 0;
+
+-- Aviso ao vivo (realtime) pula o que vem da importação de histórico: milhares de mensagens seguidas faziam
+-- todo navegador aberto recarregar a tela sem parar. A importação liga "netzer.quiet" só na própria transação.
+create or replace function private.broadcast_change() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare rec record;
+begin
+  if coalesce(current_setting('netzer.quiet', true), '') = '1' then return null; end if;
+  rec := coalesce(new, old);
+  perform realtime.send(
+    jsonb_build_object('table', tg_table_name, 'op', tg_op, 'id', rec.id),
+    'change', 'ws:' || rec.workspace_id::text, true);
+  return null;
+end $$;

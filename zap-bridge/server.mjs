@@ -132,6 +132,15 @@ async function start(id) {
       if (!text) continue;
       items.push({ from, out: !!m.key.fromMe, name: m.key.fromMe ? "" : (m.pushName ?? names.get(m.key.remoteJid) ?? ""), text, id: m.key.id, at: new Date(ts * 1000).toISOString() });
     }
+    // limite para não pesar o netzer: as 50 últimas de cada conversa, nas 300 conversas mais recentes
+    const byThread = new Map();
+    for (const it of items) (byThread.get(it.from) ?? byThread.set(it.from, []).get(it.from)).push(it);
+    const threads = [...byThread.values()]
+      .map((list) => list.sort((a, b) => a.at.localeCompare(b.at)).slice(-50))
+      .sort((a, b) => b[b.length - 1].at.localeCompare(a[a.length - 1].at))
+      .slice(0, 300);
+    items.length = 0;
+    for (const list of threads) items.push(...list);
     items.sort((a, b) => a.at.localeCompare(b.at));
     console.log(`[histórico] ${id}: ${items.length} mensagens dos últimos ${HISTORY_DAYS} dias (de ${messages?.length ?? 0} recebidas)`);
     for (let i = 0; i < items.length; i += 200) await notify({ type: "history", session: id, messages: items.slice(i, i + 200) });
