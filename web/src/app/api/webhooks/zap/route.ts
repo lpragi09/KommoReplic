@@ -30,6 +30,18 @@ export async function POST(req: Request) {
   const { data: ch } = await db.from("channels").select("id, workspace_id, status").eq("kind", "whatsapp").eq("external_id", `${QR_PREFIX}${ev.session}`).maybeSingle();
   if (!ch) return new Response("ok (sessão sem canal)", { status: 200 });
 
+  // troca só nome que o próprio netzer inventou (nunca o da agenda já aplicado nem o que a equipe editou)
+  const renamePlaceholder = async (thread: string, raw: string | null | undefined) => {
+    const name = String(raw ?? "").trim().slice(0, 80);
+    if (!name || !THREAD.test(thread)) return false;
+    const { data: ident } = await db.from("contact_identities").select("contact_id, contacts(name)").eq("workspace_id", ch.workspace_id).eq("kind", "whatsapp").eq("value", thread).maybeSingle();
+    const current = (ident?.contacts as { name?: string } | null)?.name ?? "";
+    if (!ident || current === name || !/^(Contato WhatsApp \d{1,4}|\+?\d{6,25}|Visitante \S{1,6})$/.test(current)) return false;
+    await db.from("contacts").update({ name }).eq("id", ident.contact_id);
+    return true;
+  };
+
+
   if (ev.type === "status") {
     if (ev.status === "logged_out") await db.from("channels").update({ status: "disconnected", status_detail: "Desconectado pelo celular. Leia o QR code de novo." }).eq("id", ch.id);
     else if (ch.status !== "connected") {
@@ -53,6 +65,10 @@ export async function POST(req: Request) {
       }
       if (data) saved++;
     }
+    // nome que a pessoa colocou no próprio WhatsApp (vem nas mensagens dela): vale para quem não está na agenda
+    const pushNames = new Map<string, string>();
+    for (const m of ev.messages ?? []) if (!m.out && m.name) pushNames.set(m.from, m.name);
+    for (const [from, name] of pushNames) await renamePlaceholder(from, name);
     return Response.json({ ok: true, saved });
   }
 
@@ -62,18 +78,10 @@ export async function POST(req: Request) {
     const { data: ident } = await db.from("contact_identities").select("contact_id").eq("workspace_id", ch.workspace_id).eq("kind", "whatsapp").eq("value", thread).maybeSingle();
     if (ident) await db.from("contacts").update({ avatar_url: url }).eq("id", ident.contact_id);
   };
-  // nome salvo na agenda do celular: só troca nome que o próprio netzer inventou (nunca o que a equipe editou)
+  // nome salvo na agenda do celular
   if (ev.type === "names") {
     let renamed = 0;
-    for (const n of (ev.names ?? []).slice(0, 300)) {
-      const name = String(n.name ?? "").trim().slice(0, 80);
-      if (!name || !THREAD.test(n.from)) continue;
-      const { data: ident } = await db.from("contact_identities").select("contact_id, contacts(name)").eq("workspace_id", ch.workspace_id).eq("kind", "whatsapp").eq("value", n.from).maybeSingle();
-      const current = (ident?.contacts as { name?: string } | null)?.name ?? "";
-      if (!ident || current === name || !/^(Contato WhatsApp \d{1,4}|\+?\d{6,25}|Visitante \S{1,6})$/.test(current)) continue;
-      await db.from("contacts").update({ name }).eq("id", ident.contact_id);
-      renamed++;
-    }
+    for (const n of (ev.names ?? []).slice(0, 300)) if (await renamePlaceholder(n.from, n.name)) renamed++;
     return Response.json({ ok: true, renamed });
   }
   if (ev.type === "photos") {
@@ -89,6 +97,7 @@ export async function POST(req: Request) {
   }
   if (!msgId) return new Response("ok (repetida)", { status: 200 });
   await savePhoto(ev.from, ev.photo);
+  await renamePlaceholder(ev.from, ev.name);
   const { data: row } = await db.from("messages").select("conversation_id, workspace_id").eq("id", msgId).maybeSingle();
   if (row) {
     await attributeInbound(row.conversation_id as string, ev.text, null);
