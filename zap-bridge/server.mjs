@@ -126,7 +126,13 @@ async function start(id) {
     if (u.connection === "close") {
       const code = u.lastDisconnect?.error?.output?.statusCode;
       console.log(`[conexão] ${id} fechou (${code ?? "?"})`);
-      if (code === DisconnectReason.loggedOut) {
+      if (code === DisconnectReason.timedOut && !state.creds.registered) {
+        // QR nunca lido (expirou): para de gerar QR; o netzer pede de novo quando alguém clicar em conectar
+        s.status = "closed";
+        sessions.delete(id);
+        rmSync(join(DATA, id), { recursive: true, force: true });
+        console.log(`[conexão] ${id}: QR não foi lido, sessão encerrada`);
+      } else if (code === DisconnectReason.loggedOut) {
         // desconectado pelo celular: apaga a sessão e avisa o netzer
         s.status = "closed";
         rmSync(join(DATA, id), { recursive: true, force: true });
