@@ -1,5 +1,5 @@
 -- Histórico do WhatsApp por QR code: grava mensagens antigas (dos dois lados) na conversa do contato,
--- sem criar lead de entrada, sem marcar como não lida e sem disparar robô. Quando o contato escrever de novo,
+-- aberta na caixa de entrada mas já lida, sem criar lead de entrada e sem disparar robô. Quando o contato escrever de novo,
 -- receive_inbound continua a mesma conversa e segue o fluxo normal. Repetida (mesmo id) é ignorada.
 create or replace function public.import_history(p_channel uuid, p_thread text, p_sender_name text, p_body text, p_external_id text, p_out boolean, p_at timestamptz)
 returns boolean language plpgsql security definer set search_path = public as $$
@@ -20,7 +20,7 @@ begin
     select lc.lead_id into lead from lead_contacts lc join leads l on l.id = lc.lead_id
       where lc.contact_id = ct and l.deleted_at is null order by l.last_activity_at desc limit 1;
     insert into conversations (workspace_id, channel_id, contact_id, lead_id, external_thread_id, status)
-    values (ch.workspace_id, ch.id, ct, lead, p_thread, 'closed')
+    values (ch.workspace_id, ch.id, ct, lead, p_thread, 'open')
     on conflict (channel_id, external_thread_id) do nothing;
     select * into conv from conversations where channel_id = ch.id and external_thread_id = p_thread;
   end if;
@@ -43,3 +43,8 @@ end $$;
 
 revoke execute on function public.import_history(uuid, text, text, text, text, boolean, timestamptz) from public, anon, authenticated;
 grant execute on function public.import_history(uuid, text, text, text, text, boolean, timestamptz) to service_role;
+
+-- conversas importadas antes desta versão entraram fechadas (a caixa de entrada só mostra as abertas)
+update conversations c set status = 'open'
+from channels ch
+where ch.id = c.channel_id and ch.config->>'provider' = 'qr' and c.status = 'closed' and c.unread_count = 0;

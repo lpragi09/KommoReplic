@@ -132,6 +132,7 @@ async function start(id) {
       items.push({ from, out: !!m.key.fromMe, name: m.key.fromMe ? "" : (m.pushName ?? names.get(m.key.remoteJid) ?? ""), text, id: m.key.id, at: new Date(ts * 1000).toISOString() });
     }
     items.sort((a, b) => a.at.localeCompare(b.at));
+    console.log(`[histórico] ${id}: ${items.length} mensagens dos últimos ${HISTORY_DAYS} dias (de ${messages?.length ?? 0} recebidas)`);
     for (let i = 0; i < items.length; i += 200) await notify({ type: "history", session: id, messages: items.slice(i, i + 200) });
   });
   return s;
