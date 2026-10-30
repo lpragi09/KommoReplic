@@ -9,7 +9,11 @@ import { QR_PREFIX, zapSignatureOk } from "@/lib/zap";
 
 type ZapEvent =
   | { type: "message"; session: string; from: string; name: string; text: string; id: string }
-  | { type: "status"; session: string; status: "open" | "logged_out"; me?: { phone: string; name: string } };
+  | { type: "status"; session: string; status: "open" | "logged_out"; me?: { phone: string; name: string } }
+  | { type: "history"; session: string; messages: { from: string; out: boolean; name: string; text: string; id: string; at: string }[] };
+
+/** número (ou "lid:<código>" das contas que escondem o número) */
+const THREAD = /^(lid:)?\d{6,25}$/;
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -33,7 +37,18 @@ export async function POST(req: Request) {
     return new Response("ok", { status: 200 });
   }
 
-  if (ch.status !== "connected" || !/^\d{6,20}$/.test(ev.from) || !ev.text) return new Response("ok (ignorado)", { status: 200 });
+  // histórico que o WhatsApp manda ao conectar: entra como conversa já lida, sem lead e sem robô
+  if (ev.type === "history") {
+    let saved = 0;
+    for (const m of (ev.messages ?? []).slice(0, 500)) {
+      if (!THREAD.test(m.from) || !m.text || Number.isNaN(Date.parse(m.at))) continue;
+      const { data } = await db.rpc("import_history", { p_channel: ch.id, p_thread: m.from, p_sender_name: m.name ?? "", p_body: m.text, p_external_id: `qr-${m.id}`, p_out: !!m.out, p_at: m.at });
+      if (data) saved++;
+    }
+    return Response.json({ ok: true, saved });
+  }
+
+  if (ch.status !== "connected" || !THREAD.test(ev.from) || !ev.text) return new Response("ok (ignorado)", { status: 200 });
   const { data: msgId, error } = await db.rpc("receive_inbound", { p_channel: ch.id, p_thread: ev.from, p_sender_name: ev.name ?? "", p_body: ev.text.slice(0, 4000), p_external_id: `qr-${ev.id}` });
   if (error) {
     console.error("[zap] receive_inbound", error.message);

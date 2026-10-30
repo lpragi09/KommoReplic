@@ -8,7 +8,7 @@ import { createServer } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from "@whiskeysockets/baileys";
+import makeWASocket, { Browsers, DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import pino from "pino";
 
@@ -26,6 +26,18 @@ const logger = pino({ level: "silent" });
 /** id da sessão -> { sock, status: "starting" | "qr" | "open" | "closed", qr, me } */
 const sessions = new Map();
 const validId = (id) => /^[a-zA-Z0-9-]{8,64}$/.test(id);
+const HISTORY_DAYS = Number(process.env.HISTORY_DAYS ?? 30);
+
+/** quem é o contato: o número quando o WhatsApp manda; senão o código "lid" (contas que escondem o número) */
+function threadOf(key) {
+  const jid = key.remoteJid ?? "";
+  if (jid.endsWith("@s.whatsapp.net")) return jid.split("@")[0].split(":")[0];
+  if (jid.endsWith("@lid")) {
+    const pn = key.senderPn ?? "";
+    return pn.endsWith("@s.whatsapp.net") ? pn.split("@")[0].split(":")[0] : `lid:${jid.split("@")[0].split(":")[0]}`;
+  }
+  return null; // grupo, status, canal
+}
 
 function sign(body) {
   return createHmac("sha256", TOKEN).update(body).digest("hex");
@@ -64,7 +76,8 @@ async function start(id) {
   sessions.set(id, s);
   const { state, saveCreds } = await useMultiFileAuthState(join(DATA, id));
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
-  const sock = makeWASocket({ auth: state, logger, version, browser: ["netzer", "Chrome", "1.0"], markOnlineOnConnect: false, syncFullHistory: false });
+  // "Desktop" faz o WhatsApp mandar o histórico recente na hora de conectar (como o app do computador)
+  const sock = makeWASocket({ auth: state, logger, version, browser: Browsers.macOS("Desktop"), markOnlineOnConnect: false, syncFullHistory: true });
   s.sock = sock;
   sock.ev.on("creds.update", saveCreds);
   sock.ev.on("connection.update", async (u) => {
@@ -96,12 +109,28 @@ async function start(id) {
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
     if (type !== "notify") return;
     for (const m of messages) {
-      const jid = m.key.remoteJid ?? "";
-      if (m.key.fromMe || !jid.endsWith("@s.whatsapp.net")) continue; // grupos, status e as nossas: fora
+      const from = threadOf(m.key);
+      if (m.key.fromMe || !from) continue; // grupos, status e as nossas: fora
       const text = textOf(m);
       if (!text) continue;
-      await notify({ type: "message", session: id, from: jid.split("@")[0], name: m.pushName ?? "", text, id: m.key.id });
+      await notify({ type: "message", session: id, from, name: m.pushName ?? "", text, id: m.key.id });
     }
+  });
+
+  // histórico que o WhatsApp manda ao conectar: só conversas individuais dos últimos HISTORY_DAYS dias, em lotes
+  sock.ev.on("messaging-history.set", async ({ messages, contacts }) => {
+    const names = new Map((contacts ?? []).map((c) => [c.id, c.notify ?? c.name ?? ""]));
+    const since = Date.now() / 1000 - HISTORY_DAYS * 86400;
+    const items = [];
+    for (const m of messages ?? []) {
+      const ts = Number(m.messageTimestamp ?? 0);
+      const from = threadOf(m.key);
+      const text = from && ts >= since ? textOf(m) : null;
+      if (!text) continue;
+      items.push({ from, out: !!m.key.fromMe, name: m.key.fromMe ? "" : (m.pushName ?? names.get(m.key.remoteJid) ?? ""), text, id: m.key.id, at: new Date(ts * 1000).toISOString() });
+    }
+    items.sort((a, b) => a.at.localeCompare(b.at));
+    for (let i = 0; i < items.length; i += 200) await notify({ type: "history", session: id, messages: items.slice(i, i + 200) });
   });
   return s;
 }
@@ -153,7 +182,8 @@ createServer(async (req, res) => {
       const s = sessions.get(id);
       if (!s || s.status !== "open") return send(res, 409, { error: "WhatsApp desconectado: leia o QR code de novo." });
       const b = await readBody(req);
-      const to = `${String(b.to ?? "").replace(/\D/g, "")}@s.whatsapp.net`;
+      const raw = String(b.to ?? "");
+      const to = raw.startsWith("lid:") ? `${raw.slice(4).replace(/\D/g, "")}@lid` : `${raw.replace(/\D/g, "")}@s.whatsapp.net`;
       let content;
       if (b.media?.url) {
         const kind = b.media.type === "image" ? "image" : b.media.type === "video" ? "video" : b.media.type === "audio" ? "audio" : "document";
