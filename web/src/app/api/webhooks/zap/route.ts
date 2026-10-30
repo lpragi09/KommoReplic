@@ -39,10 +39,16 @@ export async function POST(req: Request) {
 
   // histórico que o WhatsApp manda ao conectar: entra como conversa já lida, sem lead e sem robô
   if (ev.type === "history") {
+    // o histórico chega segundos depois de parear, às vezes antes do aviso de "conectado": se chegou, está pareado
+    if (ch.status !== "connected") await db.from("channels").update({ status: "connected", status_detail: null }).eq("id", ch.id);
     let saved = 0;
     for (const m of (ev.messages ?? []).slice(0, 500)) {
       if (!THREAD.test(m.from) || !m.text || Number.isNaN(Date.parse(m.at))) continue;
-      const { data } = await db.rpc("import_history", { p_channel: ch.id, p_thread: m.from, p_sender_name: m.name ?? "", p_body: m.text, p_external_id: `qr-${m.id}`, p_out: !!m.out, p_at: m.at });
+      const { data, error } = await db.rpc("import_history", { p_channel: ch.id, p_thread: m.from, p_sender_name: m.name ?? "", p_body: m.text, p_external_id: `qr-${m.id}`, p_out: !!m.out, p_at: m.at });
+      if (error) {
+        console.error("[zap] import_history", error.message);
+        return Response.json({ ok: false, saved, error: error.message }, { status: 500 });
+      }
       if (data) saved++;
     }
     return Response.json({ ok: true, saved });

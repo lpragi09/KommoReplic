@@ -46,8 +46,9 @@ function sign(body) {
 async function notify(event) {
   const body = JSON.stringify(event);
   try {
-    const res = await fetch(WEBHOOK, { method: "POST", headers: { "content-type": "application/json", "x-zap-signature": sign(body) }, body, signal: AbortSignal.timeout(15000) });
-    if (!res.ok) console.error("[webhook]", res.status, (await res.text()).slice(0, 200));
+    const res = await fetch(WEBHOOK, { method: "POST", headers: { "content-type": "application/json", "x-zap-signature": sign(body) }, body, signal: AbortSignal.timeout(60000) });
+    if (!res.ok) console.error("[webhook]", event.type, res.status, (await res.text()).slice(0, 300));
+    else if (event.type === "history") console.log("[histórico] netzer respondeu:", (await res.text()).slice(0, 200));
   } catch (e) {
     console.error("[webhook] falhou", e?.message ?? e);
   }
