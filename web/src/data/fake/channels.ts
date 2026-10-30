@@ -51,8 +51,3 @@ export async function deliverQueued(wsId: ID | null, messageIds?: ID[]) {
 }
 
 export async function updateDeliveryStatus(_externalId: string, _status: string, _error?: string) {}
-
-/** cron: no modo exemplo não há token de verdade para renovar */
-export async function refreshInstagramTokens() {
-  return 0;
-}

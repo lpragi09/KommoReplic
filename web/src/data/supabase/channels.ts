@@ -3,7 +3,6 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
 import { open, seal } from "@/lib/secret-box";
 import { sendMedia, sendText } from "@/lib/meta";
-import { igRefresh } from "@/lib/meta-login";
 import { DomainError, type Channel, type ID } from "../types";
 
 /* Canais da Meta no Supabase: conectar (token cifrado), desconectar e entregar a fila de mensagens. */
@@ -84,29 +83,4 @@ export async function updateDeliveryStatus(externalId: string, status: string, e
   const st = map[status];
   if (!st) return;
   await adminClient().from("messages").update({ status: st, ...(error ? { error: error.slice(0, 300) } : {}) }).eq("external_id", externalId).eq("direction", "out");
-}
-
-/** cron: tokens do login do Instagram vencem em 60 dias; renova os que têm mais de 30 (a data fica no config do canal) */
-export async function refreshInstagramTokens() {
-  const a = adminClient();
-  const { data: rows } = await a.from("channels").select("id, config, channel_secrets(token_enc, updated_at)").eq("kind", "instagram").eq("status", "connected");
-  let renewed = 0;
-  for (const ch of (rows ?? []) as Row[]) {
-    const sec = Array.isArray(ch.channel_secrets) ? ch.channel_secrets[0] : ch.channel_secrets;
-    if (!sec?.token_enc) continue;
-    const token = open(sec.token_enc);
-    if (!token.startsWith("IG")) continue; // token de página do Facebook: não vence
-    const last = Date.parse(ch.config?.token_refreshed_at ?? sec.updated_at ?? 0);
-    if (Date.now() - last < 30 * 864e5) continue;
-    try {
-      const fresh = await igRefresh(token);
-      await a.from("channel_secrets").update({ token_enc: seal(fresh), updated_at: new Date().toISOString() }).eq("channel_id", ch.id);
-      await a.from("channels").update({ config: { ...(ch.config ?? {}), token_refreshed_at: new Date().toISOString() } }).eq("id", ch.id);
-      renewed++;
-    } catch (e) {
-      console.error("[instagram] renovar token", ch.id, e instanceof Error ? e.message : e);
-      await a.from("channels").update({ status_detail: "Não deu para renovar o acesso do Instagram. Conecte de novo." }).eq("id", ch.id);
-    }
-  }
-  return renewed;
 }

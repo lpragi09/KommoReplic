@@ -1,4 +1,4 @@
-import { deliverQueued, expireSubscriptions, refreshInstagramTokens, tickRobots } from "@/data";
+import { deliverQueued, expireSubscriptions, tickRobots } from "@/data";
 
 /* Rede de segurança dos robôs com "Esperar": a Vercel chama esta rota no horário do vercel.json.
    No dia a dia quem continua os robôs é a própria tela aberta (a cada ~30s) e cada ação no funil. */
@@ -13,6 +13,5 @@ export async function GET(req: Request) {
   }
   const delivered = await deliverQueued(null).catch(() => 0);
   const expired = await expireSubscriptions().catch(() => 0);
-  const igRenewed = await refreshInstagramTokens().catch(() => 0);
-  return Response.json({ ok: true, processed: total, delivered, expired, igRenewed });
+  return Response.json({ ok: true, processed: total, delivered, expired });
 }

@@ -18,7 +18,7 @@ import { createPayment, getPayment, decodeRef, mpOn, type MpPayment, type Payer,
 import { applyPayment } from "@/lib/billing-apply";
 import { randomUUID } from "node:crypto";
 import { MetaError, verifyAccount } from "@/lib/meta";
-import { META_PICK_COOKIE, igMe, igSubscribe, listPages, readPick, subscribePage } from "@/lib/meta-login";
+import { META_PICK_COOKIE, igAccounts, igSubscribe, listPages, readPick, subscribePage } from "@/lib/meta-login";
 import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
 import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
 import { after } from "next/server";
@@ -1365,11 +1365,11 @@ export async function connectMetaPageAction(slug: string, pageId: string, pipeli
     const pid = pipelineId ? id.parse(pipelineId) : null;
     try {
       if (pick.kind === "ig") {
-        // login direto pelo Instagram: a conta é a do próprio token
-        const me = await igMe(pick.token);
-        if (me.id !== pageId) throw new DomainError("invalid", "Conta não encontrada. Entre de novo pelo Instagram.");
+        // login com o Instagram: as contas são as liberadas no token
+        const me = (await igAccounts(pick.token)).find((a) => a.id === pageId);
+        if (!me) throw new DomainError("invalid", "Conta não encontrada. Entre de novo pelo Instagram e marque a conta.");
         await checkChannelLimit(ws.id, "instagram", me.id);
-        await igSubscribe(pick.token);
+        await igSubscribe(me.id, pick.token);
         await data.connectChannel(ws.id, user.id, { kind: "instagram", externalId: me.id, token: pick.token, name: `@${me.username}`, pipelineId: pid });
         (await cookies()).delete(META_PICK_COOKIE);
         refresh();
