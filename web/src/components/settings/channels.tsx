@@ -8,7 +8,7 @@ import { connectChannelAction, connectMetaPageAction, disconnectChannelAction } 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
-import { Check, Copy, ExternalLink, FacebookLogo, Globe, InstagramLogo, MessengerLogo, WhatsappLogo, type LucideIcon, MessageSquare } from "@/components/ui/icons";
+import { Check, Copy, ExternalLink, FacebookLogo, Globe, InstagramLogo, WhatsappLogo, type LucideIcon, MessageSquare } from "@/components/ui/icons";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
@@ -49,9 +49,9 @@ const NETS: Record<Social, { label: string; icon: LucideIcon; tint: string; idLa
     ],
   },
   messenger: {
-    label: "Messenger",
-    icon: MessengerLogo,
-    tint: "from-[#0a7cff] to-[#a033ff]",
+    label: "Facebook",
+    icon: FacebookLogo,
+    tint: "from-[#1877f2] to-[#0a4fb8]",
     idLabel: "ID da página do Facebook (Page ID)",
     idHint: "Página → Sobre → Transparência da página, ou no Gerenciador de Negócios.",
     steps: [
@@ -173,7 +173,9 @@ export function ChannelsManager({
                   <h2 id={`net-${k}`} className="font-semibold text-fg">
                     {n.label}
                   </h2>
-                  <p className={cn("text-sm", on ? "text-success" : "text-muted")}>{on ? `● Conectado · ${on.name}` : "Não conectado"}</p>
+                  <p className={cn("text-sm", on ? "text-success" : "text-muted")}>
+                    {on ? `● Conectado · ${on.name}` : k === "messenger" ? "Mensagens da sua página (Messenger)" : k === "instagram" ? "Direct da conta profissional" : "Não conectado"}
+                  </p>
                 </div>
                 {on ? (
                   <Button variant="secondary" size="sm" onClick={() => disconnect(on)} disabled={pending}>
@@ -213,19 +215,6 @@ export function ChannelsManager({
             </section>
           );
         })}
-
-        <section className={cn(card, "border border-dashed border-border-input shadow-none")}>
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-lg bg-[#161823] text-sm font-black text-white shadow-[2px_0_0_#25f4ee,-2px_0_0_#fe2c55]" aria-hidden>
-              ♪
-            </span>
-            <div className="flex-1">
-              <h2 className="font-semibold text-fg">TikTok</h2>
-              <p className="text-sm text-muted">A TikTok libera a API de mensagens só para parceiros aprovados. Entramos assim que for liberado.</p>
-            </div>
-            <span className="text-xs font-medium text-muted">Em breve</span>
-          </div>
-        </section>
       </div>
 
       <Dialog

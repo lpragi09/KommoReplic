@@ -20,7 +20,7 @@ import { StepBadge } from "./parts";
 type Option = { action: StageTriggerAction; label: string; text: string; icon: ReactNode };
 const OPTIONS: Option[] = [
   { action: "robot", label: "Robô", text: "Roda um robô que você criou: conversa, perguntas, botões e caminhos.", icon: <Bot className="size-5" /> },
-  { action: "message", label: "Enviar mensagem", text: "Uma mensagem no canal do cliente (WhatsApp, Instagram, Messenger ou chat do site).", icon: <MessageCircle className="size-5" /> },
+  { action: "message", label: "Enviar mensagem", text: "Uma mensagem no canal do cliente (WhatsApp, Instagram, Facebook ou chat do site).", icon: <MessageCircle className="size-5" /> },
   { action: "email", label: "Enviar email", text: "Email para o contato principal do lead, com link de descadastro.", icon: <Mail className="size-5" /> },
   { action: "task", label: "Adicionar tarefa", text: "Cria uma tarefa para o responsável, com prazo.", icon: <CalendarCheck className="size-5" /> },
   { action: "tag", label: "Editar etiquetas", text: "Coloca ou tira uma etiqueta do lead.", icon: <TagIcon className="size-5" /> },

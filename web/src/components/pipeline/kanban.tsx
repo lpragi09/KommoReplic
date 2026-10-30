@@ -529,7 +529,7 @@ function DraggableCard({
 const channelLabel = {
   whatsapp: "WhatsApp",
   instagram: "Instagram",
-  messenger: "Messenger",
+  messenger: "Facebook",
   webchat: "Chat do site",
 };
 

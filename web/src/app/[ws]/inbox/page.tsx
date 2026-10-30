@@ -22,7 +22,7 @@ const filters: { v: ConvFilter; label: string }[] = [
   { v: "unanswered", label: "Sem resposta" },
   { v: "mine", label: "Minhas" },
 ];
-const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", webchat: "Chat do site" };
+const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Facebook", webchat: "Chat do site" };
 
 export default async function InboxPage({ params, searchParams }: PageProps<"/[ws]/inbox">) {
   const { ws: slug } = await params;

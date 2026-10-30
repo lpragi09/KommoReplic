@@ -59,7 +59,7 @@ export function UsagePanel({ slug, access, usage, wallet }: { slug: string; acce
           <Row label="Contatos e empresas" used={usage.contacts + usage.companies} max={Infinity} />
           <Row label="Funis" used={usage.pipelines} max={l.pipelines} />
           <Row label="Usuários" used={usage.users} max={l.users} />
-          <Row label="Canais conectados (WhatsApp, Instagram, Messenger)" used={usage.socialChannels} max={l.socialChannels} />
+          <Row label="Canais conectados (WhatsApp, Instagram, Facebook)" used={usage.socialChannels} max={l.socialChannels} />
           <Row label="Robôs ligados" used={usage.activeRobots} max={l.activeRobots} />
           <Row label="Links rastreáveis" used={usage.trackingLinks} max={l.trackingLinks} />
           <Row label="Campos personalizados" used={usage.customFields} max={Infinity} />

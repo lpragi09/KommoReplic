@@ -9,13 +9,13 @@ import { cn } from "@/lib/cn";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ChevronsLeft, ChevronsRight, Globe, InstagramLogo, MessageCircle, MessengerLogo, Plus, Trash2, WhatsappLogo } from "@/components/ui/icons";
+import { ChevronsLeft, ChevronsRight, FacebookLogo, Globe, InstagramLogo, MessageCircle, Plus, Trash2, WhatsappLogo } from "@/components/ui/icons";
 
 /* Fontes do funil, na lateral do quadro: quais canais mandam contato novo para cá e as regras de entrada
    (a mesma rede em outro funil, separando pelo texto, código, link ou anúncio). Fechado, vira uma faixa estreita. */
 
-const ICON = { whatsapp: WhatsappLogo, instagram: InstagramLogo, messenger: MessengerLogo, webchat: Globe } as Record<string, typeof Globe>;
-const KIND_LABEL: Record<string, string> = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", webchat: "Chat do site", telegram: "Telegram", email: "Email" };
+const ICON = { whatsapp: WhatsappLogo, instagram: InstagramLogo, messenger: FacebookLogo, webchat: Globe } as Record<string, typeof Globe>;
+const KIND_LABEL: Record<string, string> = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Facebook", webchat: "Chat do site", telegram: "Telegram", email: "Email" };
 const ChannelIcon = ({ kind, className }: { kind: string; className?: string }) => {
   const I = ICON[kind] ?? MessageCircle;
   return <I className={className} aria-hidden />;

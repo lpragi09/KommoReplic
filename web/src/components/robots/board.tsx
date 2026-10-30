@@ -125,7 +125,7 @@ export function RobotsBoard({
         <div className="flex min-h-0 flex-1 snap-x gap-3 overflow-x-auto bg-surface p-4">
           <Rail
             title="Mensagens recebidas"
-            sub="WhatsApp, Instagram, Messenger e chat do site"
+            sub="WhatsApp, Instagram, Facebook e chat do site"
             head={<MessageCircle className="size-4 text-accent" weight="fill" aria-hidden />}
             accent
             robots={inbound}
@@ -184,7 +184,7 @@ export function RobotsBoard({
         <div className="flex-1 overflow-y-auto bg-surface p-4">
           <div className="mx-auto max-w-4xl">
             <p className="mb-4 max-w-[60ch] text-sm text-muted">
-              Robôs prontos para usar. Escolha um, ajuste o texto do seu jeito e salve. Eles respondem no mesmo canal em que o cliente falou: WhatsApp, Instagram, Messenger ou chat do site.
+              Robôs prontos para usar. Escolha um, ajuste o texto do seu jeito e salve. Eles respondem no mesmo canal em que o cliente falou: WhatsApp, Instagram, Facebook ou chat do site.
             </p>
             <ul className="grid gap-3 sm:grid-cols-2">
               {PRESETS.map((p) => (

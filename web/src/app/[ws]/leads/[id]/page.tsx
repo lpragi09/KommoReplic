@@ -11,7 +11,7 @@ export const metadata = { title: "Lead" };
 
 export const instant = false; // tela atrás de login: bloqueia no servidor (ver [ws]/layout.tsx)
 
-const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", webchat: "Chat do site" };
+const channelName = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Facebook", webchat: "Chat do site" };
 
 export default async function LeadPage({ params }: PageProps<"/[ws]/leads/[id]">) {
   const { ws: slug, id } = await params;

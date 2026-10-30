@@ -33,7 +33,7 @@ export const TRIGGERS: Record<RobotTrigger, { label: string; hint: string }> = {
 export const CHANNELS: { kind: ChannelKind; label: string }[] = [
   { kind: "whatsapp", label: "WhatsApp" },
   { kind: "instagram", label: "Instagram" },
-  { kind: "messenger", label: "Messenger" },
+  { kind: "messenger", label: "Facebook" },
   { kind: "webchat", label: "Chat do site" },
 ];
 export const channelLabel = (k: ChannelKind) => CHANNELS.find((c) => c.kind === k)?.label ?? k;

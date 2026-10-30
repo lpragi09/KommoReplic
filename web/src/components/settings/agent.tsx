@@ -9,7 +9,7 @@ import { saveAgentAction, testAgentAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Switch } from "@/components/robots/parts";
-import { Globe, InstagramLogo, MessengerLogo, Send, Sparkle, WhatsappLogo, type LucideIcon } from "@/components/ui/icons";
+import { FacebookLogo, Globe, InstagramLogo, Send, Sparkle, WhatsappLogo, type LucideIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 const TONES: { v: AgentTone; label: string; sample: string }[] = [
@@ -22,7 +22,7 @@ const CHANNELS: { v: ChannelKind; label: string; icon: LucideIcon }[] = [
   { v: "webchat", label: "Chat do site", icon: Globe },
   { v: "whatsapp", label: "WhatsApp", icon: WhatsappLogo },
   { v: "instagram", label: "Instagram", icon: InstagramLogo },
-  { v: "messenger", label: "Messenger", icon: MessengerLogo },
+  { v: "messenger", label: "Facebook", icon: FacebookLogo },
 ];
 
 const KNOWLEDGE_TIP = `Exemplo do que colar aqui:

@@ -117,7 +117,7 @@ export function Landing() {
               <span className="block">Nenhum cliente</span> <span className="fx-gradient-text block">perdido no caminho.</span>
             </h1>
             <p className="fx-rise mx-auto mt-7 max-w-[52ch] text-md text-on-night-muted md:text-lg" style={d(2)}>
-              WhatsApp, Instagram, Messenger e o chat do seu site caem num funil só. Robôs e IA respondem na hora; você entra para fechar a venda.
+              WhatsApp, Instagram, Facebook e o chat do seu site caem num funil só. Robôs e IA respondem na hora; você entra para fechar a venda.
             </p>
             <div className="fx-rise mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row" style={d(3)}>
               <IslandCTA href="/signup">Testar 14 dias grátis</IslandCTA>
@@ -201,7 +201,7 @@ export function Landing() {
               icon={Inbox}
               title="Todas as conversas no lead certo"
               text="Cada mensagem entra no cartão do cliente, com o histórico, as tarefas e a origem. Ninguém da equipe responde no escuro."
-              points={["WhatsApp oficial, Instagram, Messenger e chat do site", "Fotos, arquivos e emoji na conversa", "Vendedor vê os dele; gerente vê tudo"]}
+              points={["WhatsApp oficial, Instagram, Facebook e chat do site", "Fotos, arquivos e emoji na conversa", "Vendedor vê os dele; gerente vê tudo"]}
               art={
                 <div className="relative">
                   <div className="fx-orb -inset-6" aria-hidden />
