@@ -28,7 +28,7 @@ export default async function ContactPage({ params }: PageProps<"/[ws]/contacts/
           <ArrowLeft className="size-4" aria-hidden /> Contatos
         </Link>
         <div className="mt-3 flex items-center gap-3">
-          <Avatar name={contact.name} size={40} />
+          <Avatar name={contact.name} src={contact.avatarUrl} size={40} />
           <h1 className="min-w-0 break-words text-xl text-fg">{contact.name}</h1>
         </div>
         <section aria-labelledby="ct" className="mt-6 rounded-md border border-border p-4">

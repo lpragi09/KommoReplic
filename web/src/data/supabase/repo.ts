@@ -75,6 +75,7 @@ const toContact = (r: Row): Contact => ({
   responsibleUserId: r.responsible_user_id,
   identities: (r.contact_identities ?? []).map((i: Row) => ({ kind: i.kind, value: i.value })),
   createdAt: isoReq(r.created_at),
+  avatarUrl: r.avatar_url ?? null,
 });
 const toCompany = (r: Row): Company => ({ id: r.id, workspaceId: r.workspace_id, name: r.name, responsibleUserId: r.responsible_user_id, createdAt: isoReq(r.created_at) });
 const toLead = (r: Row): Lead => ({

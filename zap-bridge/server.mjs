@@ -27,6 +27,17 @@ const logger = pino({ level: "silent" });
 const sessions = new Map();
 const validId = (id) => /^[a-zA-Z0-9-]{8,64}$/.test(id);
 const HISTORY_DAYS = Number(process.env.HISTORY_DAYS ?? 30);
+/** jid -> { url, at }: a foto muda pouco e o WhatsApp limita quantas consultas aceita */
+const photoCache = new Map();
+const jidOf = (thread) => (thread.startsWith("lid:") ? `${thread.slice(4)}@lid` : `${thread}@s.whatsapp.net`);
+async function photoOf(sock, thread) {
+  const jid = jidOf(thread);
+  const hit = photoCache.get(jid);
+  if (hit && Date.now() - hit.at < 12 * 3600_000) return hit.url;
+  const url = await sock.profilePictureUrl(jid, "image").catch(() => null); // perfil sem foto ou privado: null
+  photoCache.set(jid, { url, at: Date.now() });
+  return url;
+}
 
 /** quem é o contato: o número quando o WhatsApp manda; senão o código "lid" (contas que escondem o número) */
 function threadOf(key) {
@@ -116,7 +127,7 @@ async function start(id) {
       if (m.key.fromMe || !from) continue; // grupos, status e as nossas: fora
       const text = textOf(m);
       if (!text) continue;
-      await notify({ type: "message", session: id, from, name: m.pushName ?? "", text, id: m.key.id });
+      await notify({ type: "message", session: id, from, name: m.pushName ?? "", text, id: m.key.id, photo: await photoOf(sock, from) });
     }
   });
 
@@ -151,6 +162,14 @@ async function start(id) {
     items.sort((a, b) => a.at.localeCompare(b.at));
     console.log(`[histórico] ${id}: ${items.length} mensagens dos últimos ${HISTORY_DAYS} dias (de ${messages?.length ?? 0} recebidas)`);
     for (let i = 0; i < items.length; i += 200) await notify({ type: "history", session: id, messages: items.slice(i, i + 200) });
+    // fotos das conversas importadas, devagar (uma por vez) para não esbarrar no limite do WhatsApp
+    const photos = [];
+    for (const list of threads) {
+      const url = await photoOf(sock, list[0].from);
+      if (url) photos.push({ from: list[0].from, url });
+      if (photos.length === 50) await notify({ type: "photos", session: id, photos: photos.splice(0) });
+    }
+    if (photos.length) await notify({ type: "photos", session: id, photos });
   });
   return s;
 }

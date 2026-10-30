@@ -74,7 +74,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
               <li key={c.id}>
                 <InstantLink href={href({ c: c.id })} active={on} current="true" className="relative flex gap-3 px-4 py-3 hover:bg-surface" activeClassName="bg-accent-soft hover:bg-accent-soft">
                   {on && <span className="absolute inset-y-0 left-0 w-[3px] bg-accent" aria-hidden />}
-                  <Avatar name={c.contact.name} size={40} />
+                  <Avatar name={c.contact.name} src={c.contact.avatarUrl} size={40} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
                       <span className={cn("min-w-0 flex-1 truncate text-base text-fg", c.unreadCount ? "font-semibold" : "font-medium")}>{c.contact.name}</span>
@@ -109,7 +109,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
               <Link href={href({ c: null })} className="text-sm text-accent-text underline md:hidden">
                 Voltar
               </Link>
-              <Avatar name={active.contact.name} size={32} />
+              <Avatar name={active.contact.name} src={active.contact.avatarUrl} size={32} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-fg">{active.contact.name}</p>
                 <p className="text-xs text-muted">{channelName[active.channel.kind]}</p>

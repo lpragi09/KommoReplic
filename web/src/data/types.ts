@@ -27,6 +27,8 @@ export type Contact = {
   createdAt: ISO;
   /** pediu para não receber emails (link de descadastro) */
   emailOptOut?: boolean;
+  /** foto de perfil (WhatsApp por QR code) */
+  avatarUrl?: string | null;
 };
 
 export type Lead = {
