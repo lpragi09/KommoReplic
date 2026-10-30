@@ -191,6 +191,22 @@ function GoogleButton() {
   );
 }
 
+function LegalNotice({ action }: { action: string }) {
+  return (
+    <p className="text-center text-xs text-muted">
+      Ao {action}, você aceita os{" "}
+      <Link href="/termos" target="_blank" className="underline">
+        Termos de uso
+      </Link>{" "}
+      e declara ciência da{" "}
+      <Link href="/privacidade" target="_blank" className="underline">
+        Política de privacidade
+      </Link>
+      .
+    </p>
+  );
+}
+
 export function SignUpForm() {
   const [state, action, pending] = useActionState(signUpAction, {});
   return (
@@ -243,6 +259,7 @@ export function SignUpForm() {
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Criar conta
         </Button>
+        <LegalNotice action="criar a conta" />
       </form>
       <GoogleButton />
     </AuthShell>
@@ -341,6 +358,7 @@ export function OnboardingForm({ info }: { info: SignupInfo | null }) {
         <Button type="submit" size="lg" loading={pending} className="fx-shine">
           Continuar para os planos
         </Button>
+        <LegalNotice action="continuar" />
       </form>
     </AuthShell>
   );

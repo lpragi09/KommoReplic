@@ -13,24 +13,25 @@ import { IslandNav } from "./island-nav";
    Regras: nenhum dado inventado (sem depoimentos, números de clientes ou logos de "quem usa"). Animação só por CSS. */
 
 import { ANNUAL_MONTHS, PLAN_PRICES, type PriceKey } from "@/lib/plans";
+import { LEGAL } from "@/lib/legal";
 const d = (n: number) => ({ "--d": n }) as CSSProperties;
 
 const plans: { key: PriceKey; who: string; items: string[]; highlight?: boolean }[] = [
-  { key: "autonomo", who: "1 a 2 pessoas", items: ["1 funil, até 2 pessoas", "Chat do site + 1 rede social", "3 robôs ligados", "IA com créditos avulsos"] },
+  { key: "autonomo", who: "1 a 2 pessoas", items: ["1 funil, até 2 pessoas", "Chat do site + 1 rede social", "3 robôs ligados", "Agente de IA com créditos à parte"] },
   {
     key: "equipe",
     who: "o time de vendas",
-    items: ["Funis ilimitados, até 5 pessoas", "Chat do site + 3 redes sociais", "Agente de IA: 500 respostas/mês", "Robôs, disparos e estatísticas", "Papéis: todos, equipe ou só os meus"],
+    items: ["Funis ilimitados, até 5 pessoas", "Chat do site + 3 redes sociais", "Agente de IA com créditos à parte", "Robôs, disparos e estatísticas", "Papéis: todos, equipe ou só os meus"],
     highlight: true,
   },
-  { key: "operacao", who: "filiais e alto volume", items: ["Tudo do Equipe, até 10 pessoas", "Redes sociais ilimitadas", "Agente de IA: 2.000 respostas/mês", "Suporte com prazo de resposta"] },
+  { key: "operacao", who: "filiais e alto volume", items: ["Tudo do Equipe, até 10 pessoas", "Redes sociais ilimitadas", "Agente de IA com créditos à parte", "Suporte com prazo de resposta"] },
 ];
 
 const faq = [
-  { q: "Preciso de cartão para testar?", a: "Não. São 14 dias com tudo liberado, sem cartão. No fim, você escolhe um plano ou o painel pausa; nada é apagado." },
-  { q: "Tem fidelidade?", a: "Não. Você paga o mês (ou o ano, com 2 meses grátis) por Pix, cartão ou boleto, e não existe cobrança automática: se não renovar, o painel pausa e nada é apagado." },
-  { q: "Funciona com o meu WhatsApp?", a: "Sim, pela API oficial da Meta, com o número da sua empresa. Instagram Direct e Messenger entram do mesmo jeito, e o chat do site já vem pronto." },
-  { q: "A IA responde meus clientes sozinha?", a: "Se você quiser. Ela responde com o que você ensinar (preços, horários, serviços) e passa para a equipe quando precisa. Cada plano inclui respostas por mês; dá para comprar mais ou usar a sua própria chave da Anthropic." },
+  { q: "Preciso de cartão para testar?", a: "Não. São 14 dias com tudo do sistema liberado, sem cartão (o agente de IA usa créditos à parte). No fim, você escolhe um plano ou o painel pausa, e os dados ficam guardados por até 12 meses." },
+  { q: "Tem fidelidade?", a: "Não. Você paga o mês (ou o ano, com 2 meses grátis) por Pix, cartão ou boleto, e não existe cobrança automática: se não renovar, o painel pausa e os dados ficam guardados por até 12 meses. Em até 7 dias da compra, você pode desistir e receber o valor de volta." },
+  { q: "Funciona com o meu WhatsApp?", a: "Sim. Pela API oficial da Meta, com o número da sua empresa, ou lendo um QR code. O QR code não é oficial: o WhatsApp pode bloquear o número, então serve para atender quem chama, sem disparos em massa. Instagram Direct e Messenger entram pela Meta, e o chat do site já vem pronto." },
+  { q: "A IA responde meus clientes sozinha?", a: "Se você quiser. Ela responde com o que você ensinar (preços, horários, serviços) e passa para a equipe quando precisa. A IA não vem incluída no plano: você compra créditos aqui mesmo no painel, a partir de R$ 29 por 500 respostas, e eles não vencem. Se preferir, usa a sua própria chave da Anthropic." },
   { q: "Consigo trazer meus contatos de outra ferramenta?", a: "Sim. Envie uma planilha CSV com nome, telefone e email em Contatos → Importar. Exportar é do mesmo jeito." },
   { q: "Meus dados ficam onde?", a: "Num banco de dados em São Paulo, com acesso separado por empresa. Você exporta tudo em planilha e apaga a conta quando quiser." },
 ];
@@ -339,6 +340,11 @@ export function Landing() {
           <span className="flex items-center gap-2">
             <NetzerMark className="h-6 w-auto text-brand-on-night" />© {BRAND.name} · uma marca {BRAND.parent}, {BRAND.parentTagline}
           </span>
+          {LEGAL.company && (
+            <span className="w-full text-xs sm:order-last">
+              {LEGAL.company} · {LEGAL.document} · {LEGAL.address} · {LEGAL.email}
+            </span>
+          )}
           <nav aria-label="Legal" className="ml-auto flex gap-5">
             <Link href="/termos" className="hover:text-on-night">
               Termos de uso

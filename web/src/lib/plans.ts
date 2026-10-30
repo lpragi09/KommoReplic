@@ -13,19 +13,17 @@ export type Limits = {
   trackingLinks: number;
   broadcasts: boolean;
   reportsFull: boolean;
-  /** agente de IA respondendo os clientes */
-  aiAgent: boolean;
-  /** respostas da IA incluídas por mês (1 crédito = 1 resposta). Passou disso, usa os créditos comprados ou a chave própria */
+  /** respostas da IA incluídas por mês. Zero em todos: a IA é paga à parte, com créditos comprados ou chave própria */
   aiCredits: number;
 };
 
 const INF = Number.POSITIVE_INFINITY;
 
 export const LIMITS: Record<PlanKey, Limits> = {
-  trial: { name: "Teste grátis", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 100 },
-  basic: { name: "Autônomo", pipelines: 1, users: 2, socialChannels: 1, activeRobots: 3, trackingLinks: 3, broadcasts: false, reportsFull: false, aiAgent: false, aiCredits: 0 },
-  advanced: { name: "Equipe", pipelines: INF, users: INF, socialChannels: 3, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 500 },
-  pro: { name: "Operação", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiAgent: true, aiCredits: 2000 },
+  trial: { name: "Teste grátis", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiCredits: 0 },
+  basic: { name: "Autônomo", pipelines: 1, users: 2, socialChannels: 1, activeRobots: 3, trackingLinks: 3, broadcasts: false, reportsFull: false, aiCredits: 0 },
+  advanced: { name: "Equipe", pipelines: INF, users: INF, socialChannels: 3, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiCredits: 0 },
+  pro: { name: "Operação", pipelines: INF, users: INF, socialChannels: INF, activeRobots: INF, trackingLinks: INF, broadcasts: true, reportsFull: true, aiCredits: 0 },
 };
 
 export const limitsOf = (plan: PlanKey | null | undefined) => LIMITS[plan ?? "trial"] ?? LIMITS.trial;
@@ -66,7 +64,7 @@ export const dailyCents = (plan: PlanKey, seats: number) => {
   return key ? (monthlyPrice(key, seats) * 100) / 30 : 0;
 };
 
-/** pacotes avulsos de créditos de IA. Não vencem; o plano gasta primeiro. */
+/** pacotes de créditos de IA. Não vencem; o preço já inclui a nossa margem sobre o custo da Anthropic. */
 export const AI_PACKS = [
   { key: "ia_500", credits: 500, cents: 2900 },
   { key: "ia_2000", credits: 2000, cents: 9900 },

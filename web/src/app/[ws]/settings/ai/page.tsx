@@ -2,7 +2,6 @@ import { getAccess, getAgent, getAiWallet } from "@/data";
 import { agentAllowed } from "@/data/ai/runner";
 import { requireWorkspace } from "@/data/session";
 import { aiAvailable } from "@/lib/ai-agent";
-import { upgradeFor } from "@/lib/plans";
 import { PageHeader } from "@/components/shell/page-header";
 import { AgentSettings } from "@/components/settings/agent";
 
@@ -18,7 +17,7 @@ export default async function AgentPage({ params }: PageProps<"/[ws]/settings/ai
   return (
     <>
       <PageHeader title="Agente de IA" crumbs={[{ label: "Configurações", href: `/${slug}/settings` }]} />
-      <AgentSettings slug={slug} company={ws.name} agent={agent} hasKey={aiAvailable() || !!wallet.ownKeyHint} blockedPlan={allowed ? null : upgradeFor((x) => x.aiAgent)} wallet={wallet} />
+      <AgentSettings slug={slug} company={ws.name} agent={agent} hasKey={aiAvailable() || !!wallet.ownKeyHint} blocked={!allowed} wallet={wallet} />
     </>
   );
 }

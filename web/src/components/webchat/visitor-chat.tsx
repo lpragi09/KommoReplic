@@ -166,6 +166,15 @@ export function VisitorChat({ publicKey, workspaceName }: { publicKey: string; w
             {error}
           </p>
         )}
+        {msgs.length === 0 && (
+          <p className="text-xs text-muted">
+            Suas mensagens vão para {workspaceName}, que pode responder com ajuda de assistente virtual. Atendimento pelo sistema{" "}
+            <a href="/privacidade" target="_blank" className="underline">
+              netzer
+            </a>
+            .
+          </p>
+        )}
       </form>
     </div>
   );

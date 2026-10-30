@@ -40,24 +40,24 @@ const MAX_PER_HOUR = 30;
 
 /** o plano inclui o agente, ou a empresa comprou créditos avulsos, ou usa a própria chave */
 export function agentAllowed(access: Access, extraCredits = 0, ownKey = false) {
-  return access.state !== "locked" && (limitsOf(access.plan).aiAgent || extraCredits > 0 || ownKey);
+  return access.state !== "locked" && (extraCredits > 0 || ownKey);
 }
 
-export const OUT_OF_CREDITS = "os créditos de IA do mês acabaram (compre mais em Configurações → Plano e cobrança → Complementos, ou use a chave própria da Anthropic)";
+export const OUT_OF_CREDITS = "os créditos de IA acabaram (compre mais em Configurações → Plano e cobrança → Complementos, ou use a chave própria da Anthropic)";
 
 export async function runAgent(store: AgentStore, conversationId: ID) {
   try {
     const s = await store.snapshot(conversationId);
     if (!s?.cfg?.enabled || !s.cfg.channels.includes(s.channel) || s.aiPaused || s.robotWaiting) return;
     if (!s.ownKey && !aiAvailable()) return;
-    if (!agentAllowed(s.access, s.extraCredits, !!s.ownKey)) return;
+    if (s.access.state === "locked") return; // sem crédito segue adiante: o handoff abaixo avisa a equipe
     const last = s.history[s.history.length - 1];
     if (!last || last.direction !== "in") return; // um robô (ou alguém) já respondeu
     if (s.aiLastHour >= MAX_PER_HOUR) return store.handoff(conversationId, "muitas mensagens seguidas com a IA");
 
     const turns: Turn[] = s.history.map((m) => ({ role: m.direction === "in" ? "cliente" : "empresa", text: m.body }));
     const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" });
-    // a conta da IA: chave própria (a empresa paga direto à Anthropic) ou crédito (plano + avulsos)
+    // a conta da IA: chave própria (a empresa paga direto à Anthropic) ou créditos comprados
     const included = limitsOf(s.access.plan).aiCredits;
     const month = aiMonth();
     if (!s.ownKey && !(await store.spend(s.wsId, included, month))) return store.handoff(conversationId, OUT_OF_CREDITS);

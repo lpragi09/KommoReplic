@@ -7,6 +7,14 @@ test.describe("F22 agente de IA", () => {
     test.setTimeout(120_000);
     const { slug } = await signUp(page);
 
+    // a IA é paga à parte: sem crédito nem chave própria o agente não liga
+    await page.goto(`/${slug}/settings/ai`);
+    await expect(page.getByRole("switch", { name: "Ligar o agente de IA" })).toBeDisabled();
+    await page.goto(`/${slug}/settings/billing?aba=complementos`);
+    await page.getByLabel("Chave da API").fill("sk-ant-teste-0000000000000000000000001234");
+    await page.getByRole("button", { name: "Testar e salvar" }).click();
+    await expect(page.getByText("Chave salva e testada.", { exact: false })).toBeVisible();
+
     // atalho no menu lateral, logo abaixo de Automações
     await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Agente de IA" }).click();
     await expect(page).toHaveURL(new RegExp(`/${slug}/settings/ai`));

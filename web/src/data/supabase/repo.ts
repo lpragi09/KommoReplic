@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { kindOf, safeName } from "@/lib/attachments";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { adminClient, userClient } from "@/lib/supabase/clients";
+import { QR_PREFIX, zapStop } from "@/lib/zap";
 import {
   DomainError,
   type Channel,
@@ -295,13 +296,34 @@ export async function getSubscription(wsId: ID): Promise<Subscription> {
   return { plan: s.plan, status: s.status, seats: s.seats, stripeCustomerId: s.stripe_customer_id, trialEndsAt: iso(s.trial_ends_at), currentPeriodEnd: iso(s.current_period_end) };
 }
 
+/** apaga os arquivos da pasta e das subpastas no Storage (a lista vem em páginas de até 1000) */
+async function removeStorageFolder(folder: string) {
+  const bucket = adminClient().storage.from("attachments");
+  for (;;) {
+    const { data, error } = await bucket.list(folder, { limit: 1000 });
+    if (error) throw error;
+    if (!data?.length) return;
+    const files = data.filter((f) => f.id).map((f) => `${folder}/${f.name}`);
+    for (const sub of data.filter((f) => !f.id)) await removeStorageFolder(`${folder}/${sub.name}`);
+    if (files.length) {
+      const { error: rm } = await bucket.remove(files);
+      if (rm) throw rm;
+    }
+    if (data.length < 1000) return;
+  }
+}
+
 export async function deleteAccount(userId: ID) {
   const admin = adminClient();
   const mine = check(await admin.from("memberships").select("workspace_id").eq("user_id", userId)).map((m: Row) => m.workspace_id as string);
   for (const ws of mine) {
     const { count } = await admin.from("memberships").select("id", { count: "exact", head: true }).eq("workspace_id", ws);
-    if (count === 1) check(await admin.from("workspaces").delete().eq("id", ws)); // cascata apaga tudo da empresa
-    // TODO: apagar também os arquivos do Storage em attachments/{ws}/
+    if (count !== 1) continue;
+    // WhatsApp por QR: encerra a sessão na ponte (senão ela segue conectada ao celular). Com a ponte fora do ar, a exclusão continua
+    const qr = check(await admin.from("channels").select("external_id").eq("workspace_id", ws).like("external_id", `${QR_PREFIX}%`));
+    for (const c of qr as Row[]) await zapStop(String(c.external_id).slice(QR_PREFIX.length)).catch((e) => console.error("[conta] encerrar sessão do WhatsApp", e));
+    await removeStorageFolder(ws);
+    check(await admin.from("workspaces").delete().eq("id", ws)); // cascata apaga tudo da empresa
   }
   // empresas com outras pessoas continuam; o que ele criou fica sem autor (on delete set null)
   check(await admin.from("workspaces").update({ created_by: null }).eq("created_by", userId).select("id"));

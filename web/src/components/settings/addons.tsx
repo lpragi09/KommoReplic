@@ -11,7 +11,7 @@ import { Field } from "@/components/ui/input";
 import { Check, Sparkle } from "@/components/ui/icons";
 
 /* Complementos: créditos de IA avulsos e chave própria da Anthropic.
-   O plano inclui N respostas por mês; passou disso, gasta os avulsos (não vencem). Com chave própria, a empresa paga a IA direto. */
+   A IA não vem no plano: cada resposta gasta 1 crédito comprado (não vence). Com chave própria, a empresa paga a IA direto. */
 
 const fmt = (n: number) => n.toLocaleString("pt-BR");
 
@@ -33,7 +33,7 @@ export function AiCreditsMeter({ wallet, compact }: { wallet: AiWallet; compact?
         <div className={cn("h-full rounded-pill", left === 0 ? "bg-danger" : pct > 80 ? "bg-warning" : "bg-[linear-gradient(90deg,var(--accent),var(--stage-4))]")} style={{ width: `${pct}%` }} />
       </div>
       <p className="text-xs text-muted">
-        {fmt(wallet.included)} por mês no plano{wallet.extra > 0 && <> · {fmt(wallet.extra)} avulsos sobrando (não vencem)</>} · {left === 0 ? <span className="font-medium text-danger">acabaram: a IA passa as conversas para a equipe</span> : <>sobram {fmt(left)}</>}
+        {left === 0 ? <span className="font-medium text-danger">Sem créditos: com o agente ligado, a IA passa as conversas para a equipe</span> : <>Sobram {fmt(left)} créditos (não vencem)</>}
       </p>
     </div>
   );
@@ -71,10 +71,10 @@ export function AiAddons({ slug, wallet, prices, isAdmin, bought, onSale }: { sl
           </span>
           <div className="min-w-0 flex-1">
             <h2 id="cred-t" className="text-base font-semibold text-fg">
-              Créditos de IA adicionais
+              Créditos de IA
             </h2>
             <p className="mt-0.5 max-w-[62ch] text-sm text-muted">
-              Cada resposta do agente de IA gasta 1 crédito. O plano inclui um tanto por mês; quando acaba, a IA usa os créditos avulsos. Sem crédito, ela passa a conversa para a equipe e nada fica sem resposta.
+              O agente de IA não vem incluído no plano. Cada resposta dele gasta 1 crédito, e os créditos não vencem. Sem crédito, ele passa a conversa para a equipe e nada fica sem resposta.
             </p>
           </div>
         </div>

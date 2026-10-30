@@ -42,14 +42,14 @@ test("F30-H2 créditos de IA: teste gasta crédito, aba Uso mostra limites, chav
   await expect(page.getByRole("meter", { name: "Créditos de IA usados" })).toHaveAttribute("aria-valuenow", "0");
   await axe(page);
 
-  // o chat de teste do agente gasta 1 crédito
+  // a IA não vem no plano: sem crédito, nem o chat de teste responde
   await page.goto(`/${slug}/settings/ai`);
   await page.getByRole("textbox", { name: "Base de conhecimento" }).fill("Abrimos às 9h.");
   await page.getByLabel("Mensagem de teste").fill("que horas abre?");
   await page.getByRole("button", { name: "Enviar" }).click();
-  await expect(page.getByText("Abrimos às 9h.").last()).toBeVisible();
+  await expect(page.getByText(/Sem créditos/).first()).toBeVisible();
   await page.goto(`/${slug}/settings/billing?aba=complementos`);
-  await expect(page.getByRole("meter", { name: "Créditos de IA usados" })).toHaveAttribute("aria-valuenow", "1");
+  await expect(page.getByRole("meter", { name: "Créditos de IA usados" })).toHaveAttribute("aria-valuenow", "0");
   await expect(page.getByRole("link", { name: "Adicionar créditos" })).toHaveCount(3);
   await expect(page.getByRole("link", { name: "Adicionar créditos" }).first()).toHaveAttribute("href", /checkout\?pacote=ia_500$/);
   await axe(page);

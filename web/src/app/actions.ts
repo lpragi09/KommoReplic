@@ -1488,7 +1488,7 @@ export async function saveAgentAction(slug: string, input: z.input<typeof agentI
     if (v.enabled) {
       const [access, wallet, own] = await Promise.all([data.getAccess(ws.id), data.getAiWallet(ws.id), data.getAiOwnKey(ws.id)]);
       if (!agentAllowed(access, wallet.extra, !!own))
-        throw new DomainError("invalid", `O agente de IA está no plano ${upgradeFor((x) => x.aiAgent)}, ou compre créditos de IA em Configurações → Plano e cobrança → Complementos.`);
+        throw new DomainError("invalid", "Para ligar o agente, compre créditos de IA em Configurações → Plano e cobrança → Complementos, ou use a sua chave da Anthropic.");
       if (!own && !aiAvailable()) throw new DomainError("invalid", "A IA ainda não está configurada no servidor. Use a sua chave da Anthropic abaixo ou salve desligado por enquanto.");
       if (!v.channels.length) throw new DomainError("invalid", "Marque pelo menos um canal para o agente atender.");
     }

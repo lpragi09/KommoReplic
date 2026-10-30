@@ -42,7 +42,7 @@ Perguntas frequentes:
 
 type Turn = { role: "cliente" | "empresa"; text: string; handoff?: string | null };
 
-export function AgentSettings({ slug, company, agent, hasKey, blockedPlan, wallet }: { slug: string; company: string; agent: AgentConfig; hasKey: boolean; blockedPlan: string | null; wallet: AiWallet }) {
+export function AgentSettings({ slug, company, agent, hasKey, blocked, wallet }: { slug: string; company: string; agent: AgentConfig; hasKey: boolean; blocked: boolean; wallet: AiWallet }) {
   const [cfg, setCfg] = useState(agent);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,16 +81,16 @@ export function AgentSettings({ slug, company, agent, hasKey, blockedPlan, walle
               </div>
               <label className="flex items-center gap-3 rounded-pill bg-[color-mix(in_srgb,var(--on-night)_10%,transparent)] px-4 py-2 text-sm font-medium text-on-night">
                 {cfg.enabled ? "Ligado" : "Desligado"}
-                <Switch checked={cfg.enabled} onChange={(v) => set("enabled", v)} label="Ligar o agente de IA" disabled={!!blockedPlan} />
+                <Switch checked={cfg.enabled} onChange={(v) => set("enabled", v)} label="Ligar o agente de IA" disabled={blocked} />
               </label>
             </div>
           </section>
 
-          {blockedPlan && (
+          {blocked && (
             <p className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-fg">
-              O agente de IA está no plano <strong>{blockedPlan}</strong>, ou funciona com créditos avulsos ou a sua chave da Anthropic.{" "}
+              Para ligar o agente, compre créditos de IA ou use a sua chave da Anthropic.{" "}
               <Link href={`/${slug}/settings/billing?aba=complementos`} className="font-medium text-accent-text underline">
-                Ver complementos
+                Comprar créditos
               </Link>
             </p>
           )}
@@ -103,7 +103,7 @@ export function AgentSettings({ slug, company, agent, hasKey, blockedPlan, walle
               . Dá para preencher tudo agora e ligar depois.
             </p>
           )}
-          {!blockedPlan && (
+          {!blocked && (
             <section className={card} aria-label="Créditos de IA">
               <AiCreditsMeter wallet={wallet} />
               <Link href={`/${slug}/settings/billing?aba=complementos`} className="mt-3 inline-block text-sm font-medium text-accent-text hover:underline">

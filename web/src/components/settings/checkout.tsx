@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { BillingProfile } from "@/data/types";
 import { payAction, paymentStatusAction, saveBillingProfileAction } from "@/app/actions";
 import { maskDoc, maskPhone } from "@/lib/document";
+import { LEGAL } from "@/lib/legal";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -104,6 +105,13 @@ export function Checkout({
             <span className="text-2xl font-semibold tabular-nums tracking-tight text-fg">{brl(item.cents)}</span>
           </div>
           {item.maxInstallments > 1 && <p className="mt-1 text-right text-xs text-muted">no cartão em até {item.maxInstallments}x</p>}
+          <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
+            Você pode desistir em até 7 dias e receber todo o valor de volta{LEGAL.email ? <>, escrevendo para {LEGAL.email}</> : null}. Ao pagar, você aceita os{" "}
+            <Link href="/termos" target="_blank" className="underline">
+              Termos de uso
+            </Link>
+            .{LEGAL.company && ` Vendido por ${LEGAL.company}, ${LEGAL.document}.`}
+          </p>
           <ul className="mt-4 flex flex-col gap-1.5 border-t border-border pt-4 text-xs text-muted">
             <li className="flex gap-1.5">
               <Check className="size-3.5 shrink-0 text-success" aria-hidden /> Pix libera na hora
