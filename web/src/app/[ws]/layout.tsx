@@ -45,8 +45,9 @@ async function Gate({ params, children }: { params: Promise<{ ws: string }>; chi
 export default function WorkspaceLayout({ children, params }: LayoutProps<"/[ws]">) {
   const p = params as Promise<{ ws: string }>;
   return (
-    // a página em si nunca rola (só as listas dentro dela): senão o painel inteiro sobe e sobra um vão vazio
-    <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+    // painel preso na tela (fixed): nada consegue rolar a página e arrastar o painel para cima (foco no campo,
+    // rolagem até a última mensagem...); só as listas dentro dele rolam
+    <div className="fixed inset-0 flex flex-col overflow-hidden md:flex-row">
       <Suspense fallback={<div className="hidden w-[var(--nav-collapsed)] shrink-0 bg-nav-bg md:block" />}>
         <Nav params={p} />
       </Suspense>
