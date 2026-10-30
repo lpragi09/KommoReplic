@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { META_PICK_COOKIE, META_STATE_COOKIE, exchangeCode } from "@/lib/meta-login";
+import { META_PICK_COOKIE, META_STATE_COOKIE, exchangeCode, igExchange } from "@/lib/meta-login";
 import { open, seal } from "@/lib/secret-box";
 import { currentUser } from "@/data/session";
 
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   if (!code) return Response.redirect(new URL(`${back}?meta_erro=cancelado`, url), 303); // pessoa fechou ou negou
   try {
-    const token = await exchangeCode(code);
+    const token = saved.kind === "ig" ? await igExchange(code) : await exchangeCode(code);
     jar.set(META_PICK_COOKIE, seal(JSON.stringify({ token, slug: saved.slug, kind: saved.kind, user: user.id, exp: Date.now() + 30 * 60_000 })), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

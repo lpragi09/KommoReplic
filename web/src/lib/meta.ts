@@ -4,11 +4,13 @@ import "server-only";
    Só o que o sistema usa: conferir a conta ao conectar, enviar texto e mídia e baixar a mídia recebida. */
 
 const GRAPH = "https://graph.facebook.com/v21.0";
+// conta ligada pelo login do Instagram: o token é do Instagram (começa com "IG") e fala com outro host, mesmas rotas
+const IG_GRAPH = "https://graph.instagram.com/v21.0";
 
 export class MetaError extends Error {}
 
 async function call<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${GRAPH}${path}`, {
+  const res = await fetch(`${token.startsWith("IG") ? IG_GRAPH : GRAPH}${path}`, {
     ...init,
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(init?.headers ?? {}) },
     signal: AbortSignal.timeout(10_000),

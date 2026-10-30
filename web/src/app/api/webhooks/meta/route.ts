@@ -100,7 +100,8 @@ export async function POST(req: Request) {
   const body = await req.text();
   const header = req.headers.get("x-hub-signature-256");
   if (!header?.startsWith("sha256=")) return new Response("assinatura inválida", { status: 401 });
-  const appOk = validSignature(body, header, process.env.META_APP_SECRET);
+  // app da netzer, ou o app do Instagram dentro dele (login do Instagram assina com a chave própria)
+  const appOk = validSignature(body, header, process.env.META_APP_SECRET) || validSignature(body, header, process.env.INSTAGRAM_APP_SECRET);
 
   type Payload = { object?: string; entry?: { id?: string; changes?: WaChange[]; messaging?: Messaging[] }[] };
   let payload: Payload;

@@ -18,7 +18,7 @@ import { createPayment, getPayment, decodeRef, mpOn, type MpPayment, type Payer,
 import { applyPayment } from "@/lib/billing-apply";
 import { randomUUID } from "node:crypto";
 import { MetaError, verifyAccount } from "@/lib/meta";
-import { META_PICK_COOKIE, listPages, readPick, subscribePage } from "@/lib/meta-login";
+import { META_PICK_COOKIE, igMe, igSubscribe, listPages, readPick, subscribePage } from "@/lib/meta-login";
 import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
 import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
 import { after } from "next/server";
@@ -1364,6 +1364,17 @@ export async function connectMetaPageAction(slug: string, pageId: string, pipeli
     if (!pick) throw new DomainError("invalid", "O login da Meta expirou. Clique em “Conectar com Facebook” de novo.");
     const pid = pipelineId ? id.parse(pipelineId) : null;
     try {
+      if (pick.kind === "ig") {
+        // login direto pelo Instagram: a conta é a do próprio token
+        const me = await igMe(pick.token);
+        if (me.id !== pageId) throw new DomainError("invalid", "Conta não encontrada. Entre de novo pelo Instagram.");
+        await checkChannelLimit(ws.id, "instagram", me.id);
+        await igSubscribe(pick.token);
+        await data.connectChannel(ws.id, user.id, { kind: "instagram", externalId: me.id, token: pick.token, name: `@${me.username}`, pipelineId: pid });
+        (await cookies()).delete(META_PICK_COOKIE);
+        refresh();
+        return null;
+      }
       const page = (await listPages(pick.token)).find((p) => p.id === pageId);
       if (!page) throw new DomainError("invalid", "Página não encontrada. Ela foi liberada no login da Meta?");
       if (pick.kind === "instagram" && !page.ig) throw new DomainError("invalid", "Essa página não tem um Instagram profissional ligado. Ligue em Configurações da página → Contas vinculadas.");

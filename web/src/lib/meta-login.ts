@@ -17,7 +17,8 @@ export type MetaKind = "instagram" | "messenger";
 /** cookies cifrados do login: o state (10 min) e o token para escolher a página (30 min) */
 export const META_STATE_COOKIE = "meta_oauth";
 export const META_PICK_COOKIE = "meta_pick";
-export type MetaPick = { token: string; slug: string; kind: MetaKind; user: string; exp: number };
+/** "ig" = login direto pelo Instagram (conta profissional, sem página do Facebook) */
+export type MetaPick = { token: string; slug: string; kind: MetaKind | "ig"; user: string; exp: number };
 
 export const metaLoginOn = () => !!process.env.META_APP_ID && !!process.env.META_APP_SECRET && !!process.env.APP_URL;
 
@@ -36,8 +37,8 @@ export function loginUrl(state: string, kind: MetaKind) {
   return `https://www.facebook.com/${VERSION}/dialog/oauth?${q}`;
 }
 
-async function get<T>(path: string, params: Record<string, string>): Promise<T> {
-  const res = await fetch(`${GRAPH}${path}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
+async function get<T>(path: string, params: Record<string, string>, fullUrl?: string): Promise<T> {
+  const res = await fetch(fullUrl ?? `${GRAPH}${path}?${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
   const body = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
   if (!res.ok || body.error) throw new MetaError(`A Meta respondeu: ${body.error?.message ?? `erro ${res.status}`}`);
   return body;
@@ -90,4 +91,61 @@ export async function readPick(slug: string, userId: string): Promise<MetaPick |
   } catch {
     return null;
   }
+}
+
+/* ---------- Instagram com login do Instagram (sem página do Facebook) ----------
+   Outro app dentro do app da Meta: INSTAGRAM_APP_ID e INSTAGRAM_APP_SECRET (Casos de uso → Instagram → Configuração da API
+   com login do Instagram). O token é do próprio Instagram (começa com "IG"), vale 60 dias e é renovado pelo cron. */
+
+const IG_GRAPH = "https://graph.instagram.com/v21.0";
+
+export const igLoginOn = () => !!process.env.INSTAGRAM_APP_ID && !!process.env.INSTAGRAM_APP_SECRET && !!process.env.APP_URL;
+
+export function igLoginUrl(state: string) {
+  const q = new URLSearchParams({
+    client_id: process.env.INSTAGRAM_APP_ID!,
+    redirect_uri: redirectUri(),
+    response_type: "code",
+    scope: "instagram_business_basic,instagram_business_manage_messages",
+    state,
+  });
+  return `https://www.instagram.com/oauth/authorize?${q}`;
+}
+
+/** código do login → token de longa duração (60 dias) */
+export async function igExchange(code: string) {
+  const res = await fetch("https://api.instagram.com/oauth/access_token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: process.env.INSTAGRAM_APP_ID!, client_secret: process.env.INSTAGRAM_APP_SECRET!, grant_type: "authorization_code", redirect_uri: redirectUri(), code: code.replace(/#_$/, "") }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const short = (await res.json().catch(() => ({}))) as { access_token?: string; error_message?: string };
+  if (!res.ok || !short.access_token) throw new MetaError(`O Instagram respondeu: ${short.error_message ?? `erro ${res.status}`}`);
+  const long = await get<{ access_token: string }>("", {}, `https://graph.instagram.com/access_token?${new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: process.env.INSTAGRAM_APP_SECRET!, access_token: short.access_token })}`);
+  return long.access_token;
+}
+
+/** renova antes dos 60 dias (o token precisa ter pelo menos 24 h) */
+export async function igRefresh(token: string) {
+  const r = await get<{ access_token: string }>("", {}, `https://graph.instagram.com/refresh_access_token?${new URLSearchParams({ grant_type: "ig_refresh_token", access_token: token })}`);
+  return r.access_token;
+}
+
+/** a conta profissional do token: id que chega nos avisos de mensagem e o @ */
+export async function igMe(token: string) {
+  const r = await get<{ user_id?: string; id: string; username?: string }>("", {}, `${IG_GRAPH}/me?${new URLSearchParams({ fields: "user_id,username", access_token: token })}`);
+  return { id: r.user_id ?? r.id, username: r.username ?? "instagram" };
+}
+
+/** liga a conta ao app para as mensagens do Direct chegarem no nosso webhook */
+export async function igSubscribe(token: string) {
+  const res = await fetch(`${IG_GRAPH}/me/subscribed_apps`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ subscribed_fields: "messages", access_token: token }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string } };
+  if (!res.ok || !body.success) throw new MetaError(`O Instagram não ligou a conta ao app: ${body.error?.message ?? `erro ${res.status}`}`);
 }

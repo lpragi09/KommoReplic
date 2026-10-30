@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { listChannels, listPipelines } from "@/data";
 import { requireWorkspace } from "@/data/session";
-import { listPages, metaLoginOn, readPick } from "@/lib/meta-login";
+import { igLoginOn, igMe, listPages, metaLoginOn, readPick } from "@/lib/meta-login";
 import { PageHeader } from "@/components/shell/page-header";
 import { ChannelsManager, type MetaPickOptions } from "@/components/settings/channels";
 
@@ -19,10 +19,14 @@ const META_ERRORS: Record<string, string> = {
 
 /** volta do login da Meta: lista as páginas autorizadas para a pessoa escolher qual conectar */
 async function pickOptions(slug: string, userId: string, kind: string | undefined): Promise<MetaPickOptions | { error: string } | null> {
-  if (kind !== "instagram" && kind !== "messenger") return null;
+  if (kind !== "instagram" && kind !== "messenger" && kind !== "ig") return null;
   const pick = await readPick(slug, userId);
   if (!pick || pick.kind !== kind) return { error: META_ERRORS.sessao };
   try {
+    if (kind === "ig") {
+      const me = await igMe(pick.token);
+      return { kind: "instagram", pages: [{ id: me.id, name: "", ig: me.username }] };
+    }
     const pages = await listPages(pick.token);
     return { kind, pages: pages.map((p) => ({ id: p.id, name: p.name, ig: p.ig?.username ?? null })) };
   } catch {
@@ -48,6 +52,7 @@ export default async function ChannelsPage({ params, searchParams }: PageProps<"
         webhookUrl={`${origin}/api/webhooks/meta`}
         chatBase={origin}
         metaLogin={metaLoginOn()}
+        igLogin={igLoginOn()}
         pick={pick && !("error" in pick) ? pick : null}
         notice={notice}
       />

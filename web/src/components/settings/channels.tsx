@@ -69,6 +69,7 @@ export function ChannelsManager({
   webhookUrl,
   chatBase,
   metaLogin,
+  igLogin,
   pick,
   notice,
 }: {
@@ -79,6 +80,8 @@ export function ChannelsManager({
   chatBase: string;
   /** login com Facebook configurado no servidor (Instagram e Messenger em 1 clique) */
   metaLogin: boolean;
+  /** login direto pelo Instagram configurado (conta profissional, sem página do Facebook) */
+  igLogin: boolean;
   pick: MetaPickOptions | null;
   notice: string | null;
 }) {
@@ -181,7 +184,7 @@ export function ChannelsManager({
                   <Button variant="secondary" size="sm" onClick={() => disconnect(on)} disabled={pending}>
                     Desconectar
                   </Button>
-                ) : metaLogin && k !== "whatsapp" ? (
+                ) : (k === "instagram" ? igLogin || metaLogin : k === "messenger" && metaLogin) ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
@@ -193,12 +196,21 @@ export function ChannelsManager({
                     >
                       Conectar manualmente
                     </button>
-                    <a
-                      href={`/api/meta/connect?ws=${encodeURIComponent(slug)}&kind=${k}`}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-[#1877f2] px-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-[filter] duration-fast hover:brightness-110"
-                    >
-                      <FacebookLogo className="size-4" weight="fill" aria-hidden /> Conectar com Facebook
-                    </a>
+                    {k === "instagram" && igLogin ? (
+                      <a
+                        href={`/api/meta/connect?ws=${encodeURIComponent(slug)}&kind=ig`}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-[linear-gradient(90deg,#f58529,#dd2a7b_55%,#8134af)] px-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-[filter] duration-fast hover:brightness-110"
+                      >
+                        <InstagramLogo className="size-4" weight="fill" aria-hidden /> Conectar com Instagram
+                      </a>
+                    ) : (
+                      <a
+                        href={`/api/meta/connect?ws=${encodeURIComponent(slug)}&kind=${k}`}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-[#1877f2] px-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.2)] transition-[filter] duration-fast hover:brightness-110"
+                      >
+                        <FacebookLogo className="size-4" weight="fill" aria-hidden /> Conectar com Facebook
+                      </a>
+                    )}
                   </div>
                 ) : (
                   <Button
@@ -354,7 +366,7 @@ function PagePicker({ slug, pick, pipelines }: { slug: string; pick: MetaPickOpt
                 <input type="radio" name="meta-page" value={p.id} checked={pageId === p.id} onChange={() => setPageId(p.id)} className="accent-[var(--accent)]" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-fg">{pick.kind === "instagram" ? `@${p.ig}` : p.name}</span>
-                  {pick.kind === "instagram" && <span className="block truncate text-xs text-muted">página {p.name}</span>}
+                  {pick.kind === "instagram" && p.name && <span className="block truncate text-xs text-muted">página {p.name}</span>}
                 </span>
               </label>
             ))}
