@@ -600,14 +600,15 @@ export async function markConversationRead(wsId: ID, id: ID) {
 }
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
-export const windowClosed = (c: Conversation, kind: ChannelKind) =>
-  kind === "whatsapp" && (!c.lastInboundAt || Date.now() - Date.parse(c.lastInboundAt) > WINDOW_MS);
+/** janela de 24h da API oficial do WhatsApp; o WhatsApp por QR code (external_id "qr:...") não tem essa regra */
+export const windowClosed = (c: Conversation, ch: { kind: ChannelKind; externalId?: string | null }) =>
+  ch.kind === "whatsapp" && !ch.externalId?.startsWith("qr:") && (!c.lastInboundAt || Date.now() - Date.parse(c.lastInboundAt) > WINDOW_MS);
 
 export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body: string, clientId: string) {
   const c = db.conversations.find((x) => x.id === conversationId && x.workspaceId === wsId);
   if (!c) throw new DomainError("not_found");
   const ch = db.channels.find((x) => x.id === c.channelId)!;
-  if (windowClosed(c, ch.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  if (windowClosed(c, ch)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
   if (!body.trim()) throw new DomainError("invalid", "A mensagem está vazia.");
   const dup = db.messages.find((m) => m.conversationId === conversationId && m.clientId === clientId);
   if (dup) return dup; // duplo clique / reenvio do navegador
@@ -633,7 +634,7 @@ export async function sendAttachment(wsId: ID, actor: ID, conversationId: ID, fi
   const c = db.conversations.find((x) => x.id === conversationId && x.workspaceId === wsId);
   if (!c) throw new DomainError("not_found");
   const ch = db.channels.find((x) => x.id === c.channelId)!;
-  if (windowClosed(c, ch.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  if (windowClosed(c, ch)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
   const dup = db.messages.find((m) => m.conversationId === conversationId && m.clientId === clientId);
   if (dup) return dup;
   const url = `data:${file.mime};base64,${Buffer.from(file.bytes).toString("base64")}`;

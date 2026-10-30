@@ -51,7 +51,7 @@ export default async function LeadPage({ params }: PageProps<"/[ws]/leads/[id]">
           leadId={lead.id}
           conversationId={conversation?.id ?? null}
           channelName={channel ? channelName[channel.kind] : undefined}
-          windowClosed={conversation && channel ? windowClosed(conversation, channel.kind) : false}
+          windowClosed={conversation && channel ? windowClosed(conversation, channel) : false}
           taskTypes={taskTypes}
           users={users}
           me={user.id}

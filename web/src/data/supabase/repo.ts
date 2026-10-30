@@ -688,13 +688,14 @@ export async function markConversationRead(wsId: ID, id: ID) {
 }
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
-export const windowClosed = (c: Conversation, kind: ChannelKind) =>
-  kind === "whatsapp" && (!c.lastInboundAt || Date.now() - Date.parse(c.lastInboundAt) > WINDOW_MS);
+/** janela de 24h da API oficial do WhatsApp; o WhatsApp por QR code (external_id "qr:...") não tem essa regra */
+export const windowClosed = (c: Conversation, ch: { kind: ChannelKind; externalId?: string | null }) =>
+  ch.kind === "whatsapp" && !ch.externalId?.startsWith("qr:") && (!c.lastInboundAt || Date.now() - Date.parse(c.lastInboundAt) > WINDOW_MS);
 
 export async function sendMessage(wsId: ID, actor: ID, conversationId: ID, body: string, clientId: string) {
   if (!body.trim()) throw new DomainError("invalid", "A mensagem está vazia.");
   const { conversation, channel } = await getConversation(wsId, conversationId);
-  if (windowClosed(conversation, channel.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  if (windowClosed(conversation, channel)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
   const sb = await userClient();
   const { data: dup } = await sb.from("messages").select("*").eq("conversation_id", conversationId).eq("client_id", clientId).maybeSingle();
   if (dup) return toMessage(dup);
@@ -716,7 +717,7 @@ export async function sendAttachment(wsId: ID, actor: ID, conversationId: ID, fi
   const kind = kindOf(file.mime);
   if (!kind) throw new DomainError("invalid", "Esse tipo de arquivo não é aceito.");
   const { conversation, channel } = await getConversation(wsId, conversationId);
-  if (windowClosed(conversation, channel.kind)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
+  if (windowClosed(conversation, channel)) throw new DomainError("window_closed", "Fora da janela de 24h. Use um modelo aprovado.");
   const sb = await userClient();
   const { data: dup } = await sb.from("messages").select(MSG_SELECT).eq("conversation_id", conversationId).eq("client_id", clientId).maybeSingle();
   if (dup) return (await withFiles([dup], sb))[0];

@@ -49,7 +49,7 @@ export function Feed({ slug, items, contactName }: { slug: string; items: FeedIt
   const shown = filter === "all" ? items : items.filter((i) => i.type === filter);
   const count = items.length;
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
+    scrollToEnd(end.current);
   }, [count]);
 
   const rows = shown.map((it, i) => {
@@ -201,4 +201,11 @@ export function TaskItem({ slug, t }: { slug: string; t: Extract<FeedItem, { typ
       )}
     </div>
   );
+}
+
+/** rola só a caixa de mensagens até o fim (scrollIntoView rolava também a página inteira e deixava um vão) */
+function scrollToEnd(el: HTMLElement | null) {
+  let box = el?.parentElement ?? null;
+  while (box && !(box.scrollHeight > box.clientHeight && /(auto|scroll)/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+  if (box && box !== document.body && box !== document.documentElement) box.scrollTop = box.scrollHeight;
 }

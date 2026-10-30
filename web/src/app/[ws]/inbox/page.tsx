@@ -144,7 +144,7 @@ export default async function InboxPage({ params, searchParams }: PageProps<"/[w
               leadId={active.lead?.id ?? null}
               conversationId={active.conversation.id}
               channelName={channelName[active.channel.kind]}
-              windowClosed={windowClosed(active.conversation, active.channel.kind)}
+              windowClosed={windowClosed(active.conversation, active.channel)}
               taskTypes={taskTypes}
               users={users}
               me={user.id}
