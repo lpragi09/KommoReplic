@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { listChannels, listPipelines } from "@/data";
 import { requireWorkspace } from "@/data/session";
 import { igAccounts, igLoginOn, listPages, metaLoginOn, readPick } from "@/lib/meta-login";
+import { zapOn } from "@/lib/zap";
 import { PageHeader } from "@/components/shell/page-header";
 import { ChannelsManager, type MetaPickOptions } from "@/components/settings/channels";
 
@@ -53,6 +54,7 @@ export default async function ChannelsPage({ params, searchParams }: PageProps<"
         chatBase={origin}
         metaLogin={metaLoginOn()}
         igLogin={igLoginOn()}
+        zapQr={zapOn()}
         pick={pick && !("error" in pick) ? pick : null}
         notice={notice}
       />

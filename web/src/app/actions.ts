@@ -18,6 +18,7 @@ import { createPayment, getPayment, decodeRef, mpOn, type MpPayment, type Payer,
 import { applyPayment } from "@/lib/billing-apply";
 import { randomUUID } from "node:crypto";
 import { MetaError, verifyAccount } from "@/lib/meta";
+import { QR_PREFIX, zapOn, zapStart, zapStatus, zapStop } from "@/lib/zap";
 import { META_PICK_COOKIE, igAccounts, igSubscribe, listPages, readPick, subscribePage } from "@/lib/meta-login";
 import { aiAvailable, aiErrorText, askAgent, checkApiKey } from "@/lib/ai-agent";
 import { OUT_OF_CREDITS, agentAllowed } from "@/data/ai/runner";
@@ -1402,9 +1403,50 @@ export async function connectMetaPageAction(slug: string, pageId: string, pipeli
   });
 }
 
+/** WhatsApp por QR code: cria o canal "conectando" e pede o QR à ponte. A tela consulta o QR até lerem no celular. */
+export async function startZapQrAction(slug: string, pipelineId: string | null) {
+  return run(async () => {
+    await requireActive(slug);
+    const { user, ws } = await requireAdmin(slug);
+    if (!zapOn()) throw new DomainError("invalid", "O WhatsApp por QR code ainda não foi ligado no servidor.");
+    // reaproveita um canal por QR que ficou pela metade, em vez de criar outro
+    const pending = (await data.listChannels(ws.id)).find((c) => c.kind === "whatsapp" && c.externalId?.startsWith(QR_PREFIX) && c.status === "connecting");
+    const session = pending?.externalId?.slice(QR_PREFIX.length) ?? crypto.randomUUID();
+    if (!pending) await checkChannelLimit(ws.id, "whatsapp", `${QR_PREFIX}${session}`);
+    const ch =
+      pending ??
+      (await data.connectChannel(ws.id, user.id, { kind: "whatsapp", externalId: `${QR_PREFIX}${session}`, token: "qr", name: "WhatsApp (QR code)", pipelineId: pipelineId ? id.parse(pipelineId) : null, provider: "qr", status: "connecting" }));
+    try {
+      await zapStart(session);
+    } catch {
+      throw new DomainError("invalid", "A ponte do WhatsApp não respondeu. Confira se a VM da Oracle está ligada.");
+    }
+    return { channelId: ch.id };
+  });
+}
+
+/** situação do QR: mostra a imagem enquanto espera e marca o canal como conectado quando lerem */
+export async function zapQrStatusAction(slug: string, channelId: string) {
+  return run(async () => {
+    const { ws } = await requireAdmin(slug);
+    const ch = (await data.listChannels(ws.id)).find((c) => c.id === id.parse(channelId));
+    if (!ch?.externalId?.startsWith(QR_PREFIX)) throw new DomainError("not_found");
+    const st = await zapStatus(ch.externalId.slice(QR_PREFIX.length)).catch(() => null);
+    if (!st) return { status: "error" as const, qr: null };
+    if (st.status === "open" && ch.status !== "connected") {
+      const phone = st.me?.phone ? `+${st.me.phone}` : "";
+      await data.setChannelStatus(ws.id, ch.id, "connected", `WhatsApp ${st.me?.name || ""} ${phone}`.replace(/\s+/g, " ").trim());
+      refresh();
+    }
+    return { status: st.status, qr: st.qr ?? null };
+  });
+}
+
 export async function disconnectChannelAction(slug: string, channelId: string) {
   return run(async () => {
     const { ws } = await requireActive(slug);
+    const ch = (await data.listChannels(ws.id)).find((c) => c.id === id.parse(channelId));
+    if (ch?.externalId?.startsWith(QR_PREFIX) && zapOn()) await zapStop(ch.externalId.slice(QR_PREFIX.length)).catch(() => {});
     await data.disconnectChannel(ws.id, id.parse(channelId));
     return null;
   });

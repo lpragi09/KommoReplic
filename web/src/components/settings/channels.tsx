@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Channel, Pipeline } from "@/data/types";
-import { connectChannelAction, connectMetaPageAction, disconnectChannelAction } from "@/app/actions";
+import { connectChannelAction, connectMetaPageAction, disconnectChannelAction, startZapQrAction, zapQrStatusAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/overlay";
@@ -70,6 +70,7 @@ export function ChannelsManager({
   chatBase,
   metaLogin,
   igLogin,
+  zapQr,
   pick,
   notice,
 }: {
@@ -82,10 +83,13 @@ export function ChannelsManager({
   metaLogin: boolean;
   /** login direto pelo Instagram configurado (conta profissional, sem página do Facebook) */
   igLogin: boolean;
+  /** ponte do WhatsApp por QR code ligada no servidor */
+  zapQr: boolean;
   pick: MetaPickOptions | null;
   notice: string | null;
 }) {
   const [open, setOpen] = useState<Social | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
   const [form, setForm] = useState({ externalId: "", pageId: "", token: "", appSecret: "", pipelineId: pipelines[0]?.id ?? "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -125,6 +129,7 @@ export function ChannelsManager({
           </p>
         )}
         {pick && <PagePicker slug={slug} pick={pick} pipelines={pipelines} />}
+        {qrOpen && <QrDialog slug={slug} pipelines={pipelines} onClose={() => setQrOpen(false)} />}
         {webchat.map((c) => (
           <section key={c.id} className={card} aria-labelledby={`ch-${c.id}`}>
             <div className="flex items-center gap-3">
@@ -184,6 +189,22 @@ export function ChannelsManager({
                   <Button variant="secondary" size="sm" onClick={() => disconnect(on)} disabled={pending}>
                     Desconectar
                   </Button>
+                ) : k === "whatsapp" && zapQr ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-muted underline-offset-2 hover:text-fg hover:underline"
+                      onClick={() => {
+                        setError(null);
+                        setOpen(k);
+                      }}
+                    >
+                      API oficial
+                    </button>
+                    <Button size="sm" onClick={() => setQrOpen(true)}>
+                      Conectar por QR code
+                    </Button>
+                  </div>
                 ) : (k === "instagram" ? igLogin || metaLogin : k === "messenger" && metaLogin) ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -372,6 +393,92 @@ function PagePicker({ slug, pick, pipelines }: { slug: string; pick: MetaPickOpt
             ))}
           </fieldset>
           <Select label="Funil onde os contatos novos caem" value={pipelineId} onValueChange={setPipelineId} options={pipelines.map((p) => ({ value: p.id, label: p.name }))} />
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </Dialog>
+  );
+}
+
+/** WhatsApp por QR code: pede o QR à ponte e mostra até lerem no celular (consulta a cada 3 s) */
+function QrDialog({ slug, pipelines, onClose }: { slug: string; pipelines: Pipeline[]; onClose: () => void }) {
+  const router = useRouter();
+  const [pipelineId, setPipelineId] = useState(pipelines[0]?.id ?? "");
+  const [channelId, setChannelId] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  useEffect(() => {
+    if (!channelId) return;
+    let stop = false;
+    const tick = async () => {
+      const r = await zapQrStatusAction(slug, channelId);
+      if (stop) return;
+      if (!r.ok) return setError(r.error);
+      if (r.data.status === "open") {
+        router.refresh();
+        return onClose();
+      }
+      setQr(r.data.qr);
+    };
+    void tick();
+    const t = setInterval(tick, 3000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [slug, channelId, router, onClose]);
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      icon={<WhatsappLogo className="size-5" weight="fill" />}
+      title="Conectar WhatsApp por QR code"
+      description="Igual ao WhatsApp Web: o celular continua com o WhatsApp normal e as conversas também caem no netzer."
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          {channelId ? "Fechar" : "Cancelar"}
+        </Button>
+      }
+    >
+      {!channelId ? (
+        <div className="flex flex-col gap-4">
+          <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-fg">
+            Não é a API oficial da Meta. Para não arriscar bloqueio do número, use para atender quem chama, sem disparos em massa.
+          </p>
+          <Select label="Funil onde os contatos novos caem" value={pipelineId} onValueChange={setPipelineId} options={pipelines.map((p) => ({ value: p.id, label: p.name }))} />
+          <Button
+            loading={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await startZapQrAction(slug, pipelineId || null);
+                if (!r.ok) return setError(r.error);
+                setChannelId(r.data.channelId);
+              })
+            }
+          >
+            Gerar QR code
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 text-center">
+          {qr ? (
+            // eslint-disable-next-line @next/next/no-img-element -- QR em base64 vindo da ponte
+            <img src={qr} alt="QR code para conectar o WhatsApp" className="size-64 rounded-lg bg-white p-2 shadow-[0_0_0_1px_var(--border)]" />
+          ) : (
+            <div className="grid size-64 place-items-center rounded-lg bg-surface text-sm text-muted">Gerando o QR code…</div>
+          )}
+          <ol className="text-left text-sm text-muted">
+            <li>1. No celular, abra o WhatsApp → Configurações → Aparelhos conectados.</li>
+            <li>2. Toque em “Conectar um aparelho” e aponte para este QR code.</li>
+            <li>3. Pronto: esta janela fecha sozinha quando conectar.</li>
+          </ol>
         </div>
       )}
       {error && (
