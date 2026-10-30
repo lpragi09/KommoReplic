@@ -186,61 +186,104 @@ function NewRule({
   pending: boolean;
   onSave: (p: Promise<{ ok: true } | { ok: false; error: string }>) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
   const [channelId, setChannelId] = useState("");
   const [match, setMatch] = useState<SourceRule["match"]>("keyword");
   const [value, setValue] = useState("");
   const [round, setRound] = useState(0); // remonta os seletores de valor para voltarem ao texto de ajuda
-  const save = () => {
-    onSave(saveSourceRuleAction(slug, { pipelineId, channelId: channelId || null, match, value }));
+  const reset = () => {
+    setOpen(false);
+    setMore(false);
+    setChannelId("");
+    setMatch("keyword");
     setValue("");
     setRound((n) => n + 1);
   };
-  return (
-    <div className="mt-2 flex flex-col gap-2 rounded-md border border-dashed border-border-input p-2.5">
-      <p className="text-xs font-medium text-fg">Nova regra: quando chegar mensagem…</p>
-      <Select
-        size="sm"
-        label="Por qual canal"
-        value={channelId}
-        onValueChange={setChannelId}
-        options={[{ value: "", label: "Qualquer canal" }, ...channels.map((c) => ({ value: c.id, label: c.name, hint: KIND_LABEL[c.kind], icon: <ChannelIcon kind={c.kind} className="size-4" /> }))]}
-      />
-      <Select
-        size="sm"
-        label="Que"
-        value={match}
-        onValueChange={(v) => {
-          setMatch(v as SourceRule["match"]);
-          setValue("");
-        }}
-        options={(Object.keys(MATCH_LABEL) as SourceRule["match"][]).map((k) => ({ value: k, label: MATCH_LABEL[k] }))}
-      />
-      {match === "keyword" && <Field label="Palavras" hint="Qualquer uma delas já vale. Separe por vírgula." placeholder="orçamento, preço" value={value} onChange={(e) => setValue(e.target.value)} maxLength={200} />}
-      <p className="text-xs text-muted">…o contato novo entra neste funil.</p>
-      {match === "code" && (
-        <Select
-          key={round}
-          size="sm"
-          label="Código"
-          placeholder={codes.length ? "Escolha o código" : "Cadastre códigos em Rastreamento"}
-          onValueChange={setValue}
-          options={codes.map((c) => ({ value: c.code, label: c.code, hint: c.name }))}
-        />
-      )}
-      {match === "link" && (
-        <Select
-          key={round}
-          size="sm"
-          label="Link rastreável"
-          placeholder={links.length ? "Escolha o link" : "Crie links em Rastreamento"}
-          onValueChange={setValue}
-          options={links.map((l) => ({ value: l.id, label: l.name }))}
-        />
-      )}
-      {match === "ad" && <p className="text-xs text-muted">Quem chamar clicando num anúncio “clique para conversar” do Facebook ou Instagram.</p>}
-      <Button size="sm" disabled={pending || (match !== "ad" && !value.trim())} loading={pending} onClick={save}>
-        Criar regra
+  const save = () => {
+    onSave(saveSourceRuleAction(slug, { pipelineId, channelId: channelId || null, match, value }));
+    reset();
+  };
+  if (!open)
+    return (
+      <Button size="sm" variant="secondary" className="mt-2 w-full" icon={<Plus className="size-4" aria-hidden />} onClick={() => setOpen(true)}>
+        Mandar contatos para cá por palavra
       </Button>
+    );
+  return (
+    <div className="mt-2 flex flex-col gap-2.5 rounded-md bg-surface p-2.5">
+      {match === "keyword" && (
+        <Field
+          label="Se a mensagem tiver estas palavras"
+          hint="Qualquer uma já vale. Separe por vírgula."
+          placeholder="orçamento, preço"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          maxLength={200}
+          autoFocus
+        />
+      )}
+      {more && (
+        <>
+          <Select
+            size="sm"
+            label="Ou separar por"
+            value={match}
+            onValueChange={(v) => {
+              setMatch(v as SourceRule["match"]);
+              setValue("");
+            }}
+            options={[
+              { value: "keyword", label: "palavra na mensagem" },
+              { value: "code", label: "código do anúncio" },
+              { value: "link", label: "link rastreável" },
+              { value: "ad", label: "anúncio da Meta" },
+            ]}
+          />
+          {match === "code" && (
+            <Select
+              key={round}
+              size="sm"
+              label="Código"
+              placeholder={codes.length ? "Escolha o código" : "Cadastre códigos em Rastreamento"}
+              onValueChange={setValue}
+              options={codes.map((c) => ({ value: c.code, label: c.code, hint: c.name }))}
+            />
+          )}
+          {match === "link" && (
+            <Select
+              key={round}
+              size="sm"
+              label="Link rastreável"
+              placeholder={links.length ? "Escolha o link" : "Crie links em Rastreamento"}
+              onValueChange={setValue}
+              options={links.map((l) => ({ value: l.id, label: l.name }))}
+            />
+          )}
+          {match === "ad" && <p className="text-xs text-muted">Quem chamar clicando num anúncio “clique para conversar” do Facebook ou Instagram.</p>}
+          <Select
+            size="sm"
+            label="Só de um canal"
+            value={channelId}
+            onValueChange={setChannelId}
+            options={[{ value: "", label: "Qualquer canal" }, ...channels.map((c) => ({ value: c.id, label: c.name, hint: KIND_LABEL[c.kind], icon: <ChannelIcon kind={c.kind} className="size-4" /> }))]}
+          />
+        </>
+      )}
+      <p className="text-xs text-muted">O contato novo vem para este funil em vez do funil de sempre.</p>
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={pending || (match !== "ad" && !value.trim())} loading={pending} onClick={save}>
+          Salvar
+        </Button>
+        <Button size="sm" variant="ghost" onClick={reset}>
+          Cancelar
+        </Button>
+        {!more && (
+          <button type="button" onClick={() => setMore(true)} className="ml-auto text-xs font-medium text-accent-text hover:underline">
+            Mais opções
+          </button>
+        )}
+      </div>
     </div>
   );
 }

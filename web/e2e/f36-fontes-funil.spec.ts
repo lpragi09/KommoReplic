@@ -19,8 +19,9 @@ test("F36-H1 regra de palavra manda o contato novo para outro funil; sem regra, 
   const orcamentos = page.url();
 
   // regra: qualquer canal, mensagem com "orçamento"
-  await panel.getByLabel("Palavras").fill("orçamento, preço");
-  await panel.getByRole("button", { name: "Criar regra" }).click();
+  await panel.getByRole("button", { name: "Mandar contatos para cá por palavra" }).click();
+  await panel.getByLabel("Se a mensagem tiver estas palavras").fill("orçamento, preço");
+  await panel.getByRole("button", { name: "Salvar", exact: true }).click();
   await expect(panel.getByRole("listitem").filter({ hasText: "Mensagem de qualquer canal que tem a palavra “orçamento, preço”" })).toBeVisible();
   await axe(page);
 
